@@ -177,7 +177,8 @@ namespace EvolZero.Parsing
 			var varName = ctx.IDENTIFIER().ToString();
 			if (varName == null) throw new NotImplementedException();
 
-			Expression varAccessing = _semanticAnalyzer.CreateLocalVariable(varName, typeSpec);
+			var args = ctx.args();
+			Expression varAccessing = _semanticAnalyzer.CreateLocalVariable(varName, typeSpec, args != null ? ParseArgs(args) : null);
 
 			if (ctx.ASSIGN() != null)
 			{
@@ -335,28 +336,6 @@ namespace EvolZero.Parsing
 				throw new NotImplementedException();
 
 			var res = _semanticAnalyzer.CreateArrayInHeap(context.IDENTIFIER().GetText(), arrySizeGettingExpr);
-
-			_semanticAnalyzer.CurrentPosition = lastPos;
-			return res;
-		}
-
-		public override Expression? VisitStackNewExpr([NotNull] CEvolParser.StackNewExprContext context)
-		{
-			var lastPos = _semanticAnalyzer.CurrentPosition;
-			SetCurrentPosition(context);
-
-			var res = base.VisitStackNewExpr(context);
-
-			_semanticAnalyzer.CurrentPosition = lastPos;
-			return res;
-		}
-
-		public override Expression? VisitStackNewArrayExpr([NotNull] CEvolParser.StackNewArrayExprContext context)
-		{
-			var lastPos = _semanticAnalyzer.CurrentPosition;
-			SetCurrentPosition(context);
-
-			var res = base.VisitStackNewArrayExpr(context);
 
 			_semanticAnalyzer.CurrentPosition = lastPos;
 			return res;

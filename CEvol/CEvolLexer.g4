@@ -10,7 +10,6 @@ WHILE    : 'while';
 RETURN   : 'return';
 LOC  : 'loc';
 NEW : 'new';
-STACK : 'stack';
 CONSTRUCTOR : 'ctor';
 DESTRUCTOR : 'dtor';
 REF : 'ref';

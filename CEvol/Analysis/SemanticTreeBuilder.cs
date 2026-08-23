@@ -368,6 +368,44 @@ namespace EvolZero.Analysis
 			return new CallConstructorExpression(memory, ctorDesc, arguments, CurrentPosition);
 		}
 
+		private Expression CallStackConstructor(TypeDesc typeDesc, Expression objMemoryGetting, Expression[]? args)
+		{
+			if (CheckStubForError(objMemoryGetting)) return new StubForErrorExpression(CurrentPosition);
+			if (args != null && CheckStubForError(args)) return new StubForErrorExpression(CurrentPosition);
+
+			ConstructorDesc? ctorDesc = null;
+			var constructors = _membersFinder.FindConstructors(typeDesc);
+
+			if (args == null && constructors.Count > 0)
+			{
+				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "The parameters for the type constructor must be specified explicitly.", CurrentPosition);
+				return new StubForErrorExpression(CurrentPosition);
+			}
+
+			if (args != null)
+			{
+				var arguments = args.Select(AutoDereferenceIfPointer).ToArray();
+				ctorDesc = _typeAnalyzer.FindSuitableConstructor(constructors, arguments.Select(x => x.ResultTypeSpec), out TypeSpec?[] casts);
+
+				if (ctorDesc == null)
+				{
+					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Constructor with specified arguments could not be found", CurrentPosition);
+					return new StubForErrorExpression(CurrentPosition);
+				}
+
+				for (int i = 0; i < casts.Length; i++)
+				{
+					TypeSpec? cast = casts[i];
+					if (!cast.HasValue || !(arguments[i].ResultTypeSpec.Type is IntegerTypeDesc or FloatTypeDesc)) continue;
+					arguments[i] = ImplicitIntExtenssion(arguments[i], cast.Value);
+				}
+
+				return new CallConstructorExpression(new GetPointerToVarExpression(objMemoryGetting, CurrentPosition), ctorDesc, arguments, CurrentPosition);
+			}
+
+			return objMemoryGetting;
+		}
+
 		public Expression CreateArrayInHeap(string typeName, Expression arraySize)
 		{
 			if (CheckStubForError(arraySize)) return new StubForErrorExpression(CurrentPosition);
@@ -622,7 +660,7 @@ namespace EvolZero.Analysis
 			return new GlobalArrayExpression(strBytes, new TypeSpec(TypeNameToTypeDesc("byte"), [new Qualifier(QKind.Reference), new Qualifier(QKind.Array)]), CurrentPosition);
 		}
 
-		public Expression CreateLocalVariable(string name, TypeSpec declaring)
+		public Expression CreateLocalVariable(string name, TypeSpec declaring, Expression[]? args)
 		{
 			CodeBlock block = _blocks.Peek();
 			if (block.Variables.ContainsKey(name))
@@ -633,6 +671,11 @@ namespace EvolZero.Analysis
 
 			var varExpr = new VariableCreatingExpression(name, declaring, CurrentPosition);
 			block.Variables[name] = new VariableAccessExpression(name, declaring, CurrentPosition);
+
+			if (!declaring.QualifiersExists)
+			{
+				return CallStackConstructor(declaring.Type, varExpr, args);
+			}
 
 			return varExpr;
 		}

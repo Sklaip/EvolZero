@@ -25,7 +25,7 @@ typeSpec : (qualifier)* IDENTIFIER arraySpec* ;
 
 // --- Объявления ---
 // Модификаторы + Тип + Имя
-fieldDecl : accessModifier? extraModifier* typeSpec IDENTIFIER (ASSIGN expression)? SEMICOLON ;
+fieldDecl : accessModifier? extraModifier* typeSpec IDENTIFIER (LPAREN args? RPAREN)? (ASSIGN expression)? SEMICOLON ;
 
 // Функция/Метод
 functionDecl : accessModifier? extraModifier* typeSpec IDENTIFIER LPAREN params? RPAREN block ;
@@ -67,8 +67,6 @@ expression
     | IDENTIFIER                                 # IdExpr
     | LPAREN expression RPAREN                   # ParenExpr
 
-    | STACK IDENTIFIER arraySizeSpec+ arraySpec*   # StackNewArrayExpr
-    | STACK IDENTIFIER LPAREN args? RPAREN         # StackNewExpr
     | NEW IDENTIFIER arraySizeSpec+ arraySpec*   # NewArrayExpr
     | NEW IDENTIFIER LPAREN args? RPAREN         # NewExpr
 
