@@ -119,6 +119,9 @@ namespace EvolZero.Core
 			var referencesAnalazer = new ReferencesAnalyzer(errorsBag);
 			referencesAnalazer.Visit(program);
 
+			var accessAnalazer = new AccessAnalyzer(errorsBag);
+			accessAnalazer.Visit(program);
+
 			if (!errorsBag.HasErrors)
 			{
 				var emitter = new Emitter(codeGenerator);

@@ -35,7 +35,7 @@ namespace EvolZero.CLI
 				return selectedExecutor.Execute(_args);
 			}
 
-			return selectedExecutor.Execute(_args.Take(new Range(1, _args.Length - 1)));
+			return selectedExecutor.Execute(_args.Skip(1));
 		}
 	}
 }

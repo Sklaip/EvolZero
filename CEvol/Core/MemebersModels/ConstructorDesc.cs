@@ -9,11 +9,13 @@ namespace EvolZero.Core.MemebersModels
 	{
 		public readonly Argument[] Arguments;
 		public readonly FuncRefData RefData;
+		public readonly AccessModifier Access;
 
-		public ConstructorDesc(Argument[] arguments, FuncRefData refData)
+		public ConstructorDesc(Argument[] arguments, FuncRefData refData, AccessModifier access)
 		{
 			Arguments = arguments;
 			RefData = refData;
+			Access = access;
 		}
 
 	}

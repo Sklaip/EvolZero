@@ -435,7 +435,7 @@ namespace EvolZero.Analysis
 				return new StubForErrorExpression(CurrentPosition);
 			}
 
-			return new StructureFieldAccessExpression(variable.Order, instanceGetting.ResultTypeSpec.IsRef, instanceGetting, variable.Declaring, CurrentPosition);
+			return new StructureFieldAccessExpression(variable, instanceGetting.ResultTypeSpec.IsRef, instanceGetting, variable.Declaring, CurrentPosition);
 		}
 
 		public ArrayCellAccessExpression ArrayCellAccess(Expression arrayGetting, Expression indexGetting)
@@ -751,7 +751,7 @@ namespace EvolZero.Analysis
 				TypeSpec fieldDeclaring = field.Declaring;
 
 				var thisGetting = new AppealToThisExpression(currentClass, CurrentPosition);
-				return new StructureFieldAccessExpression(field.Order, true, thisGetting, fieldDeclaring, CurrentPosition);
+				return new StructureFieldAccessExpression(field, true, thisGetting, fieldDeclaring, CurrentPosition);
 			}
 
 			return value;

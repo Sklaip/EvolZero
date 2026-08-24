@@ -9,12 +9,14 @@ namespace EvolZero.Core.MemebersModels
 		public readonly TypeSpec Declaring;
 		public readonly string Name;
 		public readonly uint Order;
+		public readonly AccessModifier Access;
 
-		public VariableDesc(TypeSpec type, string name, uint order)
+		public VariableDesc(TypeSpec type, string name, uint order, AccessModifier access)
 		{
 			Declaring = type;
 			Name = name;
 			Order = order;
+			Access = access;
 		}
 	}
 }

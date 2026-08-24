@@ -80,7 +80,9 @@ namespace EvolZero.Parsing
 
 			var fieldSpec = ParseTypeSpec(context.typeSpec());
 
-			var desc = new VariableSignature(fieldName, fieldSpec);
+			AccessModifier access = ParseAccessModifier(context.accessModifier(), isClassMember: true);
+
+			var desc = new VariableSignature(fieldName, fieldSpec, access);
 			_currentClassVariables.Add(fieldName, desc);
 
 			return null;
@@ -103,13 +105,15 @@ namespace EvolZero.Parsing
 
 			var funcsList = _currentClassFunctions ?? SingleFunctions;
 
+			AccessModifier access = ParseAccessModifier(context.accessModifier(), _currentClassFunctions != null);
+
 			if (!funcsList.TryGetValue(funcName, out List<FuncSignature>? functions))
 			{
 				functions = new();
 				funcsList[funcName] = functions;
 			}
 
-			functions.Add(new FuncSignature(funcName, typeSpec, parameters, []));
+			functions.Add(new FuncSignature(funcName, typeSpec, parameters, [], access));
 
 			return null;
 		}
@@ -135,13 +139,15 @@ namespace EvolZero.Parsing
 
 			var funcsList = _currentClassFunctions ?? SingleFunctions;
 
+			AccessModifier access = ParseAccessModifier(context.accessModifier(), _currentClassFunctions != null);
+
 			if (!funcsList.TryGetValue(funcName, out List<FuncSignature>? functions))
 			{
 				functions = new();
 				funcsList[funcName] = functions;
 			}
 
-			functions.Add(new FuncSignature(funcName, typeSpec, parameters, modifers));
+			functions.Add(new FuncSignature(funcName, typeSpec, parameters, modifers, access));
 
 			return null;
 		}
@@ -159,9 +165,26 @@ namespace EvolZero.Parsing
 
 			if (_currentClassConstructors == null) throw new NotImplementedException();
 
-			_currentClassConstructors.Add(new ConstructorSignature(parameters, []));
+			AccessModifier access = ParseAccessModifier(context.accessModifier(), isClassMember: true);
+
+			_currentClassConstructors.Add(new ConstructorSignature(parameters, [], access));
 
 			return null;
+		}
+
+		private AccessModifier ParseAccessModifier(CEvolParser.AccessModifierContext? context, bool isClassMember)
+		{
+			if (context == null)
+			{
+				return isClassMember ? AccessModifier.Private : AccessModifier.Public;
+			}
+
+			return context.GetText() switch
+			{
+				"public" => AccessModifier.Public,
+				"private" => AccessModifier.Private,
+				_ => throw new NotImplementedException()
+			};
 		}
 		private List<(TypeDeclaring Type, string Name)> ParseParams([NotNull] CEvolParser.ParamsContext context)
 		{

@@ -73,7 +73,7 @@ namespace EvolZero.Parsing
 				bool infArgs = ctor.modifiers.Contains("infargs"); // TODO: енумом модификаторы сделать что ли, или флагами
 				funcRefs = codeGenerator.CreateFunctionSiganture(funcName, codeGenerator.VoidType, agrumentsRefs, infArgs);
 
-				currentClass.Constructors.Add(new ConstructorDesc(arguments.ToArray(), funcRefs));
+				currentClass.Constructors.Add(new ConstructorDesc(arguments.ToArray(), funcRefs, ctor.Access));
 			}
 		}
 
@@ -124,7 +124,7 @@ namespace EvolZero.Parsing
 						funcRefs = _codeGenerator.CreateFunctionSiganture(funcName, QKindToTypeRef(returnTypeQualifers[0].Kind, _codeGenerator), agrumentsRefs, infArgs);
 					}
 
-					var funcDesc = new FuncDesc(new TypeSpec(returnType, returnTypeQualifers), func.Name, arguments.ToArray(), funcRefs, infArgs);
+					var funcDesc = new FuncDesc(new TypeSpec(returnType, returnTypeQualifers), func.Name, arguments.ToArray(), funcRefs, infArgs, func.Access, currentClass);
 					funcList.Add(funcDesc);
 				}
 
@@ -169,7 +169,7 @@ namespace EvolZero.Parsing
 
 					if (!fieldType.IsBaseType && (qualifers == null || qualifers.Length < 1)) throw new NotImplementedException(); // TODO: сделать возможность пихать класс в класс по значению
 
-					currentClassTypeDesc.Variables.Add(field.Name, new VariableDesc(new TypeSpec(fieldType, qualifers), field.Name, fieldNum));
+					currentClassTypeDesc.Variables.Add(field.Name, new VariableDesc(new TypeSpec(fieldType, qualifers), field.Name, fieldNum, field.Access));
 
 					if (qualifers == null || qualifers.Length < 1)
 					{
