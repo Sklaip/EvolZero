@@ -1,17 +1,16 @@
 ﻿using Antlr4.Runtime;
 using Antlr4.Runtime.Tree;
 using EvolZero.Analysis.Semantic;
+using EvolZero.Core;
 using EvolZero.Core.LogicModels.Statements;
 using EvolZero.Core.MemebersModels;
 using EvolZero.Generation;
 using EvolZero.Parsing;
-using LLVMSharp;
 using LLVMSharp.Interop;
-using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace EvolZero.Core
+namespace EvolZero
 {
 	internal class Compiler
 	{
