@@ -53,7 +53,7 @@ namespace EvolZero.Parsing
 			foreach (var ctor in constructorsList)
 			{
 				var arguments = new List<Argument>();
-				var agrumentsRefs = new List<TypeRef>();
+				var agrumentsRefs = new List<ITypeRef>();
 
 				string funcName = $"{currentClass.Name}_ctor";
 				agrumentsRefs.Add(codeGenerator.PointerType);
@@ -69,7 +69,7 @@ namespace EvolZero.Parsing
 					}
 				}
 
-				FuncRefData funcRefs;
+				IFuncRefData funcRefs;
 				bool infArgs = ctor.modifiers.Contains("infargs"); // TODO: енумом модификаторы сделать что ли, или флагами
 				funcRefs = codeGenerator.CreateFunctionSiganture(funcName, codeGenerator.VoidType, agrumentsRefs, infArgs);
 
@@ -89,7 +89,7 @@ namespace EvolZero.Parsing
 					var returnTypeQualifers = Qualifier.FromString(func.ReturnType.Qualifiers);
 
 					var arguments = new List<Argument>();
-					var agrumentsRefs = new List<TypeRef>();
+					var agrumentsRefs = new List<ITypeRef>();
 
 					string funcName;
 					if (currentClass != null)
@@ -113,7 +113,7 @@ namespace EvolZero.Parsing
 						}
 					}
 
-					FuncRefData funcRefs;
+					IFuncRefData funcRefs;
 					bool infArgs = func.modifiers.Contains("infargs"); // TODO: енумом модификаторы сделать что ли, или флагами
 					if (func.ReturnType.Qualifiers == null || func.ReturnType.Qualifiers.Length < 1)
 					{
@@ -160,7 +160,7 @@ namespace EvolZero.Parsing
 			foreach (var currentClass in _classes.Values)
 			{
 				var currentClassTypeDesc = _parsedClasses[currentClass.Name];
-				var filedTypes = new List<TypeRef>();
+				var filedTypes = new List<ITypeRef>();
 				uint fieldNum = 0;
 				foreach (var field in currentClass.Fields.Values)
 				{
@@ -191,7 +191,7 @@ namespace EvolZero.Parsing
 		}
 
 		// TODO: это куда-то вынести, код дублирует с SemanticAnalyzer
-		private TypeRef QKindToTypeRef(QKind qKind, CodeGenerator codeGenerator)
+		private ITypeRef QKindToTypeRef(QKind qKind, CodeGenerator codeGenerator)
 		{
 			switch (qKind)
 			{

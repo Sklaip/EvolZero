@@ -30,6 +30,11 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <ProjectReference Include="..\EvolZero.Core\EvolZero.Core.csproj" />
+	  <ProjectReference Include="..\EvolZero.Generation\EvolZero.Generation.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
 	  <Compile Update="Properties\Resources.Designer.cs">
 	    <DesignTime>True</DesignTime>
 	    <AutoGen>True</AutoGen>

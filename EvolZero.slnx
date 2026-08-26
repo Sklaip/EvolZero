@@ -8,4 +8,6 @@
     <Platform Solution="*|x64" Project="x64" />
     <Platform Solution="*|x86" Project="x86" />
   </Project>
+  <Project Path="EvolZero.Core/EvolZero.Core.csproj" Id="05db3616-dac8-475e-8c67-6c85baccd7f2" />
+  <Project Path="EvolZero.Generation/EvolZero.Generation.csproj" Id="e3c5b6c3-f634-46cb-9280-d555bee7376d" />
 </Solution>

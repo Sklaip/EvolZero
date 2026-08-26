@@ -1,7 +1,7 @@
 ﻿using Antlr4.Runtime;
 using Antlr4.Runtime.Tree;
-using EvolZero.Analysis.Semantic;
 using EvolZero.Core;
+using EvolZero.Core.Analysis.Semantic;
 using EvolZero.Core.LogicModels.Statements;
 using EvolZero.Core.MemebersModels;
 using EvolZero.Generation;

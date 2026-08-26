@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="libLLVM" Version="21.1.8" />
+    <PackageReference Include="libLLVM.runtime.win-x64" Version="21.1.8" />
+    <PackageReference Include="LLVMSharp" Version="20.1.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EvolZero.Core\EvolZero.Core.csproj" />
+  </ItemGroup>
+
+</Project>

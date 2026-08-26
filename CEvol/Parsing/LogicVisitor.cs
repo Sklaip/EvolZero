@@ -1,8 +1,8 @@
 ﻿using Antlr4.Runtime;
 using Antlr4.Runtime.Misc;
-using EvolZero.Analysis;
-using EvolZero.Analysis.Semantic;
 using EvolZero.Core;
+using EvolZero.Core.Analysis;
+using EvolZero.Core.Analysis.Semantic;
 using EvolZero.Core.LogicModels.Expressions;
 using EvolZero.Core.LogicModels.Statements;
 using EvolZero.Core.MemebersModels;
