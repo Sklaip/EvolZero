@@ -20,11 +20,17 @@ namespace EvolZero.Core.MemebersModels
 			this.Kind = kind;
 		}
 
-		public bool QKindEquals(Qualifier other)
+		public bool Equals(Qualifier other)
 		{
 			return other.Kind == Kind
 				|| (other.Kind == QKind.Reference && Kind == QKind.BorrowReference)
 				|| (other.Kind == QKind.BorrowReference && Kind == QKind.Reference);
+		}
+
+		public override int GetHashCode()
+		{
+			var kind = Kind == QKind.BorrowReference ? QKind.Reference : Kind;
+			return kind.GetHashCode();
 		}
 
 		public static Qualifier FromString(string str)

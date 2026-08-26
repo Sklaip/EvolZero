@@ -44,29 +44,15 @@ namespace EvolZero.Core.MemebersModels
 			{
 				Qualifier qualifier = Qualifiers[i];
 
-				if (!qualifier.QKindEquals(other.Qualifiers[i])) return false;
+				if (!qualifier.Equals(other.Qualifiers[i])) return false;
 			}
 
 			return true;
 		}
 
-
 		public bool Equals(TypeSpec other)
 		{
 			return Type == other.Type && QualifiersEquals(other);
-		}
-
-		public bool Equals(TypeSpec other, Qualifier passQualifier)
-		{
-			if (Type != other.Type || other.Qualifiers == null || Qualifiers == null) return false;
-			if (Qualifiers.Length < 1) throw new NotImplementedException();
-
-			int i = 0;
-			if (Qualifiers[0].Kind == passQualifier.Kind) i++;
-
-			var segment = new ArraySegment<Qualifier>(Qualifiers, i, Qualifiers.Length - i);
-
-			return segment.SequenceEqual(other.Qualifiers);
 		}
 
 		public override bool Equals(object obj)
