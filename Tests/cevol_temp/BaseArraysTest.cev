@@ -1,0 +1,48 @@
+﻿namespace Program;
+
+extern infargs int printf(refb byte ptr);
+extern infargs int scanf(refb byte ptr);
+
+int main()
+{
+	int num = 0;
+    scanf(ref "%d", loc num);
+
+	num = num + 1;
+	printf(ref "%d\n", num);
+
+	int[10][5] arr;
+
+	int i = 0;
+	while (i < 10) 
+	{
+		int j = 0;
+		while (j < 5)
+		{
+			arr[i][j] = num + i + j;
+			j = j + 1;
+		}
+		i = i + 1;
+	}
+
+	ref int cell = loc arr[5][4];
+	printf(ref "%d\n", cell);
+
+	ref int cell2 = loc arr[5];
+	printf(ref "%d\n", cell2);
+
+	ref int[5] innerArrayRef = loc arr[7];
+
+	i = 0;
+	while (i < 5) 
+	{
+		printf(ref "%d\n", innerArrayRef[i]);
+		i = i + 1;
+	}
+
+	cell = cell + cell;
+
+	printf(ref "%d\n", arr[5][4]);
+	
+	return 0;
+}

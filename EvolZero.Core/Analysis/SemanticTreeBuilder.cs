@@ -441,10 +441,18 @@ namespace EvolZero.Core.Analysis
 			return new StructureFieldAccessExpression(variable, instanceGetting, variable.Declaring, CurrentPosition);
 		}
 
-		public ArrayCellAccessExpression ArrayCellAccess(Expression arrayGetting, Expression indexGetting)
+		public Expression ArrayCellAccess(Expression arrayGetting, Expression indexGetting)
 		{
-			// TODO: сделать проверки на типы
-			return new ArrayCellAccessExpression(AutoDereferenceIfPointer(arrayGetting), indexGetting, CurrentPosition);
+			// TODO: сделать проверку indexGetting
+			arrayGetting = AutoDereferenceIfPointer(arrayGetting);
+
+			if (!arrayGetting.ResultTypeSpec.IsArray)
+			{
+				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Попытка обратиться по индексатору к типу не являющемуся массивом.", CurrentPosition);
+				return new StubForErrorExpression(CurrentPosition);
+			}
+
+			return new ArrayCellAccessExpression(arrayGetting, indexGetting, CurrentPosition);
 		}
 
 		public Expression GetPointerToVar(Expression variable)

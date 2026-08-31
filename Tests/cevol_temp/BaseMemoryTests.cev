@@ -1,0 +1,75 @@
+namespace Program;
+
+extern infargs int printf(refb byte ptr);
+
+class Connect
+{
+	public int ConnType;
+	public bool Available;
+
+	public ctor(int startConnType)
+	{
+		ConnType = startConnType;
+	}
+
+	public int SetConnectType(int type)
+	{
+		ConnType = ConnType + type;
+		return 1;
+	}
+
+	public void PrintConnectType()
+	{
+		printf(ref "%d\n", ConnType);
+	}
+}
+
+class Provider
+{
+	public ref Connect ServiveConnect;
+	public bool Available;
+	public int Count;
+
+	public ctor()
+	{
+		Count = 0;
+	}
+
+	public ref int SetServiveConnect(int type)
+	{
+		ServiveConnect.ConnType = type;
+		Count = type + 11;
+		return loc Count;
+	}
+
+	public int WriteConnType(ref int toWrite)
+	{
+		toWrite = ServiveConnect.ConnType;
+		toWrite = toWrite - 5;
+		return 2;
+	}
+}
+
+int main()
+{
+	ref Connect connect = new Connect(17);
+
+	connect.SetConnectType(10);
+	connect.PrintConnectType();
+
+	ref Provider provider = new Provider();
+	ref provider.ServiveConnect = connect;
+
+	ref int serviceConnet = provider.SetServiveConnect(412);
+	connect.PrintConnectType();
+	provider.ServiveConnect.PrintConnectType();
+
+	connect.PrintConnectType();
+	provider.ServiveConnect.PrintConnectType();
+	printf(ref "%d\n", provider.Count);
+	printf(ref "%d\n", serviceConnet);
+	serviceConnet = 2341;
+	printf(ref "%d\n", serviceConnet);
+
+	return 0;
+}

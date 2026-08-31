@@ -107,6 +107,68 @@ public sealed class CompilerTest : IDisposable
 		Assert.False(File.Exists(ex.OutputPath), "При ошибке компиляции не должен создаваться exe.");
 	}
 
+	[Fact]
+	public void BaseMemoryTests_CompilesRunsAndPrintsExpectedOutput()
+	{
+		string exePath = _compiler.Compile(["BaseMemoryTests.cev"]);
+
+		var result = ExecutableRunner.Run(exePath, workingDirectory: _compiler.WorkDir);
+
+		Assert.False(result.TimedOut, "Программа превысила таймаут.");
+		Assert.Equal(0, result.ExitCode);
+
+		// Проверяем точную последовательность строк вывода (по ссылкам serviceConnet/Count).
+		string expectedOutput =
+			"27\n" +
+			"412\n" +
+			"412\n" +
+			"412\n" +
+			"412\n" +
+			"423\n" +
+			"423\n" +
+			"2341\n";
+
+		// Нормализуем переводы строк: на Windows printf/C-рантайм и AppendLine в
+		// ExecutableRunner добавляют CRLF, из-за чего система отдаёт "27\r\n\r\n...".
+		var actualLines = result.StandardOutput
+			.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries)
+			.ToArray();
+		var expectedLines = expectedOutput
+			.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries)
+			.ToArray();
+
+		Assert.Equal(expectedLines, actualLines);
+	}
+
+	[Theory]
+	[InlineData(0, "1\n10\n6\n8\n9\n10\n11\n12\n20")]
+	[InlineData(1, "2\n11\n7\n9\n10\n11\n12\n13\n22")]
+	[InlineData(7, "8\n17\n13\n15\n16\n17\n18\n19\n34")]
+	[InlineData(20, "21\n30\n26\n28\n29\n30\n31\n32\n60")]
+	public void BaseArraysTest_PrintsExpectedOutput(int input, string expectedOutput)
+	{
+		string exePath = _compiler.Compile(["BaseArraysTest.cev"]);
+
+		// Программа читает одно целое число со стандартного ввода (scanf "%d"),
+		// заполняет двумерный массив arr[i][j] = num + i + j и выводит выбранные ячейки.
+		var result = ExecutableRunner.Run(
+			exePath,
+			workingDirectory: _compiler.WorkDir,
+			standardInput: input + "\n");
+
+		Assert.False(result.TimedOut, "Программа превысила таймаут.");
+		Assert.Equal(0, result.ExitCode);
+
+		var actualLines = result.StandardOutput
+			.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries)
+			.ToArray();
+		var expectedLines = expectedOutput
+			.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries)
+			.ToArray();
+
+		Assert.Equal(expectedLines, actualLines);
+	}
+
 	public void Dispose()
 	{
 		_compiler.Dispose();
