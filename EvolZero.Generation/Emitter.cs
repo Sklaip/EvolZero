@@ -9,10 +9,12 @@ namespace EvolZero.Generation
 	public class Emitter
 	{
 		private CodeGenerator _codeGenerator = null!;
+		private PlatformTypesProvider _typesProvider = null!;
 
 		public Emitter(CodeGenerator codeGenerator)
 		{
 			_codeGenerator = codeGenerator;
+			_typesProvider = new PlatformTypesProvider(codeGenerator);
 		}
 
 		private TypeDesc? _currentClass = null;
@@ -261,23 +263,40 @@ namespace EvolZero.Generation
 
 		private IValueAccessor AllocateHeapMemory(AllocateHeapMemoryToType expr)
 		{
-			if (expr.Multiper == null)
-			{
-				return _codeGenerator.AllocateHeapMemory(expr.ResultTypeSpec.Type.TypeRef);
-			}
-			else
-			{
-				var size = HandleExpression(expr.Multiper);
-				return _codeGenerator.AllocateHeapMemory(expr.ResultTypeSpec.Type.TypeRef, size);
-			}
+			var type = expr.ResultTypeSpec.RemoveFirtsQualifier().GetRealTypeRef(_typesProvider) as TypeRef;
 
+			if (type == null) throw new NotImplementedException();
+
+			return _codeGenerator.AllocateHeapMemory(type);
 		}
 
 		private IValueAccessor ArrayCellAccess(ArrayCellAccessExpression expr)
 		{
-			var arrayGetting = HandleExpression(expr.ArrayGetting);
-			var indexGetting = HandleExpression(expr.IndexGetting);
-			return _codeGenerator.GetArrayCell(arrayGetting, indexGetting, expr.ResultTypeSpec.Type.TypeRef);
+			if (expr.Pos.Line == 48)
+			{
+
+			}
+
+			bool byRef = false;
+
+			var arrayGetting = expr.ArrayGetting;
+			if (arrayGetting is PointerDereferenceExpression pointerDereference)
+			{
+				byRef = true;
+				arrayGetting = pointerDereference.Target;
+			}
+
+			var arrayAccessor = HandleExpression(arrayGetting);
+			var indexAccessor = HandleExpression(expr.IndexGetting);
+
+			if (byRef)
+			{
+				return _codeGenerator.GetHeapArrayCell(arrayAccessor, indexAccessor, GetActualTypeRef(expr.ResultTypeSpec));
+			}
+			else
+			{
+				return _codeGenerator.GetStackArrayCell(arrayAccessor, indexAccessor, GetActualTypeRef(expr.ResultTypeSpec));
+			}
 		}
 
 		private IValueAccessor SimpleBinaryOperationHandle(SimpleBinaryOperationExpression expr)
@@ -338,17 +357,26 @@ namespace EvolZero.Generation
 
 		private IValueAccessor StructureFiledAccess(StructureFieldAccessExpression expr)
 		{
-			var instanceGetting = HandleExpression(expr.StructureGetting);
-			var structureType = expr.StructureGetting.ResultTypeSpec.Type.TypeRef;
-			var typeRef = GetActualTypeRef(expr.ResultTypeSpec);
+			bool byRef = false;
 
-			if (expr.ByRef)
+			var structureGetting = expr.StructureGetting;
+			if (structureGetting is PointerDereferenceExpression pointerDereference)
 			{
-				return _codeGenerator.GetHeapStructureField(instanceGetting, structureType, typeRef, expr.FiledNum);
+				byRef = true;
+				structureGetting = pointerDereference.Target;
+			}
+
+			var instanceGetting = HandleExpression(structureGetting);
+			var structureType = expr.StructureGetting.ResultTypeSpec.Type.TypeRef;
+			var fieldTypeRef = GetActualTypeRef(expr.ResultTypeSpec);
+
+			if (byRef)
+			{
+				return _codeGenerator.GetHeapStructureField(instanceGetting, structureType, fieldTypeRef, expr.FiledNum);
 			}
 			else
 			{
-				return _codeGenerator.GetStackStructureField(instanceGetting, structureType, typeRef, expr.FiledNum);
+				return _codeGenerator.GetStackStructureField(instanceGetting, structureType, fieldTypeRef, expr.FiledNum);
 			}
 		}
 
@@ -428,7 +456,7 @@ namespace EvolZero.Generation
 
 		private ITypeRef GetActualTypeRef(TypeSpec varDeclaring)
 		{
-			if (varDeclaring.QualifiersExists) return _codeGenerator.PointerType;
+			if (varDeclaring.QualifiersExists) return varDeclaring.GetRealTypeRef(_typesProvider);
 			return varDeclaring.Type.TypeRef;
 		}
 	}

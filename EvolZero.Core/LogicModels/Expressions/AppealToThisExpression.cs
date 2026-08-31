@@ -7,7 +7,7 @@ namespace EvolZero.Core.LogicModels.Expressions
 {
 	public class AppealToThisExpression : Expression
 	{
-		public AppealToThisExpression(TypeDesc cls, PositionInSources pos) : base(new TypeSpec(cls, [new Qualifier(Qualifier.QKind.Reference)]), pos)
+		public AppealToThisExpression(TypeDesc cls, PositionInSources pos) : base(new TypeSpec(cls, [Qualifier.Reference]), pos)
 		{
 		}
 	}

@@ -5,7 +5,7 @@ using EvolZero.Parsing.Models;
 using System;
 using System.Collections.Generic;
 using System.Text;
-using static EvolZero.Core.MemebersModels.Qualifier;
+using EvolZero.Core.MemebersModels;
 
 namespace EvolZero.Parsing
 {
@@ -63,7 +63,7 @@ namespace EvolZero.Parsing
 					foreach ((TypeDeclaring Type, string Name) funcArgument in ctor.Arguments)
 					{
 						TypeDesc argumentType = FindTypeForDeclaring(funcArgument.Type);
-						var declaring = new TypeSpec(argumentType, Qualifier.FromString(funcArgument.Type.Qualifiers));
+						var declaring = new TypeSpec(argumentType, QualifierWorkpiece.ToQualifiers(funcArgument.Type.Qualifiers));
 						arguments.Add(new Argument(declaring, funcArgument.Name));
 						agrumentsRefs.Add(declaring.QualifiersExists ? codeGenerator.PointerType : argumentType.TypeRef);
 					}
@@ -86,7 +86,7 @@ namespace EvolZero.Parsing
 				foreach (var func in rawFunctionsList[funcsKey])
 				{
 					TypeDesc returnType = FindTypeForDeclaring(func.ReturnType);
-					var returnTypeQualifers = Qualifier.FromString(func.ReturnType.Qualifiers);
+					var returnTypeQualifers = QualifierWorkpiece.ToQualifiers(func.ReturnType.Qualifiers);
 
 					var arguments = new List<Argument>();
 					var agrumentsRefs = new List<ITypeRef>();
@@ -107,7 +107,7 @@ namespace EvolZero.Parsing
 						foreach ((TypeDeclaring Type, string Name) funcArgument in func.Arguments)
 						{
 							TypeDesc argumentType = FindTypeForDeclaring(funcArgument.Type);
-							var declaring = new TypeSpec(argumentType, Qualifier.FromString(funcArgument.Type.Qualifiers));
+							var declaring = new TypeSpec(argumentType, QualifierWorkpiece.ToQualifiers(funcArgument.Type.Qualifiers));
 							arguments.Add(new Argument(declaring, funcArgument.Name));
 							agrumentsRefs.Add(declaring.QualifiersExists ? _codeGenerator.PointerType : argumentType.TypeRef);
 						}
@@ -121,7 +121,7 @@ namespace EvolZero.Parsing
 					}
 					else
 					{
-						funcRefs = _codeGenerator.CreateFunctionSiganture(funcName, QKindToTypeRef(returnTypeQualifers[0].Kind, _codeGenerator), agrumentsRefs, infArgs);
+						funcRefs = _codeGenerator.CreateFunctionSiganture(funcName, QualifierToTypeRef(returnTypeQualifers[0], _codeGenerator), agrumentsRefs, infArgs);
 					}
 
 					var funcDesc = new FuncDesc(new TypeSpec(returnType, returnTypeQualifers), func.Name, arguments.ToArray(), funcRefs, infArgs, func.Access, currentClass);
@@ -165,7 +165,7 @@ namespace EvolZero.Parsing
 				foreach (var field in currentClass.Fields.Values)
 				{
 					TypeDesc fieldType = FindTypeForDeclaring(field.Type);
-					var qualifers = Qualifier.FromString(field.Type.Qualifiers);
+					var qualifers = QualifierWorkpiece.ToQualifiers(field.Type.Qualifiers);
 
 					if (!fieldType.IsBaseType && (qualifers == null || qualifers.Length < 1)) throw new NotImplementedException(); // TODO: сделать возможность пихать класс в класс по значению
 
@@ -177,7 +177,7 @@ namespace EvolZero.Parsing
 					}
 					else
 					{
-						filedTypes.Add(QKindToTypeRef(qualifers[0].Kind, _codeGenerator));
+						filedTypes.Add(QualifierToTypeRef(qualifers[0], _codeGenerator));
 					}
 
 					fieldNum++;
@@ -191,13 +191,13 @@ namespace EvolZero.Parsing
 		}
 
 		// TODO: это куда-то вынести, код дублирует с SemanticAnalyzer
-		private ITypeRef QKindToTypeRef(QKind qKind, CodeGenerator codeGenerator)
+		private ITypeRef QualifierToTypeRef(Qualifier qualifier, CodeGenerator codeGenerator)
 		{
-			switch (qKind)
+			switch (qualifier)
 			{
-				case QKind.Reference:
-				case QKind.Array:
-				case QKind.BorrowReference:
+				case ReferenceQualifier:
+				case ArrayQualifier:
+				case BorrowReferenceQualifier:
 					return codeGenerator.PointerType;
 				default:
 					throw new NotImplementedException();

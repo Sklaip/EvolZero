@@ -56,8 +56,6 @@ ifStatement : IF LPAREN expression RPAREN statement (ELSE statement)? ;
 
 whileStatement : WHILE LPAREN expression RPAREN block ;
 
-arraySizeSpec : LBRACK expression (COMMA expression)* RBRACK ;
-
 // --- Выражения ---
 // TODO: сделать чтобы синтаксически как к функции можно было обратиться к любому выражению. Сейчас () можно сделать четко после IDENTIFIER
 // TODO: так же сейчас у NEW и REF разные приоритеты. Хз, но мнеп кажется так быть не должно
@@ -67,8 +65,7 @@ expression
     | IDENTIFIER                                 # IdExpr
     | LPAREN expression RPAREN                   # ParenExpr
 
-    | NEW IDENTIFIER arraySizeSpec+ arraySpec*   # NewArrayExpr
-    | NEW IDENTIFIER LPAREN args? RPAREN         # NewExpr
+    | NEW typeSpec ( LPAREN args? RPAREN )?    # NewExpr
 
     | IDENTIFIER LPAREN args? RPAREN             # CallExpr
     | expression LBRACK args RBRACK              # IndexExpr

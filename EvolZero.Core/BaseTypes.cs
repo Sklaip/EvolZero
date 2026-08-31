@@ -14,6 +14,7 @@ namespace EvolZero.Core
 		UShort,
 		UInt,
 		Long,
+		ULong,
 		Float,
 		Double,
 		Bool,

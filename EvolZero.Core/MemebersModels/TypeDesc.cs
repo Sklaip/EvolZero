@@ -17,7 +17,7 @@ namespace EvolZero.Core.MemebersModels
 
 		public readonly bool IsBaseType = false;
 
-		public TypeDesc(string name, ITypeRef typeRef, Dictionary<string, VariableDesc> variables, 
+		public TypeDesc(string name, ITypeRef typeRef, Dictionary<string, VariableDesc> variables,
 			Dictionary<string, FuncDesc[]> functions, List<ConstructorDesc> constructors)
 		{
 			Name = name;

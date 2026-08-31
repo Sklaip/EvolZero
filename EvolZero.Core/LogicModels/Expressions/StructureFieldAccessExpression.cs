@@ -10,13 +10,11 @@ namespace EvolZero.Core.LogicModels.Expressions
 		public readonly uint FiledNum;
 		public readonly VariableDesc Field;
 		public readonly Expression StructureGetting;
-		public readonly bool ByRef;
 
-		public StructureFieldAccessExpression(VariableDesc field, bool byRef, Expression structureGetting, TypeSpec resultTypeSpec, PositionInSources pos) : base(resultTypeSpec, pos)
+		public StructureFieldAccessExpression(VariableDesc field, Expression structureGetting, TypeSpec resultTypeSpec, PositionInSources pos) : base(resultTypeSpec, pos)
 		{
 			FiledNum = field.Order;
 			Field = field;
-			ByRef = byRef;
 			StructureGetting = structureGetting;
 		}
 	}

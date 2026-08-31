@@ -193,7 +193,6 @@ namespace EvolZero.Core.Analysis
 
 		protected virtual T AllocateHeapMemory(AllocateHeapMemoryToType expr)
 		{
-			if (expr.Multiper != null) return HandleExpression(expr.Multiper);
 			return default!;
 		}
 

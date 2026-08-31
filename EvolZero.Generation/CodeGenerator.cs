@@ -1,9 +1,6 @@
 ﻿using EvolZero.Core;
 using EvolZero.Generation.Accessors;
 using LLVMSharp.Interop;
-using static EvolZero.Core.MemebersModels.Qualifier;
-using static EvolZero.Generation.FuncAccessData;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace EvolZero.Generation
 {
@@ -183,20 +180,16 @@ namespace EvolZero.Generation
 			});
 		}
 
+		public IValueAccessor GetTypeSize(ITypeRef type)
+		{
+			var typ = ToType(type);
+			return new SimpleValueAccessor(typ.SizeOf, _context.Int64Type);
+		}
+
 		public IValueAccessor AllocateHeapMemory(ITypeRef type)
 		{
 			var memorySize = ToType(type).SizeOf;
 			var ptr = _builder.BuildCall2(_mallocType, _mallocFunc, new[] { memorySize }, "malloc");
-			return new SimpleValueAccessor(ptr, GetPointerType());
-		}
-
-		public IValueAccessor AllocateHeapMemory(ITypeRef type, IValueAccessor countGetter)
-		{
-			var memorySize = ToType(type).SizeOf;
-			var n_i64 = _builder.BuildIntCast(countGetter.GetValue(), _context.Int64Type, "n_i64");
-			var totalBytes = _builder.BuildMul(n_i64, memorySize, "total_bytes");
-
-			var ptr = _builder.BuildCall2(_mallocType, _mallocFunc, new[] { totalBytes }, "malloc");
 			return new SimpleValueAccessor(ptr, GetPointerType());
 		}
 
@@ -326,9 +319,15 @@ namespace EvolZero.Generation
 			return new VarAccessor(_builder, ptrToFiled, ToType(fieldType));
 		}
 
-		public IValueAccessor GetArrayCell(IValueAccessor arrayPointer, IValueAccessor indexGetter, ITypeRef arrayType)
+		public IValueAccessor GetHeapArrayCell(IValueAccessor arrayPointer, IValueAccessor indexGetter, ITypeRef arrayType)
 		{
 			var elemPtr = _builder.BuildGEP2(ToType(arrayType), arrayPointer.GetValue(), new[] { indexGetter.GetValue() });
+			return new VarAccessor(_builder, elemPtr, ToType(arrayType));
+		}
+
+		public IValueAccessor GetStackArrayCell(IValueAccessor arrayPointer, IValueAccessor indexGetter, ITypeRef arrayType)
+		{
+			var elemPtr = _builder.BuildGEP2(ToType(arrayType), arrayPointer.GetRealValue(), new[] { indexGetter.GetValue() });
 			return new VarAccessor(_builder, elemPtr, ToType(arrayType));
 		}
 
@@ -358,6 +357,7 @@ namespace EvolZero.Generation
 				case BaseTypes.UInt:
 					typeRef = _context.Int32Type;
 					break;
+				case BaseTypes.ULong:
 				case BaseTypes.Long:
 					typeRef = _context.Int64Type;
 					break;
@@ -380,6 +380,13 @@ namespace EvolZero.Generation
 			global.Initializer = LLVMValueRef.CreateConstArray(_context.Int8Type, values);
 
 			return new SimpleValueAccessor(global, GetPointerType());
+		}
+
+		public TypeRef CreateArrayType(TypeRef type, ulong size)
+		{
+			LLVMTypeRef arrayType = LLVMTypeRef.CreateArray(type.Type, (uint)size);
+
+			return new TypeRef(arrayType);
 		}
 
 		public void Assign(IValueAccessor to, IValueAccessor from)
@@ -411,6 +418,26 @@ namespace EvolZero.Generation
 			}
 
 			LLVMValueRef xNew = _builder.BuildAdd(aValue, bValue);
+			return new SimpleValueAccessor(xNew, resultType);
+		}
+
+		public IValueAccessor Mul(IValueAccessor a, IValueAccessor b)
+		{
+			var aValue = a.GetValue();
+			var bValue = b.GetValue();
+
+			LLVMTypeRef resultType = a.GetInnerType();
+			if (a.GetInnerType().IntWidth < b.GetInnerType().IntWidth)
+			{
+				aValue = _builder.BuildSExt(aValue, b.GetInnerType(), "sext");
+				resultType = b.GetInnerType();
+			}
+			else if (a.GetInnerType().IntWidth > b.GetInnerType().IntWidth)
+			{
+				bValue = _builder.BuildSExt(bValue, a.GetInnerType(), "sext");
+			}
+
+			LLVMValueRef xNew = _builder.BuildMul(aValue, bValue);
 			return new SimpleValueAccessor(xNew, resultType);
 		}
 
@@ -598,9 +625,14 @@ namespace EvolZero.Generation
 			return ((TypeRef)type).Type;
 		}
 
-		private LLVMTypeRef GetPointerType()
+		internal LLVMTypeRef GetPointerType()
 		{
 			return LLVMTypeRef.CreatePointer(_context.Int32Type, 0);
+		}
+
+		internal IValueAccessor GetPointerSize()
+		{
+			return new SimpleValueAccessor(LLVMTypeRef.CreatePointer(_context.Int32Type, 0).SizeOf, _context.Int64Type);
 		}
 
 		private LLVMTypeRef[] BaseTypesToLLVMTypes(BaseTypes[] type)

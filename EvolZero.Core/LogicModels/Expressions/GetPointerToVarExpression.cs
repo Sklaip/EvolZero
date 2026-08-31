@@ -15,7 +15,7 @@ namespace EvolZero.Core.LogicModels.Expressions
 
 		private static TypeSpec PointerTypeSpec(TypeSpec typeScec)
 		{
-			return new TypeSpec(typeScec.Type, [new Qualifier(Qualifier.QKind.Reference), .. typeScec.Qualifiers]);
+			return new TypeSpec(typeScec.Type, [Qualifier.Reference, .. typeScec.Qualifiers]);
 		}
 	}
 }

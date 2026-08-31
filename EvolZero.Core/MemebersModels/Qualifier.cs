@@ -4,46 +4,73 @@ using System.Text;
 
 namespace EvolZero.Core.MemebersModels
 {
-	public readonly record struct Qualifier
+	public abstract class Qualifier
 	{
-		public enum QKind
+		public static readonly Qualifier Reference = new ReferenceQualifier();
+		public static readonly Qualifier BorrowReference = new BorrowReferenceQualifier();
+
+		public abstract bool Equals(Qualifier other);
+
+		public override bool Equals(object? obj) => obj is Qualifier q && Equals(q);
+
+		public abstract override int GetHashCode();
+
+		public abstract ITypeRef GetTypeRef(IPlatformTypesProvider typesProvider, IEnumerable<Qualifier> nextQualifiers, ITypeRef baseType);
+	}
+
+	public sealed class ReferenceQualifier : Qualifier
+	{
+		public override ITypeRef GetTypeRef(IPlatformTypesProvider typesProvider, IEnumerable<Qualifier> nextQualifiers, ITypeRef baseType)
 		{
-			Reference,
-			Array,
-			BorrowReference
+			return typesProvider.PointerType;
 		}
 
-		public readonly QKind Kind;
+		public override bool Equals(Qualifier other) =>
+			other is ReferenceQualifier or BorrowReferenceQualifier;
 
-		public Qualifier(QKind kind)
+		public override int GetHashCode() => typeof(ReferenceQualifier).GetHashCode();
+	}
+
+	public sealed class ArrayQualifier : Qualifier
+	{
+		private readonly ulong _size;
+
+		public ArrayQualifier(ulong size)
 		{
-			this.Kind = kind;
+			_size = size;
 		}
 
-		public bool Equals(Qualifier other)
+		public override ITypeRef GetTypeRef(IPlatformTypesProvider typesProvider, IEnumerable<Qualifier> nextQualifiers, ITypeRef baseType)
 		{
-			return other.Kind == Kind
-				|| (other.Kind == QKind.Reference && Kind == QKind.BorrowReference)
-				|| (other.Kind == QKind.BorrowReference && Kind == QKind.Reference);
-		}
+			var nextQualifer = nextQualifiers.FirstOrDefault();
 
-		public override int GetHashCode()
-		{
-			var kind = Kind == QKind.BorrowReference ? QKind.Reference : Kind;
-			return kind.GetHashCode();
-		}
-
-		public static Qualifier FromString(string str)
-		{
-			switch (str)
+			if (nextQualifer != null)
 			{
-				case "ref": return new Qualifier(QKind.Reference);
-				case "array": return new Qualifier(QKind.Array);
-				case "refb": return new Qualifier(QKind.BorrowReference);
-				default: throw new NotImplementedException();
+				baseType = nextQualifer.GetTypeRef(typesProvider, nextQualifiers.Skip(1), baseType);
 			}
+
+			return typesProvider.MakeArray(baseType, _size);
 		}
 
-		public static Qualifier[] FromString(IEnumerable<string> str) => str.Select(FromString).ToArray();
+		public override bool Equals(Qualifier other)
+		{
+			if (other is not ArrayQualifier arrayQualifier) return false;
+			return _size == arrayQualifier._size;
+		}
+
+		public override int GetHashCode() => typeof(ArrayQualifier).GetHashCode();
+	}
+
+	public sealed class BorrowReferenceQualifier : Qualifier
+	{
+		public override ITypeRef GetTypeRef(IPlatformTypesProvider typesProvider, IEnumerable<Qualifier> nextQualifiers, ITypeRef baseType)
+		{
+			return typesProvider.PointerType;
+		}
+
+		public override bool Equals(Qualifier other) =>
+			other is ReferenceQualifier or BorrowReferenceQualifier;
+
+		public override int GetHashCode() => typeof(ReferenceQualifier).GetHashCode();
 	}
 }

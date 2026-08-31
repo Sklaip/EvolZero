@@ -7,11 +7,9 @@ namespace EvolZero.Core.LogicModels.Expressions
 {
 	public class AllocateHeapMemoryToType : Expression
 	{
-		public readonly Expression? Multiper;
-
-		public AllocateHeapMemoryToType(TypeSpec resultTypeSpec, Expression? multiper = null, PositionInSources pos = default) : base(resultTypeSpec, pos)
+		public AllocateHeapMemoryToType(TypeSpec resultTypeSpec, PositionInSources pos = default) : base(resultTypeSpec, pos)
 		{
-			Multiper = multiper;
+
 		}
 	}
 }

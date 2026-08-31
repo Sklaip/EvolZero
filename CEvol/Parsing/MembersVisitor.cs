@@ -3,6 +3,7 @@ using EvolZero.Core;
 using EvolZero.Core.MemebersModels;
 using EvolZero.Generation;
 using EvolZero.Parsing.Models;
+using static CEvolParser;
 using static EvolZero.Core.MemebersModels.Qualifier;
 
 namespace EvolZero.Parsing
@@ -209,10 +210,10 @@ namespace EvolZero.Parsing
 			if (string.IsNullOrEmpty(typeName))
 				throw new NotImplementedException();
 
-			var qualifiers = new List<string>();
+			var qualifiers = new List<QualifierWorkpiece>();
 			foreach (var qualifier in context.qualifier())
 			{
-				qualifiers.Add(qualifier.GetText());
+				qualifiers.Add(new QualifierWorkpiece() { Kind = qualifier.GetText() });
 			}
 
 			foreach (var arr in context.arraySpec())
@@ -223,9 +224,20 @@ namespace EvolZero.Parsing
 			return new TypeDeclaring(typeName, qualifiers.ToArray(), []);
 		}
 
-		public string ParseArraySpec([NotNull] CEvolParser.ArraySpecContext context)
+		public QualifierWorkpiece ParseArraySpec([NotNull] CEvolParser.ArraySpecContext context)
 		{
-			return "array";
+			var numExpr = context.expression() as NumberExprContext;
+
+			if (numExpr == null) throw new NotImplementedException();
+
+			var value = numExpr.NUMBER().GetText();
+			var num = ulong.Parse(value);
+
+			return new QualifierWorkpiece()
+			{
+				Kind = "array",
+				ArraySize = num
+			};
 		}
 
 	}

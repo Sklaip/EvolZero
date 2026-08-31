@@ -26,7 +26,7 @@ namespace EvolZero.Core.Analysis.Semantic
 
 			public bool Equals(TypeSpec x, TypeSpec y)
 			{
-				var result = _typeAnalyzer.CheckTypeMatching(x.Type, y.Type, out bool notDirectMatch) && x.QualifiersEquals(y);
+				var result = _typeAnalyzer.CheckTypeMatching(x, y, out bool notDirectMatch);
 
 				if (notDirectMatch)
 				{
@@ -48,12 +48,12 @@ namespace EvolZero.Core.Analysis.Semantic
 			_membersFinder = membersFinder;
 		}
 
-		public bool CheckTypeMatching(TypeDesc to, TypeDesc from, out bool notDirectMatch)
+		public bool CheckTypeMatching(TypeSpec to, TypeSpec from, out bool notDirectMatch)
 		{
 			return Is(to, from, out notDirectMatch);
 		}
 
-		public bool SoftCheckTypeMatching(TypeDesc first, TypeDesc second)
+		public bool SoftCheckTypeMatching(TypeSpec first, TypeSpec second)
 		{
 			if (Is(first, second, out _)) return true;
 			return Is(second, first, out _);
@@ -114,9 +114,59 @@ namespace EvolZero.Core.Analysis.Semantic
 			return null;
 		}
 
+		private bool TryCastArrayRefToTypeRef(TypeSpec to, TypeSpec from)
+		{
+			if (!to.QualifiersExists || !from.QualifiersExists) return false;
+			if (!to.Type.IsBaseType || !from.Type.IsBaseType) return false;
+			if (!to.IsRef || !from.IsRef) return false;
+			if (to.Type != from.Type) return false;
+
+			if (from.Qualifiers.Length > 1)
+			{
+				// TODO: оптимизирвоать эту поеботу. Наеврное переписать на урчной перебор
+				int offset = 0;
+				foreach (var qualifier in from.Qualifiers)
+				{
+					if (from.Qualifiers.Length - offset == to.Qualifiers.Length)
+					{
+						return to.QualifiersEquals([Qualifier.Reference, .. from.Qualifiers.Skip(offset + 1).ToArray()]);
+					}
+
+					if (qualifier is not ArrayQualifier && offset > 0) return false;
+
+					offset++;
+				}
+			}
+
+			return false;
+		}
+
+		private bool Is(TypeSpec to, TypeSpec from, out bool notDirectMatch)
+		{
+			notDirectMatch = false;
+
+			if (!to.QualifiersEquals(from) && !TryCastArrayRefToTypeRef(to, from)) return false;
+
+			if (to.Type == from.Type) return true;
+
+			notDirectMatch = true;
+			foreach (var inheritedType in from.Type.InheritedTypes)
+			{
+				if (Is(to.Type, inheritedType, out _)) return true;
+			}
+
+			foreach (var expandedType in from.Type.CanExpandedTo)
+			{
+				if (Is(to.Type, expandedType, out _)) return true;
+			}
+
+			return false;
+		}
+
 		private bool Is(TypeDesc to, TypeDesc from, out bool notDirectMatch)
 		{
 			notDirectMatch = false;
+
 			if (to == from) return true;
 
 			notDirectMatch = true;
@@ -132,5 +182,7 @@ namespace EvolZero.Core.Analysis.Semantic
 
 			return false;
 		}
+
+
 	}
 }

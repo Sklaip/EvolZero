@@ -17,7 +17,7 @@ namespace EvolZero.Core.LogicModels.Expressions
 
 		private static TypeSpec RemovePointerQualifier(TypeSpec typeSpec)
 		{
-			if (!typeSpec.QualifiersExists || typeSpec.Qualifiers[0].Kind != Qualifier.QKind.Reference)
+			if (!typeSpec.QualifiersExists || typeSpec.Qualifiers[0] is not ReferenceQualifier)
 				throw new NotImplementedException();
 
 			if (typeSpec.Qualifiers.Length == 1) return new TypeSpec(typeSpec.Type);

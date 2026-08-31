@@ -5,9 +5,8 @@ using EvolZero.Core.LogicModels.Expressions;
 using EvolZero.Core.LogicModels.Statements;
 using EvolZero.Core.MemebersModels;
 using System.Numerics;
+using System.Reflection.Metadata;
 using System.Text;
-using System.Xml.Linq;
-using static EvolZero.Core.MemebersModels.Qualifier;
 
 namespace EvolZero.Core.Analysis
 {
@@ -242,8 +241,7 @@ namespace EvolZero.Core.Analysis
 
 			returnResult = AutoDereferenceIfPointer(returnResult);
 
-			if (!_typeAnalyzer.CheckTypeMatching(currentFunction.ReturnType.Type, returnResult.ResultTypeSpec.Type, out bool needCast)
-				|| !currentFunction.ReturnType.QualifiersEquals(returnResult.ResultTypeSpec))
+			if (!_typeAnalyzer.CheckTypeMatching(currentFunction.ReturnType, returnResult.ResultTypeSpec, out bool needCast))
 			{
 				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Invalid return type", CurrentPosition);
 				return;
@@ -332,21 +330,46 @@ namespace EvolZero.Core.Analysis
 			return new CallFunctionExpression(realArgs, funcDesc, CurrentPosition);
 		}
 
-		public Expression CallHeapConstructor(string typeName, Expression[] args)
+		public Expression AllocateHeapMemory(TypeSpec type, Expression[]? args)
+		{
+			if (type.QualifiersExists)
+			{
+				if (args != null && args.Length > 0)
+				{
+					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB",
+						$"Если кваллификаторы есть, значит это не прямой вызов конструктора. Нахуя тут аргументы?", CurrentPosition);
+					return new StubForErrorExpression(CurrentPosition);
+				}
+
+				Qualifier[] qualifiers = [Qualifier.Reference, .. type.Qualifiers];
+				return new AllocateHeapMemoryToType(new TypeSpec(type.Type, qualifiers), CurrentPosition);
+			}
+
+			if (args == null)
+			{
+				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB",
+						$"Схуяли аргументы null?", CurrentPosition);
+				return new StubForErrorExpression(CurrentPosition);
+			}
+
+			return CallHeapConstructor(type, args);
+		}
+
+		private Expression CallHeapConstructor(TypeSpec typeSpec, Expression[] args)
 		{
 			if (CheckStubForError(args)) return new StubForErrorExpression(CurrentPosition);
 
-			var typeDesc = _membersFinder.TryFindType(typeName);
-			if (typeDesc == null)
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", $"The type '{typeName}' was not found", CurrentPosition);
-				return new StubForErrorExpression(CurrentPosition);
-			}
+			//var typeDesc = _membersFinder.TryFindType(typeName);
+			//if (typeDesc == null)
+			//{
+			//	_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", $"The type '{typeName}' was not found", CurrentPosition);
+			//	return new StubForErrorExpression(CurrentPosition);
+			//}
 
 			var arguments = args.Select(AutoDereferenceIfPointer).ToArray();
 
 			ConstructorDesc? ctorDesc = null;
-			var constructors = _membersFinder.FindConstructors(typeDesc);
+			var constructors = _membersFinder.FindConstructors(typeSpec.Type);
 
 			ctorDesc = _typeAnalyzer.FindSuitableConstructor(constructors, arguments.Select(x => x.ResultTypeSpec), out TypeSpec?[] casts);
 
@@ -363,7 +386,7 @@ namespace EvolZero.Core.Analysis
 				arguments[i] = ImplicitIntExtenssion(arguments[i], cast.Value);
 			}
 
-			var memory = new AllocateHeapMemoryToType(new TypeSpec(typeDesc, [new Qualifier(QKind.Reference)]), pos: CurrentPosition);
+			var memory = new AllocateHeapMemoryToType(new TypeSpec(typeSpec.Type, [Qualifier.Reference]), pos: CurrentPosition);
 			return new CallConstructorExpression(memory, ctorDesc, arguments, CurrentPosition);
 		}
 
@@ -405,26 +428,6 @@ namespace EvolZero.Core.Analysis
 			return objMemoryGetting;
 		}
 
-		public Expression CreateArrayInHeap(string typeName, Expression arraySize)
-		{
-			if (CheckStubForError(arraySize)) return new StubForErrorExpression(CurrentPosition);
-
-			var sizeAccessor = AutoDereferenceIfPointer(arraySize);
-			if (sizeAccessor.ResultTypeSpec.Type is not IntegerTypeDesc)
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "The array size must be an integer", CurrentPosition);
-				return new StubForErrorExpression(CurrentPosition);
-			}
-
-			var typeDesc = _membersFinder.TryFindType(typeName);
-			if (typeDesc == null)
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", $"The type '{typeName}' was not found", CurrentPosition);
-				return new StubForErrorExpression(CurrentPosition);
-			}
-
-			return new AllocateHeapMemoryToType(new TypeSpec(typeDesc, [new Qualifier(QKind.Reference), new Qualifier(QKind.Array)]), sizeAccessor, CurrentPosition);
-		}
 
 		public Expression ClassFieldAccess(Expression instanceGetting, string fieldName)
 		{
@@ -434,13 +437,14 @@ namespace EvolZero.Core.Analysis
 				return new StubForErrorExpression(CurrentPosition);
 			}
 
-			return new StructureFieldAccessExpression(variable, instanceGetting.ResultTypeSpec.IsRef, instanceGetting, variable.Declaring, CurrentPosition);
+			instanceGetting = AutoDereferenceIfPointer(instanceGetting);
+			return new StructureFieldAccessExpression(variable, instanceGetting, variable.Declaring, CurrentPosition);
 		}
 
 		public ArrayCellAccessExpression ArrayCellAccess(Expression arrayGetting, Expression indexGetting)
 		{
 			// TODO: сделать проверки на типы
-			return new ArrayCellAccessExpression(arrayGetting, indexGetting, CurrentPosition);
+			return new ArrayCellAccessExpression(AutoDereferenceIfPointer(arrayGetting), indexGetting, CurrentPosition);
 		}
 
 		public Expression GetPointerToVar(Expression variable)
@@ -475,7 +479,7 @@ namespace EvolZero.Core.Analysis
 				return new StubForErrorExpression(CurrentPosition);
 			}
 
-			if (!_typeAnalyzer.SoftCheckTypeMatching(leftAccessor.ResultTypeSpec.Type, rightAccessor.ResultTypeSpec.Type))
+			if (!_typeAnalyzer.SoftCheckTypeMatching(leftAccessor.ResultTypeSpec, rightAccessor.ResultTypeSpec))
 			{
 				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "The operands of the '+' operation must be of matching types", CurrentPosition);
 				return new StubForErrorExpression(CurrentPosition);
@@ -501,7 +505,7 @@ namespace EvolZero.Core.Analysis
 				return new StubForErrorExpression(CurrentPosition);
 			}
 
-			if (!_typeAnalyzer.SoftCheckTypeMatching(leftAccessor.ResultTypeSpec.Type, rightAccessor.ResultTypeSpec.Type))
+			if (!_typeAnalyzer.SoftCheckTypeMatching(leftAccessor.ResultTypeSpec, rightAccessor.ResultTypeSpec))
 			{
 				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "The operands of the '-' operation must be of matching types", CurrentPosition);
 				return new StubForErrorExpression(CurrentPosition);
@@ -518,8 +522,8 @@ namespace EvolZero.Core.Analysis
 		{
 			if (CheckStubForError(left, right)) return new StubForErrorExpression(CurrentPosition);
 
-			var uIntType = _membersFinder.FindType("uint");
-			var intType = _membersFinder.FindType("int");
+			var uIntType = new TypeSpec(_membersFinder.FindType("uint"));
+			var intType = new TypeSpec(_membersFinder.FindType("int"));
 
 			var leftAccessor = AutoDereferenceIfPointer(left);
 			var rightAccessor = AutoDereferenceIfPointer(right);
@@ -532,14 +536,14 @@ namespace EvolZero.Core.Analysis
 				return new StubForErrorExpression(CurrentPosition);
 			}
 
-			if (_typeAnalyzer.CheckTypeMatching(uIntType, leftAccessor.ResultTypeSpec.Type, out _)
-				&& _typeAnalyzer.CheckTypeMatching(uIntType, rightAccessor.ResultTypeSpec.Type, out _))
+			if (_typeAnalyzer.CheckTypeMatching(uIntType, leftAccessor.ResultTypeSpec, out _)
+				&& _typeAnalyzer.CheckTypeMatching(uIntType, rightAccessor.ResultTypeSpec, out _))
 			{
 				//сравнение беззнаковых чисел
 				return new CompareOperationExpression(compareOperator, false, leftAccessor, rightAccessor, boolTypeSpec, CurrentPosition);
 			}
-			else if (_typeAnalyzer.CheckTypeMatching(intType, leftAccessor.ResultTypeSpec.Type, out _)
-				&& _typeAnalyzer.CheckTypeMatching(intType, rightAccessor.ResultTypeSpec.Type, out _))
+			else if (_typeAnalyzer.CheckTypeMatching(intType, leftAccessor.ResultTypeSpec, out _)
+				&& _typeAnalyzer.CheckTypeMatching(intType, rightAccessor.ResultTypeSpec, out _))
 			{
 				//сравнение знаковых чисел
 				return new CompareOperationExpression(compareOperator, true, leftAccessor, rightAccessor, boolTypeSpec, CurrentPosition);
@@ -656,7 +660,8 @@ namespace EvolZero.Core.Analysis
 			}
 
 			byte[] strBytes = Encoding.UTF8.GetBytes($"{str.Replace(@"\n", Environment.NewLine)[1..^1]}\0");
-			return new GlobalArrayExpression(strBytes, new TypeSpec(TypeNameToTypeDesc("byte"), [new Qualifier(QKind.Reference), new Qualifier(QKind.Array)]), CurrentPosition);
+			return new GlobalArrayExpression(strBytes, new TypeSpec(TypeNameToTypeDesc("byte"),
+				[Qualifier.Reference, new ArrayQualifier((ulong)strBytes.LongLength)]), CurrentPosition);
 		}
 
 		public Expression CreateLocalVariable(string name, TypeSpec declaring, Expression[]? args)
@@ -683,19 +688,26 @@ namespace EvolZero.Core.Analysis
 		{
 			if (CheckStubForError(varExpr, expr)) return new StubForErrorExpression(CurrentPosition);
 
-			if (!_typeAnalyzer.CheckTypeMatching(varExpr.ResultTypeSpec.Type, expr.ResultTypeSpec.Type, out bool needCast))
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Cannot assign a value of the specified type", CurrentPosition);
-				return new StubForErrorExpression(CurrentPosition);
-			}
-
+			bool needCast = false;
 			if (varExpr.ResultTypeSpec.IsRef && !expr.ResultTypeSpec.IsRef)
 			{
+				if (assignQualifier is ReferenceQualifier)
+				{
+					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Схуяли ты при установленном квалификаторе ref пытаешься присвоить значение, а не ссылку?", CurrentPosition);
+					return new StubForErrorExpression(CurrentPosition);
+				}
+
+				if (!_typeAnalyzer.CheckTypeMatching(varExpr.ResultTypeSpec.RemoveFirtsQualifier(), expr.ResultTypeSpec, out needCast))
+				{
+					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Cannot assign a value of the specified type", CurrentPosition);
+					return new StubForErrorExpression(CurrentPosition);
+				}
+
 				varExpr = new PointerDereferenceExpression(varExpr, CurrentPosition);
 			}
 			else if (varExpr.ResultTypeSpec.IsRef && expr.ResultTypeSpec.IsRef)
 			{
-				if (!assignQualifier.HasValue)
+				if (assignQualifier == null)
 				{
 					if (!UnsafeMode)
 					{
@@ -706,9 +718,23 @@ namespace EvolZero.Core.Analysis
 					expr = new PointerDereferenceExpression(expr, CurrentPosition);
 					varExpr = new PointerDereferenceExpression(varExpr, CurrentPosition);
 				}
-				else if (assignQualifier.Value.Kind != QKind.Reference)
+				else if (assignQualifier is not ReferenceQualifier)
 				{
 					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "The assignment qualifier must be 'ref'", CurrentPosition);
+					return new StubForErrorExpression(CurrentPosition);
+				}
+
+				if (!_typeAnalyzer.CheckTypeMatching(varExpr.ResultTypeSpec, expr.ResultTypeSpec, out needCast))
+				{
+					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Cannot assign a value of the specified type", CurrentPosition);
+					return new StubForErrorExpression(CurrentPosition);
+				}
+			}
+			else
+			{
+				if (!_typeAnalyzer.CheckTypeMatching(varExpr.ResultTypeSpec, expr.ResultTypeSpec, out needCast))
+				{
+					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Cannot assign a value of the specified type", CurrentPosition);
 					return new StubForErrorExpression(CurrentPosition);
 				}
 			}
@@ -749,8 +775,10 @@ namespace EvolZero.Core.Analysis
 
 				TypeSpec fieldDeclaring = field.Declaring;
 
-				var thisGetting = new AppealToThisExpression(currentClass, CurrentPosition);
-				return new StructureFieldAccessExpression(field, true, thisGetting, fieldDeclaring, CurrentPosition);
+				Expression thisGetting = new AppealToThisExpression(currentClass, CurrentPosition);
+				thisGetting = new PointerDereferenceExpression(thisGetting, CurrentPosition);
+
+				return new StructureFieldAccessExpression(field, thisGetting, fieldDeclaring, CurrentPosition);
 			}
 
 			return value;
@@ -774,7 +802,7 @@ namespace EvolZero.Core.Analysis
 					return new StubForErrorExpression(CurrentPosition);
 				}
 
-				if (!toType.QualifiersEquals(expr.ResultTypeSpec) || !_typeAnalyzer.SoftCheckTypeMatching(expr.ResultTypeSpec.Type, toType.Type))
+				if (!_typeAnalyzer.SoftCheckTypeMatching(expr.ResultTypeSpec, toType))
 				{
 					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Implicit casting of heterogeneous types is prohibited in a safe context", CurrentPosition);
 					return new StubForErrorExpression(CurrentPosition);
@@ -787,15 +815,13 @@ namespace EvolZero.Core.Analysis
 		private Expression BuildCastExpression(Expression expr, TypeSpec toType)
 		{
 			TypeSpec fromSpec = expr.ResultTypeSpec;
-			TypeDesc fromDesc = fromSpec.Type;
-			TypeDesc toDesc = toType.Type;
 
 			bool fromIsPointer = fromSpec.IsRef;
 			bool toIsPointer = toType.IsRef;
-			bool fromIsInt = fromDesc is IntegerTypeDesc;
-			bool toIsInt = toDesc is IntegerTypeDesc;
-			bool fromIsFloat = fromDesc is FloatTypeDesc;
-			bool toIsFloat = toDesc is FloatTypeDesc;
+			bool fromIsInt = fromSpec.Type is IntegerTypeDesc;
+			bool toIsInt = toType.Type is IntegerTypeDesc;
+			bool fromIsFloat = fromSpec.Type is FloatTypeDesc;
+			bool toIsFloat = toType.Type is FloatTypeDesc;
 
 			if (fromIsPointer && toIsPointer)
 				return new CastExpression(expr, toType, CurrentPosition);
@@ -814,26 +840,26 @@ namespace EvolZero.Core.Analysis
 
 			if (fromIsInt && toIsInt)
 			{
-				if (fromDesc == toDesc)
+				if (fromSpec.Type == toType.Type)
 					return new CastExpression(expr, toType, CurrentPosition); // TODO: тут должно быть сообщение что приведение бессмысленно
 
-				if (_typeAnalyzer.CheckTypeMatching(toDesc, fromDesc, out _))
+				if (_typeAnalyzer.CheckTypeMatching(toType, fromSpec, out _))
 					return new IntToIntExtensionExpression(expr, IsSignedInteger(fromSpec), toType, CurrentPosition);
 
-				if (_typeAnalyzer.CheckTypeMatching(fromDesc, toDesc, out _))
+				if (_typeAnalyzer.CheckTypeMatching(fromSpec, toType, out _))
 					return new IntTruncExpression(expr, toType, CurrentPosition);
 
 			}
 
 			if (fromIsFloat && toIsFloat)
 			{
-				if (fromDesc == toDesc)
+				if (fromSpec.Type == toType.Type)
 					return new CastExpression(expr, toType, CurrentPosition);
 
-				if (_typeAnalyzer.CheckTypeMatching(toDesc, fromDesc, out _))
+				if (_typeAnalyzer.CheckTypeMatching(toType, fromSpec, out _))
 					return new FloatToFloatExpression(expr, toType, CurrentPosition);
 
-				if (_typeAnalyzer.CheckTypeMatching(fromDesc, toDesc, out _))
+				if (_typeAnalyzer.CheckTypeMatching(fromSpec, toType, out _))
 					return new FloatTruncExpression(expr, toType, CurrentPosition);
 			}
 
@@ -843,7 +869,7 @@ namespace EvolZero.Core.Analysis
 		private bool IsSignedInteger(TypeSpec typeSpec)
 		{
 			var ulongType = _membersFinder.FindType("ulong");
-			return !_typeAnalyzer.CheckTypeMatching(typeSpec.Type, ulongType, out _);
+			return !_typeAnalyzer.CheckTypeMatching(typeSpec, new TypeSpec(ulongType), out _);
 		}
 
 		/// <summary>
@@ -867,7 +893,7 @@ namespace EvolZero.Core.Analysis
 			}
 
 			bool isSigned = IsSignedInteger(expr.ResultTypeSpec);
-			bool resultTypeIsFloat = _typeAnalyzer.CheckTypeMatching(resultType.Type, doubleType, out _);
+			bool resultTypeIsFloat = _typeAnalyzer.CheckTypeMatching(resultType, new TypeSpec(doubleType), out _);
 
 			if (resultTypeIsFloat)
 			{
@@ -881,7 +907,7 @@ namespace EvolZero.Core.Analysis
 
 		private TypeSpec GetWiderType(TypeSpec first, TypeSpec second)
 		{
-			return _typeAnalyzer.CheckTypeMatching(first.Type, second.Type, out _) ? first : second;
+			return _typeAnalyzer.CheckTypeMatching(first, second, out _) ? first : second;
 		}
 
 		private TypeDesc TypeNameToTypeDesc(string typeName)

@@ -6,6 +6,7 @@ using EvolZero.Core.Analysis.Semantic;
 using EvolZero.Core.LogicModels.Expressions;
 using EvolZero.Core.LogicModels.Statements;
 using EvolZero.Core.MemebersModels;
+using EvolZero.Parsing.Models;
 using System.Numerics;
 
 
@@ -217,7 +218,16 @@ namespace EvolZero.Parsing
 			if (leftExpression == null || rightExpression == null) throw new NotImplementedException();
 
 			// TODO: где-то сделать проверку что это выражение - доступ к переменной, а не каккая-то хуета
-			var res = _semanticAnalyzer.VariableAssing(leftExpression, rightExpression, qualiffer != null ? Qualifier.FromString(qualiffer) : null);
+			Qualifier? qul = null;
+			if (qualiffer != null)
+			{
+				qul = QualifierWorkpiece.ToQualifier(new QualifierWorkpiece()
+				{
+					Kind = qualiffer
+				});
+			}
+
+			var res = _semanticAnalyzer.VariableAssing(leftExpression, rightExpression, qul);
 			_semanticAnalyzer.CurrentPosition = lastPos;
 
 			return res;
@@ -310,32 +320,27 @@ namespace EvolZero.Parsing
 			var lastPos = _semanticAnalyzer.CurrentPosition;
 			SetCurrentPosition(context);
 
-			string? className = context.IDENTIFIER()?.GetText();
-			if (className == null) throw new NotImplementedException();
+			var typeSpec = ParseTypeSpec(context.typeSpec());
+			if (typeSpec == null)
+			{
+				var errorPos = _semanticAnalyzer.CurrentPosition;
+				_semanticAnalyzer.CurrentPosition = lastPos;
+				return new StubForErrorExpression(errorPos);
+			}
 
+			Expression[]? arguments = null;
 			var args = context.args();
-			var arguments = args != null ? ParseArgs(context.args()) : Array.Empty<Expression>();
 
-			var res = _semanticAnalyzer.CallHeapConstructor(className, arguments);
+			if (args != null)
+			{
+				arguments = ParseArgs(context.args());
+			}
+			else if (context.LPAREN() != null)
+			{
+				arguments = Array.Empty<Expression>();
+			}
 
-			_semanticAnalyzer.CurrentPosition = lastPos;
-			return res;
-		}
-
-		public override Expression? VisitNewArrayExpr([NotNull] CEvolParser.NewArrayExprContext context)
-		{
-			var lastPos = _semanticAnalyzer.CurrentPosition;
-			SetCurrentPosition(context);
-
-			if (context.arraySizeSpec().Length > 1)
-				throw new NotImplementedException(); // TODO: реализовать многомерные массивы
-
-			var arrySizeGettingExpr = ParseArraySizeSpec(context.arraySizeSpec()[0]);
-
-			if (context.IDENTIFIER()?.GetText() == null || arrySizeGettingExpr == null)
-				throw new NotImplementedException();
-
-			var res = _semanticAnalyzer.CreateArrayInHeap(context.IDENTIFIER().GetText(), arrySizeGettingExpr);
+			var res = _semanticAnalyzer.AllocateHeapMemory(typeSpec.Value, arguments);
 
 			_semanticAnalyzer.CurrentPosition = lastPos;
 			return res;
@@ -359,20 +364,6 @@ namespace EvolZero.Parsing
 				throw new NotImplementedException();
 
 			var res = _semanticAnalyzer.ArrayCellAccess(expr, args[0]);
-
-			_semanticAnalyzer.CurrentPosition = lastPos;
-			return res;
-		}
-
-		public Expression? ParseArraySizeSpec([NotNull] CEvolParser.ArraySizeSpecContext context)
-		{
-			var lastPos = _semanticAnalyzer.CurrentPosition;
-			SetCurrentPosition(context);
-
-			if (context.expression().Length > 1)
-				throw new NotImplementedException(); // TODO: реализовать многомерные массивы
-
-			var res = Visit(context.expression()[0]);
 
 			_semanticAnalyzer.CurrentPosition = lastPos;
 			return res;
@@ -414,10 +405,10 @@ namespace EvolZero.Parsing
 			if (string.IsNullOrEmpty(typeName))
 				throw new NotImplementedException();
 
-			var qualifiers = new List<string>();
+			var qualifiers = new List<QualifierWorkpiece>();
 			foreach (var qualifier in context.qualifier())
 			{
-				qualifiers.Add(qualifier.GetText());
+				qualifiers.Add(new QualifierWorkpiece() { Kind = qualifier.GetText() });
 			}
 
 			foreach (var arr in context.arraySpec())
@@ -432,12 +423,24 @@ namespace EvolZero.Parsing
 				return null;
 			}
 
-			return new TypeSpec(typeDesc, Qualifier.FromString(qualifiers));
+			return new TypeSpec(typeDesc, QualifierWorkpiece.ToQualifiers(qualifiers));
 		}
 
-		public string ParseArraySpec([NotNull] CEvolParser.ArraySpecContext context)
+		public QualifierWorkpiece ParseArraySpec([NotNull] CEvolParser.ArraySpecContext context)
 		{
-			return "array";
+			var expr = context.expression();
+			var numExpr = expr as CEvolParser.NumberExprContext;
+
+			if (numExpr == null) throw new NotImplementedException();
+
+			var value = numExpr.NUMBER().GetText();
+			var num = ulong.Parse(value);
+
+			return new QualifierWorkpiece()
+			{
+				Kind = "array",
+				ArraySize = num
+			};
 		}
 
 		public override Expression? VisitNumberExpr([NotNull] CEvolParser.NumberExprContext context)
