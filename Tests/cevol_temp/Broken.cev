@@ -1,0 +1,7 @@
+namespace Program;
+
+int main()
+{
+    int x = undefinedVariable;
+    return 0;
+}

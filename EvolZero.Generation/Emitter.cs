@@ -272,11 +272,6 @@ namespace EvolZero.Generation
 
 		private IValueAccessor ArrayCellAccess(ArrayCellAccessExpression expr)
 		{
-			if (expr.Pos.Line == 48)
-			{
-
-			}
-
 			bool byRef = false;
 
 			var arrayGetting = expr.ArrayGetting;

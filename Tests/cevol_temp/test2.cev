@@ -1,0 +1,127 @@
+namespace Program;
+
+using System;
+
+extern infargs int printf(refb byte ptr);
+
+class Connect
+{
+	public int ConnType;
+	public bool Available;
+
+	public ctor(int startConnType)
+	{
+		ConnType = startConnType;
+	}
+
+	public int SetConnectType(int type)
+	{
+		ConnType = ConnType + type;
+		return 1;
+	}
+
+	public void PrintConnectType()
+	{
+		ref String str = new String();
+		printf(ref str.ToBytes(), ConnType);
+	}
+}
+
+class Provider
+{
+	public ref Connect ServiveConnect;
+	public bool Available;
+	public int Count;
+
+	public ctor()
+	{
+		
+	}
+
+	public ref int SetServiveConnect(int type)
+	{
+		ServiveConnect.ConnType = type;
+		Count = type + 11;
+		return loc Count;
+	}
+
+	public int WriteConnType(ref int toWrite)
+	{
+		toWrite = ServiveConnect.ConnType;
+		toWrite = toWrite - 5;
+		return 2;
+	}
+}
+
+int Tests()
+{
+	ref String serviceStr = new String();
+
+	ref Connect connect = new Connect(17);
+
+	connect.SetConnectType(10);
+	connect.PrintConnectType();
+
+	ref Provider provider = new Provider();
+	ref provider.ServiveConnect = connect;
+
+	ref int serviceConnet = provider.SetServiveConnect(412);
+	connect.PrintConnectType();
+	provider.ServiveConnect.PrintConnectType();
+	printf(ref serviceStr.ToBytes(), provider.Count);
+	printf(ref serviceStr.ToBytes(), serviceConnet);
+	serviceConnet = 2341;
+	printf(ref serviceStr.ToBytes(), serviceConnet);
+
+	int aboba = 5;
+	provider.WriteConnType(loc aboba);
+	printf(ref serviceStr.ToBytes(), aboba);
+	
+	aboba = -15;
+	printf(ref serviceStr.ToBytes(), aboba + 10);
+
+	bool valera = 1 == 1;
+
+	if(aboba == -150)
+	{
+		printf(ref serviceStr.ToBytes(), 777);
+	}
+
+	int val1 = 1;
+	int val2 = 2;
+	ref int val3 = loc val1;
+
+	val3 = 4;
+	printf(ref serviceStr.ToBytes(), val1);
+	printf(ref serviceStr.ToBytes(), val2);
+
+	ref val3 = loc val2;
+	val3 = 5;
+	printf(ref serviceStr.ToBytes(), val1);
+	printf(ref serviceStr.ToBytes(), val2);
+
+	Connect connTest(500);
+	connTest.ConnType = 500;
+	connTest.SetConnectType(10);
+	connTest.PrintConnectType();
+
+	ref byte[6] globalStrTets = "aboba";
+
+	printf(ref globalStrTets);
+
+	ref File file = new File(ref "popa.txt", ref "w");
+	file.Write(ref globalStrTets, 4);
+
+	byte test = 1;
+	int test2 = test + 10;
+	printf(ref serviceStr.ToBytes(), test2);
+
+	return 0;
+}
+
+int main()
+{
+	Tests();
+
+	return 0;
+}

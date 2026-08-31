@@ -1,0 +1,22 @@
+namespace System;
+
+class String
+{
+    private ref byte[4] _rawBytes;
+    public int myInt;
+
+    public ctor()
+    {
+        ref _rawBytes = new byte[4];
+		_rawBytes[0] = 37;
+		_rawBytes[1] = 100;
+		_rawBytes[2] = 10;
+		_rawBytes[3] = 0;
+        myInt = 1020;
+    }
+
+    public ref byte[4] ToBytes()
+    {
+        return ref _rawBytes;
+    }
+}

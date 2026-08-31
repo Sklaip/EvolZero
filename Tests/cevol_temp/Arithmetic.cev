@@ -1,0 +1,10 @@
+namespace Program;
+
+int main()
+{
+    int a = 20;
+    int b = 22;
+    int c = a + b;
+
+    return c - 42;
+}

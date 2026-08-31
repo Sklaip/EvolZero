@@ -1,0 +1,53 @@
+namespace Program;
+
+using System;
+
+extern infargs int printf(refb byte ptr);
+extern infargs int scanf(refb byte ptr);
+extern infargs long strlen(refb byte buffer);
+
+class Structure 
+{
+	public int Num;
+
+	public ctor(int num)
+	{
+		ref byte[15] globalStrTets = "LALALALALALA\n";
+		printf(ref globalStrTets);
+
+		Num = num;
+	}
+}
+
+int main()
+{
+	ref String serviceStr = new String();
+
+	ref byte[11] globalStrTets = "aboba111\n";
+
+	ref byte tes = globalStrTets;
+
+	printf(ref globalStrTets);
+
+    ref byte[99] inputBufer = new byte[99];
+    scanf(ref "%99[^\n]", ref inputBufer);
+
+	ref File file = new File(ref "popa.txt", ref "w");
+	file.Write(ref inputBufer, strlen(ref inputBufer));
+
+    printf(ref inputBufer);
+
+	Structure structure(10 + 15);
+
+	printf(ref "%d\n", structure.Num);
+
+	int myInt = serviceStr.myInt;
+
+	int[10] smallArray;
+	ref int[10][20] bigArray = new int[10][20];
+	bigArray[1][3] = 7;
+
+	printf(ref "%d", bigArray[1][3]);
+
+	return 0;
+}
