@@ -1,0 +1,68 @@
+namespace Program;
+
+extern infargs int printf(refb byte ptr);
+
+class Item
+{
+	private int Hidden;
+
+	public int Open;
+
+	public ctor(int value)
+	{
+		Hidden = value;
+		Open = 0;
+	}
+
+	private int GetHidden()
+	{
+		return Hidden;
+	}
+
+	public int Combine()
+	{
+		// private поле + private метод доступны изнутри класса.
+		return GetHidden() + Open;
+	}
+}
+
+class OtherClass
+{
+	public ref Item PublicItem;
+
+	public ctor()
+	{
+	}
+
+	public int ReadOpen()
+	{
+		return PublicItem.Open;
+	}
+}
+
+int main()
+{
+	Item item(5);
+	item.Open = 10;
+
+	// Public-поле доступно извне.
+	printf(ref "%d\n", item.Open);
+
+	// Private-поле и private-метод доступны внутри через public-метод.
+	printf(ref "%d\n", item.Combine());
+
+	// Доступ к public-полю из другого класса.
+	ref Item heapItem = new Item(2);
+	heapItem.Open = 10;
+	OtherClass other;
+	ref other.PublicItem = heapItem;
+	printf(ref "%d\n", other.ReadOpen());
+
+	// Public-поле другого экземпляра того же класса.
+	Item item2(1);
+	item2.Open = 3;
+	item.Open = item2.Open + item.Open;
+	printf(ref "%d\n", item.Open);
+
+	return 0;
+}

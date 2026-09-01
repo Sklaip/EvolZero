@@ -1,0 +1,21 @@
+namespace Program;
+
+extern infargs int printf(refb byte ptr);
+
+class Secret
+{
+	private int Hidden;
+
+	public ctor(int value)
+	{
+		Hidden = value;
+	}
+}
+
+int main()
+{
+	Secret s(5);
+	printf(ref "%d\n", s.Hidden);
+
+	return 0;
+}

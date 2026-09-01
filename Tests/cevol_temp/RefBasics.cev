@@ -1,0 +1,72 @@
+namespace Program;
+
+extern infargs int printf(refb byte ptr);
+
+class Cell
+{
+	public int Value;
+
+	public ctor(int value)
+	{
+		Value = value;
+	}
+
+	public ref int GetRef()
+	{
+		return loc Value;
+	}
+}
+
+int Increment(ref int x)
+{
+	x = x + 1;
+	return 0;
+}
+
+int main()
+{
+	// 1. Стек-переменная, чтение через ref.
+	int a = 42;
+	ref int ra = loc a;
+	printf(ref "%d\n", ra);
+
+	// 2. Запись через ref изменяет исходную переменную.
+	ra = 7;
+	printf(ref "%d\n", a);
+	printf(ref "%d\n", ra);
+
+	// 3. Переуказание ref на другую переменную.
+	int b = 100;
+	ref ra = loc b;
+	ra = 5;
+	printf(ref "%d\n", a);
+	printf(ref "%d\n", b);
+
+	// 4. Стек-экземпляр класса, чтение поля через ref-переменную.
+	Cell cell(10);
+	ref int rc = loc cell.Value;
+	printf(ref "%d\n", rc);
+
+	// 5. Изменение поля класса через ref-переменную.
+	rc = 50;
+	printf(ref "%d\n", cell.Value);
+
+	// 6. Heap-экземпляр, чтение поля через ref.
+	ref Cell heapCell = new Cell(20);
+	ref int rhc = loc heapCell.Value;
+	printf(ref "%d\n", rhc);
+
+	// 7. Метод, возвращающий ref на поле.
+	ref int fromMethod = cell.GetRef();
+	printf(ref "%d\n", cell.Value);
+	fromMethod = 77;
+	printf(ref "%d\n", cell.Value);
+
+	// 8. Передача ref-параметра функции, мутация вызывающей переменной.
+	int c = 5;
+	Increment(loc c);
+	Increment(loc c);
+	printf(ref "%d\n", c);
+
+	return 0;
+}

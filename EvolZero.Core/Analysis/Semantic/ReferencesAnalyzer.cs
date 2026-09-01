@@ -73,10 +73,10 @@ namespace EvolZero.Core.Analysis.Semantic
 
 		protected override ReferencesData VarAccess(VariableAccessExpression expr)
 		{
-			if (_givenRefs.Contains(expr.Name))
-			{
-				_errorsBag.AddError(REFERENCES_LAYER, "REF002", $"The variable '{expr.Name}' was already moved and cannot be used", expr.Pos);
-			}
+			//if (_givenRefs.Contains(expr.Name))
+			//{
+			//	_errorsBag.AddError(REFERENCES_LAYER, "REF002", $"The variable '{expr.Name}' was already moved and cannot be used", expr.Pos);
+			//}
 
 			return new ReferencesData(expr.ResultTypeSpec.IsBorrowRef, expr.ResultTypeSpec.IsOwnerRef, expr.Name);
 		}

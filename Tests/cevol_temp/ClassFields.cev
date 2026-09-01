@@ -1,0 +1,88 @@
+namespace Program;
+
+extern infargs int printf(refb byte ptr);
+
+class Conn
+{
+	public int Type;
+	public int Extra;
+
+	public ctor(int type)
+	{
+		Type = type;
+		Extra = 0;
+	}
+
+	public void AddExtra(int amount)
+	{
+		Extra = Extra + amount;
+	}
+}
+
+class Holder
+{
+	public ref Conn First;
+	public ref Conn Second;
+	public int Count;
+
+	public ctor()
+	{
+		Count = 0;
+	}
+}
+
+int main()
+{
+	// 1. Чтение публичного поля стек-экземпляра.
+	Conn a(10);
+	printf(ref "%d\n", a.Type);
+
+	// 2. Запись публичного поля стек-экземпляра.
+	a.Type = 99;
+	printf(ref "%d\n", a.Type);
+
+	// 3. Чтение публичного поля heap-экземпляра.
+	ref Conn b = new Conn(30);
+	printf(ref "%d\n", b.Type);
+
+	// 4. Запись публичного поля heap-экземпляра.
+	b.Type = 66;
+	printf(ref "%d\n", b.Type);
+
+	// 5. Несколько полей: независимые чтение/запись.
+	a.Extra = 5;
+	a.AddExtra(4);
+	printf(ref "%d\n", a.Extra);
+	printf(ref "%d\n", a.Type);
+
+	// 6. Запись ref-полей ссылками на heap-объекты.
+	ref Holder holder = new Holder();
+	ref holder.First = b;
+	ref Conn second = new Conn(15);
+	ref holder.Second = second;
+	printf(ref "%d\n", holder.First.Type);
+	printf(ref "%d\n", holder.Second.Type);
+
+	// 7. Мутация объекта через ref-поле.
+	holder.First.Type = 111;
+	printf(ref "%d\n", b.Type);
+	printf(ref "%d\n", holder.First.Type);
+
+	// 8. Переуказание ref-поля на другой объект.
+	ref holder.First = second;
+	printf(ref "%d\n", holder.First.Type);
+	printf(ref "%d\n", b.Type);
+
+	// 9. Поле, изменённое методом через ref-поле, видно извне.
+	holder.Second.AddExtra(3);
+	holder.Second.AddExtra(4);
+	printf(ref "%d\n", holder.Second.Extra);
+
+	// 10. loc на поле heap-экземпляра -> мутация через ссылку.
+	ref int rf = loc holder.Second.Type;
+	rf = 200;
+	printf(ref "%d\n", holder.Second.Type);
+	printf(ref "%d\n", second.Type);
+
+	return 0;
+}

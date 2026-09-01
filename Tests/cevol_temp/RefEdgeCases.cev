@@ -1,0 +1,77 @@
+namespace Program;
+
+extern infargs int printf(refb byte ptr);
+
+class Conn
+{
+	public int Type;
+
+	public ctor(int type)
+	{
+		Type = type;
+	}
+}
+
+int Swap(ref int x, ref int y)
+{
+	int tmp = x;
+	x = y;
+	y = tmp;
+	return 0;
+}
+
+int main()
+{
+	// 1. Псевдонимирование: две ссылки на одну переменную.
+	int a = 10;
+	ref int r1 = loc a;
+	ref int r2 = loc a;
+	r1 = 5;
+	printf(ref "%d\n", r2);
+	printf(ref "%d\n", a);
+
+	// 2. Значение, переданное по ссылке, читается внутри функции.
+	int b = 100;
+	int c = 200;
+	Swap(loc b, loc c);
+	printf(ref "%d\n", b);
+	printf(ref "%d\n", c);
+
+	// 3. Переуказание ссылки между чтениями (два независимых адреса).
+	int p = 1;
+	int q = 2;
+	ref int rp = loc p;
+	rp = rp + 10;
+	printf(ref "%d\n", p);
+	ref rp = loc q;
+	rp = rp + 20;
+	printf(ref "%d\n", p);
+	printf(ref "%d\n", q);
+
+	// 4. Ссылка на поле объекта, затем переуказание на поле другого объекта.
+	Conn c1(7);
+	Conn c2(9);
+	ref int rc = loc c1.Type;
+	rc = 70;
+	printf(ref "%d\n", c1.Type);
+	ref rc = loc c2.Type;
+	rc = 90;
+	printf(ref "%d\n", c1.Type);
+	printf(ref "%d\n", c2.Type);
+
+	// 5. Чтение полей через ссылки с одинаковым базовым адресом.
+	int arr0 = 1;
+	int arr1 = 2;
+	ref int ra0 = loc arr0;
+	ref int ra1 = loc arr1;
+	ra0 = ra0 + ra1;
+	printf(ref "%d\n", arr0);
+
+	// 6. Ссылка, возвращённая методом/выражением, остаётся валидной.
+	ref Conn obj = new Conn(30);
+	ref int ro = loc obj.Type;
+	ro = ro + 5;
+	printf(ref "%d\n", obj.Type);
+
+	return 0;
+}

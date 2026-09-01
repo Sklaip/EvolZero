@@ -1,0 +1,81 @@
+namespace Program;
+
+extern infargs int printf(refb byte ptr);
+
+class Inner
+{
+	public int Num;
+
+	public ctor(int num)
+	{
+		Num = num;
+	}
+
+	public void AddNum(int amount)
+	{
+		Num = Num + amount;
+	}
+}
+
+class Middle
+{
+	public ref Inner Child;
+
+	public ctor()
+	{
+	}
+
+	public ref Inner GetChild()
+	{
+		return ref Child;
+	}
+}
+
+class Outer
+{
+	public ref Middle Mid;
+
+	public ctor()
+	{
+	}
+}
+
+int main()
+{
+	// 1. Цепочка ref-полей: чтение вглубь.
+	ref Inner inner = new Inner(5);
+	ref Middle mid = new Middle();
+	ref mid.Child = inner;
+	ref Outer outer = new Outer();
+	ref outer.Mid = mid;
+
+	printf(ref "%d\n", outer.Mid.Child.Num);
+
+	// 2. Мутация через цепочку ref-полей.
+	outer.Mid.Child.Num = 25;
+	printf(ref "%d\n", inner.Num);
+	printf(ref "%d\n", outer.Mid.Child.Num);
+
+	// 3. Вызов метода через цепочку ref-полей.
+	outer.Mid.Child.AddNum(10);
+	printf(ref "%d\n", inner.Num);
+
+	// 4. ref-поле хранит ту же ссылку -> два пути к одному объекту.
+	outer.Mid.Child.Num = 33;
+	printf(ref "%d\n", inner.Num);
+	printf(ref "%d\n", mid.Child.Num);
+	printf(ref "%d\n", outer.Mid.Child.Num);
+
+	// 5. Метод, возвращающий ref-поле -> дальнейшая мутация.
+	ref Inner viaMethod = outer.Mid.GetChild();
+	viaMethod.Num = 40;
+	printf(ref "%d\n", inner.Num);
+
+	// 6. Переуказание ref-поля в цепочке.
+	ref Inner second = new Inner(111);
+	ref mid.Child = second;
+	printf(ref "%d\n", outer.Mid.Child.Num);
+	printf(ref "%d\n", inner.Num);
+
+	return 0;
+}

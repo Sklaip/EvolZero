@@ -261,11 +261,21 @@ namespace EvolZero.Core.Analysis
 
 			var arguments = args.Select(AutoDereferenceIfPointer).ToArray();
 
+			// TODO: внутри класса при вызове метода выдавать ошибку если сигнатура вызываемого метода пересекается с сигнатурой какой-то внешней функции
 			var functions = _membersFinder.FindFunction(name);
 			if (functions == null)
 			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "A function with that name was not found", CurrentPosition);
-				return new StubForErrorExpression(CurrentPosition);
+				CodeBlock block = _blocks.Peek();
+				var currentClass = block.CurrentClass?.TypeDesc;
+
+				if (currentClass == null)
+				{
+					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "No variable with that name was found", CurrentPosition);
+					return new StubForErrorExpression(CurrentPosition);
+				}
+
+				var thisGetting = new AppealToThisExpression(currentClass, CurrentPosition);
+				return CallClassMethod(name, thisGetting, args);
 			}
 
 			FuncDesc? funcDesc = _typeAnalyzer.FindSuitableFunction(functions, arguments.Select(x => x.ResultTypeSpec), out TypeSpec?[] casts);
@@ -398,14 +408,10 @@ namespace EvolZero.Core.Analysis
 			ConstructorDesc? ctorDesc = null;
 			var constructors = _membersFinder.FindConstructors(typeDesc);
 
-			if (args == null && constructors.Count > 0)
+			if (constructors.Count > 0)
 			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "The parameters for the type constructor must be specified explicitly.", CurrentPosition);
-				return new StubForErrorExpression(CurrentPosition);
-			}
+				if (args == null) args = [];
 
-			if (args != null)
-			{
 				var arguments = args.Select(AutoDereferenceIfPointer).ToArray();
 				ctorDesc = _typeAnalyzer.FindSuitableConstructor(constructors, arguments.Select(x => x.ResultTypeSpec), out TypeSpec?[] casts);
 
@@ -740,6 +746,7 @@ namespace EvolZero.Core.Analysis
 			}
 			else
 			{
+				expr = AutoDereferenceIfPointer(expr);
 				if (!_typeAnalyzer.CheckTypeMatching(varExpr.ResultTypeSpec, expr.ResultTypeSpec, out needCast))
 				{
 					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Cannot assign a value of the specified type", CurrentPosition);

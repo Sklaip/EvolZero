@@ -1,0 +1,77 @@
+namespace Program;
+
+extern infargs int printf(refb byte ptr);
+
+class Conn
+{
+	public int Type;
+
+	public ctor(int type)
+	{
+		Type = type;
+	}
+
+	public void AddType(int amount)
+	{
+		Type = Type + amount;
+	}
+}
+
+int main()
+{
+	// 1. Стек-экземпляр: поле + вызов метода.
+	Conn a(10);
+	printf(ref "%d\n", a.Type);
+	a.AddType(5);
+	printf(ref "%d\n", a.Type);
+
+	// 2. Heap-экземпляр: поле + вызов метода.
+	ref Conn b = new Conn(20);
+	printf(ref "%d\n", b.Type);
+	b.AddType(5);
+	printf(ref "%d\n", b.Type);
+
+	// 3. Независимость двух стек-экземпляров.
+	Conn x(1);
+	Conn y(2);
+	x.AddType(10);
+	printf(ref "%d\n", x.Type);
+	printf(ref "%d\n", y.Type);
+
+	// 4. Независимость двух heap-экземпляров.
+	ref Conn m = new Conn(100);
+	ref Conn n = new Conn(200);
+	m.Type = 5;
+	printf(ref "%d\n", m.Type);
+	printf(ref "%d\n", n.Type);
+
+	// 5. Стек- и heap-экземпляр не пересекаются.
+	Conn s(7);
+	ref Conn h = new Conn(8);
+	s.AddType(1);
+	h.AddType(1);
+	printf(ref "%d\n", s.Type);
+	printf(ref "%d\n", h.Type);
+
+	// 6. Стек-экземпляр в цикле (несколько итераций на одной области).
+	int i = 0;
+	while (i < 3)
+	{
+		Conn loop(100);
+		loop.AddType(i);
+		printf(ref "%d\n", loop.Type);
+		i = i + 1;
+	}
+
+	// 7. Heap-экземпляр в цикле (независимые объекты).
+	int j = 0;
+	while (j < 3)
+	{
+		ref Conn hj = new Conn(0);
+		hj.Type = j;
+		printf(ref "%d\n", hj.Type);
+		j = j + 1;
+	}
+
+	return 0;
+}
