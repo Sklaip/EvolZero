@@ -585,13 +585,7 @@ namespace EvolZero.Parsing
 			var lastPos = _semanticAnalyzer.CurrentPosition;
 			SetCurrentPosition(context);
 
-			var expressions = context.expression();
-			if (expressions.Length != 2) throw new NotImplementedException();
-
-			var leftValue = Visit(expressions[0]);
-			var rightValue = Visit(expressions[1]);
-
-			if (leftValue == null || rightValue == null) throw new NotImplementedException();
+			(Expression leftValue, Expression rightValue) = ParseBinaryExpression(context.expression());
 
 			Expression res;
 			if (context.MINUS() != null) // это минус
@@ -601,6 +595,27 @@ namespace EvolZero.Parsing
 			else // это плюс
 			{
 				res = _semanticAnalyzer.Sum(leftValue, rightValue);
+			}
+
+			_semanticAnalyzer.CurrentPosition = lastPos;
+			return res;
+		}
+
+		public override Expression VisitMulDivExpr([NotNull] MulDivExprContext context)
+		{
+			var lastPos = _semanticAnalyzer.CurrentPosition;
+			SetCurrentPosition(context);
+
+			(Expression leftValue, Expression rightValue) = ParseBinaryExpression(context.expression());
+
+			Expression res;
+			if (context.MUL() != null) // это умножить
+			{
+				res = _semanticAnalyzer.Multiple(leftValue, rightValue);
+			}
+			else // это разделить
+			{
+				res = _semanticAnalyzer.Division(leftValue, rightValue);
 			}
 
 			_semanticAnalyzer.CurrentPosition = lastPos;

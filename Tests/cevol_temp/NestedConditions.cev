@@ -1,0 +1,124 @@
+namespace Program;
+
+extern infargs int printf(refb byte ptr);
+extern infargs int scanf(refb byte ptr);
+
+int main()
+{
+	int n = 0;
+	// далее читаем n из консоли:
+	scanf(ref "%d", loc n);
+
+	// r1: вложенный if внутри if, плюс else у внешнего if
+	int r1 = 0;
+	if (n > 0)
+	{
+		if (n > 5)
+		{
+			r1 = 100;
+		}
+		else
+		{
+			r1 = 101;
+		}
+	}
+	else
+	{
+		r1 = 102;
+	}
+	printf(ref "%d\n", r1);
+
+	// r2: вложенный if внутри else
+	int r2 = 0;
+	if (n == 0)
+	{
+		r2 = 200;
+	}
+	else
+	{
+		if (n == 1)
+		{
+			r2 = 201;
+		}
+		else
+		{
+			r2 = 202;
+		}
+	}
+	printf(ref "%d\n", r2);
+
+	// r3: три уровня вложенности, без else на нижнем уровне
+	int r3 = 0;
+	if (n > 0)
+	{
+		if (n > 5)
+		{
+			if (n == 7)
+			{
+				r3 = 300;
+			}
+			else
+			{
+				r3 = 301;
+			}
+		}
+	}
+	printf(ref "%d\n", r3);
+
+	// r4: else if с вложенным if внутри
+	int r4 = 0;
+	if (n == 0)
+	{
+		r4 = 400;
+	}
+	else if (n > 1)
+	{
+		if (n == 3)
+		{
+			r4 = 401;
+		}
+		else
+		{
+			r4 = 402;
+		}
+	}
+	else
+	{
+		r4 = 403;
+	}
+	printf(ref "%d\n", r4);
+
+	// r5: логическое И (&&)
+	int r5 = 0;
+	if (n > 0 && n < 5)
+	{
+		r5 = 500;
+	}
+	else
+	{
+		r5 = 501;
+	}
+	printf(ref "%d\n", r5);
+
+	// r6: цепочка else if, ни одно условие не совпало -> else
+	int r6 = 0;
+	if (n == 0)
+	{
+		r6 = 600;
+	}
+	else if (n == 1)
+	{
+		r6 = 601;
+	}
+	else if (n == 2)
+	{
+		r6 = 602;
+	}
+	else
+	{
+		r6 = 603;
+	}
+	printf(ref "%d\n", r6);
+
+	return 0;
+}

@@ -539,34 +539,28 @@ namespace EvolZero.Core.Analysis
 			return new GetPointerToVarExpression(variable, CurrentPosition);
 		}
 
+		public Expression Division(Expression left, Expression right)
+		{
+			return ArithmeticOperation(left, right, BinaryOperation.Division, "/");
+		}
+
+		public Expression Multiple(Expression left, Expression right)
+		{
+			return ArithmeticOperation(left, right, BinaryOperation.Multiple, "*");
+		}
+
 		public Expression Sum(Expression left, Expression right)
 		{
-			if (CheckStubForError(left, right)) return new StubForErrorExpression(CurrentPosition);
-
-			var leftAccessor = AutoDereferenceIfPointer(left);
-			var rightAccessor = AutoDereferenceIfPointer(right);
-
-			if (leftAccessor.ResultTypeSpec.Type is FloatTypeDesc || rightAccessor.ResultTypeSpec.Type is FloatTypeDesc)
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Arithmetic operations with floating-point numbers are not supported yet", CurrentPosition);
-				return new StubForErrorExpression(CurrentPosition);
-			}
-
-			if (!_typeAnalyzer.SoftCheckTypeMatching(leftAccessor.ResultTypeSpec, rightAccessor.ResultTypeSpec))
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "The operands of the '+' operation must be of matching types", CurrentPosition);
-				return new StubForErrorExpression(CurrentPosition);
-			}
-
-			var resultType = GetWiderType(leftAccessor.ResultTypeSpec, rightAccessor.ResultTypeSpec);
-			leftAccessor = ImplicitIntExtenssion(leftAccessor, resultType);
-			rightAccessor = ImplicitIntExtenssion(rightAccessor, resultType);
-
-			return new SimpleBinaryOperationExpression(BinaryOperation.Sum, leftAccessor, rightAccessor, resultType, CurrentPosition);
+			return ArithmeticOperation(left, right, BinaryOperation.Sum, "+");
 		}
 
 		public Expression Sub(Expression left, Expression right)
 		{
+			return ArithmeticOperation(left, right, BinaryOperation.Sub, "-");
+		}
+
+		public Expression ArithmeticOperation(Expression left, Expression right, BinaryOperation operation, string operand)
+		{
 			if (CheckStubForError(left, right)) return new StubForErrorExpression(CurrentPosition);
 
 			var leftAccessor = AutoDereferenceIfPointer(left);
@@ -580,7 +574,7 @@ namespace EvolZero.Core.Analysis
 
 			if (!_typeAnalyzer.SoftCheckTypeMatching(leftAccessor.ResultTypeSpec, rightAccessor.ResultTypeSpec))
 			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "The operands of the '-' operation must be of matching types", CurrentPosition);
+				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", $"The operands of the '{operand}' operation must be of matching types", CurrentPosition);
 				return new StubForErrorExpression(CurrentPosition);
 			}
 
@@ -588,7 +582,7 @@ namespace EvolZero.Core.Analysis
 			leftAccessor = ImplicitIntExtenssion(leftAccessor, resultType);
 			rightAccessor = ImplicitIntExtenssion(rightAccessor, resultType);
 
-			return new SimpleBinaryOperationExpression(BinaryOperation.Sub, leftAccessor, rightAccessor, resultType, CurrentPosition);
+			return new SimpleBinaryOperationExpression(operation, leftAccessor, rightAccessor, resultType, CurrentPosition);
 		}
 
 		public Expression Compare(Expression left, Expression right, CompareOperator compareOperator)

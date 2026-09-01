@@ -1,0 +1,63 @@
+namespace Program;
+
+extern infargs int printf(refb byte ptr);
+extern infargs int scanf(refb byte ptr);
+
+int main()
+{
+	int n = 0;
+	// далее читаем n из консоли:
+	scanf(ref "%d", loc n);
+
+	// 1. if внутри while: складываем только положительные значения
+	int sum = 0;
+	int i = 0;
+	while (i < 2 * n)
+	{
+		int val = i - n;
+		if (val > 0)
+		{
+			sum = sum + val;
+		}
+		i = i + 1;
+	}
+	printf(ref "%d\n", sum);
+
+	// 2. if/else внутри while: подсчёт "чётных/нечётных" значений 0..n-1
+	int evens = 0;
+	int odds = 0;
+	int k = 0;
+	while (k < n)
+	{
+		if (k != 1 && k != 3 && k != 5 && k != 7)
+		{
+			evens = evens + 1;
+		}
+		else
+		{
+			odds = odds + 1;
+		}
+		k = k + 1;
+	}
+	printf(ref "%d\n", evens);
+	printf(ref "%d\n", odds);
+
+	// 3. условие внутри цикла меняет предел: предельное значение
+	//    зависит от n, а if (n == 5) сбрасывает предел рано
+	int acc = 0;
+	int j = 1;
+	int limit = n + 6;
+	while (j < limit)
+	{
+		acc = acc + j;
+		j = j + 1;
+		if (n == 5)
+		{
+			limit = 2;
+		}
+	}
+	printf(ref "%d\n", acc);
+	printf(ref "%d\n", j);
+
+	return 0;
+}

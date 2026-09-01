@@ -1,0 +1,84 @@
+namespace Program;
+
+extern infargs int printf(refb byte ptr);
+extern infargs int scanf(refb byte ptr);
+
+int main()
+{
+	int n = 0;
+	// далее читаем n из консоли:
+	scanf(ref "%d", loc n);
+
+	// 1. while внутри if: выполняется только когда n > 0
+	int acc1 = 0;
+	if (n > 0)
+	{
+		int i = 0;
+		while (i < n)
+		{
+			acc1 = acc1 + 10;
+			i = i + 1;
+		}
+	}
+	printf(ref "%d\n", acc1);
+
+	// 2. while внутри else
+	int acc2 = 100;
+	if (n == 0)
+	{
+		int k = 0;
+		while (k < n)
+		{
+			acc2 = acc2 + 5;
+			k = k + 1;
+		}
+	}
+	else
+	{
+		int j = 0;
+		while (j < 2)
+		{
+			acc2 = acc2 + 1;
+			j = j + 1;
+		}
+	}
+	printf(ref "%d\n", acc2);
+
+	// 3. while внутри ветки else if
+	int v = 0;
+	if (n == 99)
+	{
+		v = 10;
+	}
+	else if (n == 5)
+	{
+		int m = 0;
+		while (m < n)
+		{
+			v = v + 1;
+			m = m + 1;
+		}
+	}
+	else
+	{
+		v = 30;
+	}
+	printf(ref "%d\n", v);
+
+	// 4. локальный счётчик цикла накапливает значение для внешней переменной
+	int base = 7;
+	if (n > 0)
+	{
+		int b = 0;
+		int inner = 0;
+		while (b < n)
+		{
+			inner = inner + 2;
+			b = b + 1;
+		}
+		base = base + inner;
+	}
+	printf(ref "%d\n", base);
+
+	return 0;
+}

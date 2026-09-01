@@ -9,6 +9,8 @@ namespace EvolZero.Core.LogicModels.Expressions
 		Assing,
 		Sum,
 		Sub,
+		Multiple,
+		Division,
 		BitAnd,
 		BitXor,
 		BitOr,

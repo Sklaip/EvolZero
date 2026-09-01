@@ -1,0 +1,59 @@
+namespace Program;
+
+extern infargs int printf(refb byte ptr);
+extern infargs int scanf(refb byte ptr);
+
+int main()
+{
+	int n = 0;
+	// Читаем число из консоли. n управляет количеством итераций циклов:
+	//   n=0 -> тела циклов не выполняются ни разу (ветка "0 итераций")
+	//   n=4 -> тела циклов выполняются (ветка "итерации идут")
+	scanf(ref "%d", loc n);
+
+	int count = 0;
+	int i = 0;
+	while (i < n)
+	{
+		count = count + 1;
+		i = i + 1;
+	}
+	printf(ref "%d\n", count);
+
+	int sum = 0;
+	int j = 1;
+	while (j < n + 1)
+	{
+		sum = sum + j;
+		j = j + 1;
+	}
+	printf(ref "%d\n", sum);
+
+	int ran = 0;
+	while (ran > 10)
+	{
+		ran = ran + 1;
+	}
+	printf(ref "%d\n", ran);
+
+	int k = 0;
+	while (k < n)
+	{
+		k = k + 1;
+	}
+	printf(ref "%d\n", k);
+
+	int evens = 0;
+	int m = 0;
+	while (m < n)
+	{
+		if (m != 1 && m != 3 && m != 5 && m != 7)
+		{
+			evens = evens + 1;
+		}
+		m = m + 1;
+	}
+	printf(ref "%d\n", evens);
+
+	return 0;
+}

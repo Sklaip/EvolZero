@@ -332,6 +332,8 @@ namespace EvolZero.Generation
 					return _codeGenerator.Sum(left, right);
 				case BinaryOperation.Sub:
 					return _codeGenerator.Sub(left, right);
+				case BinaryOperation.Multiple:
+					return _codeGenerator.Mul(left, right);
 				case BinaryOperation.Assing:
 					_codeGenerator.Assign(left, right);
 					return right;

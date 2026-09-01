@@ -488,6 +488,10 @@ namespace EvolZero.Generation
 				case CompareOperator.LessThanOrEqual:
 					predicate = signed ? LLVMIntPredicate.LLVMIntSLE : LLVMIntPredicate.LLVMIntULE;
 					break;
+				case CompareOperator.NotEqual:
+					return new LogicalOperationAccessor(() =>
+						_builder.BuildNot(_builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, a.GetValue(), b.GetValue())), _context.Int1Type);
+
 				default:
 					throw new NotImplementedException();
 			}
