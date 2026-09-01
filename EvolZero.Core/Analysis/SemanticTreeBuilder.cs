@@ -169,7 +169,7 @@ namespace EvolZero.Core.Analysis
 		public void EnterToIfBlock(Expression condition)
 		{
 			var childs = new List<ILogicModel>();
-			var statement = new IfStatement(childs, condition, null, null, CurrentPosition);
+			var statement = new IfStatement(childs, condition, CurrentPosition);
 
 			CodeBlock block = _blocks.Peek();
 			block.StatementChilds.Add(statement);
@@ -186,6 +186,66 @@ namespace EvolZero.Core.Analysis
 			{
 				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "The expression passed to 'if' must be of type bool", CurrentPosition);
 			}
+		}
+
+		public void EnterToElseIfBlock(Statement ifStatement, Expression condition)
+		{
+			if (ifStatement is not IfStatement parent)
+			{
+				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Блок else if должен соответствовать блоку if", CurrentPosition);
+				return;
+			}
+
+			var childs = new List<ILogicModel>();
+			var statement = new IfStatement(childs, condition, CurrentPosition);
+
+			CodeBlock block = _blocks.Peek();
+			parent.AddElseIf(statement);
+
+			var currentFunction = block.CurrentFunction;
+			if (currentFunction == null) throw new NotImplementedException();
+
+			var currentClass = block.CurrentClass;
+			var variables = new Dictionary<string, Expression>(block.Variables);
+
+			_blocks.Push(new CodeBlock(statement, childs, variables, currentFunction, currentClass));
+
+			if (CheckStubForError(condition)) return;
+
+			if (condition.ResultTypeSpec.Type != TypeNameToTypeDesc("bool"))
+			{
+				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "The expression passed to 'if' must be of type bool", CurrentPosition);
+			}
+		}
+
+		public void EnterToElseBlock(Statement ifStatement)
+		{
+			if (ifStatement is not IfStatement parent)
+			{
+				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Блок else if должен соответствовать блоку if", CurrentPosition);
+				return;
+			}
+
+			var childs = new List<ILogicModel>();
+			var statement = new BlockStatement(childs, CurrentPosition);
+
+			CodeBlock block = _blocks.Peek();
+
+			if (parent.ElseStatement != null)
+			{
+				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Блоку if должен соответствовать один блок else", CurrentPosition);
+				return;
+			}
+
+			parent.ElseStatement = statement;
+
+			var currentFunction = block.CurrentFunction;
+			if (currentFunction == null) throw new NotImplementedException();
+
+			var currentClass = block.CurrentClass;
+			var variables = new Dictionary<string, Expression>(block.Variables);
+
+			_blocks.Push(new CodeBlock(statement, childs, variables, currentFunction, currentClass));
 		}
 
 		public void EnterToWhileBlock(Expression condition)
@@ -209,7 +269,6 @@ namespace EvolZero.Core.Analysis
 				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "The expression passed to 'while' must be of type bool", CurrentPosition);
 			}
 		}
-
 
 		public Statement ExitFromBlock()
 		{

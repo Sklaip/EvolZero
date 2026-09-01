@@ -8,6 +8,7 @@ using EvolZero.Core.LogicModels.Statements;
 using EvolZero.Core.MemebersModels;
 using EvolZero.Parsing.Models;
 using System.Numerics;
+using static CEvolParser;
 
 
 namespace EvolZero.Parsing
@@ -500,19 +501,51 @@ namespace EvolZero.Parsing
 			if (condition == null) throw new NotImplementedException();
 
 			_semanticAnalyzer.EnterToIfBlock(condition);
-			foreach (var statement in ctx.statement())
+			Visit(ctx.block());
+
+			var ifBlock = _semanticAnalyzer.ExitFromBlock();
+			_semanticAnalyzer.CurrentPosition = lastPos;
+
+			foreach (var statement in ctx.elseIfStatement())
 			{
-				Expression? expr = Visit(statement);
-				if (expr != null)
-				{
-					_semanticAnalyzer.InserToCurrentBlock(expr);
-				}
+				HendleElseIf(statement, ifBlock);
 			}
 
-			_semanticAnalyzer.ExitFromBlock();
+			var elseBlock = ctx.elseStatement();
+			if (elseBlock != null)
+			{
+				HendleElse(elseBlock, ifBlock);
+			}
 
-			_semanticAnalyzer.CurrentPosition = lastPos;
 			return null;
+		}
+
+		private void HendleElseIf(ElseIfStatementContext ctx, Statement ifBlock)
+		{
+			var lastPos = _semanticAnalyzer.CurrentPosition;
+			SetCurrentPosition(ctx);
+
+			var elseIfCondition = Visit(ctx.expression());
+			if (elseIfCondition == null) throw new NotImplementedException();
+
+			_semanticAnalyzer.EnterToElseIfBlock(ifBlock, elseIfCondition);
+
+			Visit(ctx.block());
+
+			_semanticAnalyzer.ExitFromBlock();
+			_semanticAnalyzer.CurrentPosition = lastPos;
+		}
+
+		private void HendleElse(ElseStatementContext ctx, Statement ifBlock)
+		{
+			var lastPos = _semanticAnalyzer.CurrentPosition;
+			SetCurrentPosition(ctx);
+
+			_semanticAnalyzer.EnterToElseBlock(ifBlock);
+			Visit(ctx.block());
+
+			_semanticAnalyzer.ExitFromBlock();
+			_semanticAnalyzer.CurrentPosition = lastPos;
 		}
 
 		public override Expression? VisitWhileStmt([NotNull] CEvolParser.WhileStmtContext context)

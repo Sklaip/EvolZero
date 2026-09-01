@@ -52,7 +52,9 @@ statement
 
 assignment : (qualifier)? expression ASSIGN expression ;
 
-ifStatement : IF LPAREN expression RPAREN statement (ELSE statement)? ;
+ifStatement : IF LPAREN expression RPAREN block elseIfStatement* elseStatement? ;
+elseIfStatement : ELSEIF LPAREN expression RPAREN block ;
+elseStatement : ELSE block ;
 
 whileStatement : WHILE LPAREN expression RPAREN block ;
 

@@ -5,6 +5,7 @@ NAMESPACE: 'namespace';
 USING: 'using';
 CLASS    : 'class';
 IF       : 'if';
+ELSEIF     : 'else if';
 ELSE     : 'else';
 WHILE    : 'while';
 RETURN   : 'return';

@@ -132,16 +132,43 @@ namespace EvolZero.Generation
 		private void HandleIfStatement(IfStatement statement)
 		{
 			var condition = HandleExpression(statement.Condition);
-			_codeGenerator.CreateIfBlock(condition);
 
+			if (statement.ElseIfStatements.Count == 0 && statement.ElseStatement == null)
+			{
+				_codeGenerator.CreateIfBlock(condition, false);
+				HandleStatemetChilds(statement);
+				_codeGenerator.EndIfBlock();
+			}
+			else if (statement.ElseIfStatements.Count == 0 && statement.ElseStatement != null)
+			{
+				_codeGenerator.CreateIfBlock(condition, true);
+				HandleStatemetChilds(statement);
+
+				_codeGenerator.CreateElseBlock();
+				HandleStatemetChilds(statement.ElseStatement);
+
+				_codeGenerator.EndIfBlock();
+			}
+			else
+			{
+				_codeGenerator.CreateIfBlock(condition, true);
+				HandleStatemetChilds(statement);
+
+				_codeGenerator.CreateElseBlock();
+				HandleIfStatement(statement.Decompose());
+
+				_codeGenerator.EndIfBlock();
+			}
+		}
+
+		private void HandleStatemetChilds(Statement statement)
+		{
 			foreach (var child in statement.Childs)
 			{
 				if ((child is Statement stm)) HandleStatement(stm);
 				else if (child is Expression expr) HandleExpression(expr);
 				else throw new NotImplementedException();
 			}
-
-			_codeGenerator.EndIfBlock();
 		}
 
 		private void HandleReturnStatement(ReturnStatement statement)

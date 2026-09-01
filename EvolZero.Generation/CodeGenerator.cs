@@ -249,7 +249,7 @@ namespace EvolZero.Generation
 				operation.GetInnerType());
 		}
 
-		public void CreateIfBlock(IValueAccessor condition)
+		public void CreateIfBlock(IValueAccessor condition, bool elseExists)
 		{
 			if (_currentFunction == null) throw new NotImplementedException();
 			var func = _currentFunction.Value;
@@ -257,10 +257,22 @@ namespace EvolZero.Generation
 			LLVMBasicBlockRef ifBlock = _context.AppendBasicBlock(func, "if.then");
 			LLVMBasicBlockRef endIfBlock = _context.AppendBasicBlock(func, "if.merge");
 
-			_builder.BuildCondBr(condition.GetValue(), ifBlock, endIfBlock);
-			_builder.PositionAtEnd(ifBlock);
-
 			_activeBlocks.Push(endIfBlock);
+
+			if (elseExists)
+			{
+				LLVMBasicBlockRef elseBlock = _context.AppendBasicBlock(func, "else.then");
+
+				_builder.BuildCondBr(condition.GetValue(), ifBlock, elseBlock);
+				_builder.PositionAtEnd(ifBlock);
+
+				_activeBlocks.Push(elseBlock);
+			}
+			else
+			{
+				_builder.BuildCondBr(condition.GetValue(), ifBlock, endIfBlock);
+				_builder.PositionAtEnd(ifBlock);
+			}
 		}
 
 		public void EndIfBlock()
@@ -268,6 +280,15 @@ namespace EvolZero.Generation
 			LLVMBasicBlockRef endIfBlock = _activeBlocks.Pop();
 			_builder.BuildBr(endIfBlock);
 			_builder.PositionAtEnd(endIfBlock);
+		}
+
+		public void CreateElseBlock()
+		{
+			LLVMBasicBlockRef elseBlock = _activeBlocks.Pop();
+			LLVMBasicBlockRef endIfBlock = _activeBlocks.Peek();
+
+			_builder.BuildBr(endIfBlock);
+			_builder.PositionAtEnd(elseBlock);
 		}
 
 		public void CreateWhileBlock(IValueAccessor condition)
