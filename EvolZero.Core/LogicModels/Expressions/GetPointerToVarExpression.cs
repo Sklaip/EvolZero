@@ -8,9 +8,12 @@ namespace EvolZero.Core.LogicModels.Expressions
 	public class GetPointerToVarExpression : Expression
 	{
 		public readonly Expression Variable;
-		public GetPointerToVarExpression(Expression variable, PositionInSources pos) : base(PointerTypeSpec(variable.ResultTypeSpec), pos)
+		public readonly bool IsOwner;
+
+		public GetPointerToVarExpression(Expression variable, bool isOwner, PositionInSources pos) : base(PointerTypeSpec(variable.ResultTypeSpec), pos)
 		{
 			Variable = variable;
+			IsOwner = isOwner;
 		}
 
 		private static TypeSpec PointerTypeSpec(TypeSpec typeScec)

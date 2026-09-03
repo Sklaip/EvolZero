@@ -68,22 +68,30 @@ namespace EvolZero.Core.Analysis
 
 		protected virtual void HandleFunctionalBlock<TBlock>(TBlock statement) where TBlock : Statement, IFunctionalBlockStatement
 		{
-			foreach (var child in statement.Childs)
-			{
-				if ((child is Statement stm)) HandleStatement(stm);
-				else if (child is Expression expr) HandleExpression(expr);
-				else throw new NotImplementedException();
-			}
+			HandleStatemetChilds(statement);
 		}
 
 		protected virtual void HandleIfStatement(IfStatement statement)
 		{
 			HandleExpression(statement.Condition);
 
+			HandleStatemetChilds(statement);
+			if (statement.ElseIfStatements != null)
+			{
+				foreach (var st in statement.ElseIfStatements)
+				{
+					HandleStatemetChilds(st);
+				}
+			}
+			if (statement.ElseStatement != null) HandleStatemetChilds(statement.ElseStatement);
+		}
+
+		protected virtual void HandleStatemetChilds(Statement statement)
+		{
 			foreach (var child in statement.Childs)
 			{
 				if ((child is Statement stm)) HandleStatement(stm);
-				else if (child is Expression expr) HandleExpression(expr);
+				else if (child is Expression expr) SubTreeEnd(HandleExpression(expr));
 				else throw new NotImplementedException();
 			}
 		}
@@ -100,13 +108,12 @@ namespace EvolZero.Core.Analysis
 		protected virtual void HandleWhileStatement(WhileStatement statement)
 		{
 			HandleExpression(statement.Condition);
+			HandleStatemetChilds(statement);
+		}
 
-			foreach (var child in statement.Childs)
-			{
-				if ((child is Statement stm)) HandleStatement(stm);
-				else if (child is Expression expr) HandleExpression(expr);
-				else throw new NotImplementedException();
-			}
+		protected virtual void SubTreeEnd(T value)
+		{
+
 		}
 
 		protected T HandleExpression(Expression expression)

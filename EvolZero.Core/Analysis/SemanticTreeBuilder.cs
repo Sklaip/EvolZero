@@ -378,7 +378,7 @@ namespace EvolZero.Core.Analysis
 			}
 
 			Expression[] realArgs = new Expression[arguments.Length + 1];
-			realArgs[0] = instanceGetting.ResultTypeSpec.IsRef ? instanceGetting : new GetPointerToVarExpression(instanceGetting, CurrentPosition);
+			realArgs[0] = instanceGetting.ResultTypeSpec.IsRef ? instanceGetting : new GetPointerToVarExpression(instanceGetting, false, CurrentPosition);
 
 			for (int i = 1; i <= arguments.Length; i++)
 			{
@@ -487,7 +487,7 @@ namespace EvolZero.Core.Analysis
 					arguments[i] = ImplicitIntExtenssion(arguments[i], cast.Value);
 				}
 
-				return new CallConstructorExpression(new GetPointerToVarExpression(objMemoryGetting, CurrentPosition), ctorDesc, arguments, CurrentPosition);
+				return new CallConstructorExpression(new GetPointerToVarExpression(objMemoryGetting, false, CurrentPosition), ctorDesc, arguments, CurrentPosition);
 			}
 
 			return objMemoryGetting;
@@ -536,7 +536,8 @@ namespace EvolZero.Core.Analysis
 				return new StubForErrorExpression(CurrentPosition);
 			}
 
-			return new GetPointerToVarExpression(variable, CurrentPosition);
+			bool isOwner = variable is VariableAccessExpression or VariableCreatingExpression;
+			return new GetPointerToVarExpression(variable, isOwner, CurrentPosition);
 		}
 
 		public Expression Division(Expression left, Expression right)
@@ -785,7 +786,7 @@ namespace EvolZero.Core.Analysis
 					expr = new PointerDereferenceExpression(expr, CurrentPosition);
 					varExpr = new PointerDereferenceExpression(varExpr, CurrentPosition);
 				}
-				else if (assignQualifier is not ReferenceQualifier)
+				else if (assignQualifier is not (ReferenceQualifier or BorrowReferenceQualifier))
 				{
 					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "The assignment qualifier must be 'ref'", CurrentPosition);
 					return new StubForErrorExpression(CurrentPosition);

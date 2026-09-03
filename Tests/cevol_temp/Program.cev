@@ -25,7 +25,7 @@ int main()
 
 	ref byte[11] globalStrTets = "aboba111\n";
 
-	ref byte tes = globalStrTets;
+	refb byte tes = globalStrTets;
 
 	printf(ref globalStrTets);
 

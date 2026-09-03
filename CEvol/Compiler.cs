@@ -115,7 +115,7 @@ namespace EvolZero
 				return;
 			}
 
-			var referencesAnalazer = new ReferencesAnalyzer(errorsBag);
+			var referencesAnalazer = new LifeTimesAnalyzer(errorsBag);
 			referencesAnalazer.Visit(program);
 
 			var accessAnalazer = new AccessAnalyzer(errorsBag);

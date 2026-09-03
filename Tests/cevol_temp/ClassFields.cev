@@ -21,8 +21,8 @@ class Conn
 
 class Holder
 {
-	public ref Conn First;
-	public ref Conn Second;
+	public refb Conn First;
+	public refb Conn Second;
 	public int Count;
 
 	public ctor()

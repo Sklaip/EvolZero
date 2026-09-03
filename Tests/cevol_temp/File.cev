@@ -1,7 +1,7 @@
 namespace System;
 
 extern ref int fopen(refb byte fileName, refb byte mode);
-extern long fwrite(refb byte buffer, long size, long count, ref int filePointer);
+extern long fwrite(refb byte buffer, long size, long count, refb int filePointer);
 
 class File
 {
