@@ -1,0 +1,42 @@
+namespace Program;
+
+extern infargs int printf(refb byte ptr);
+
+class TestObj
+{
+	public int Value;
+
+	public ctor(int value)
+	{
+		Value = value;
+	}
+}
+
+int PassRef(ref TestObj b)
+{
+	printf(ref "%d\n", b.Value);
+	return 0;
+}
+
+int main()
+{
+	ref TestObj a = new TestObj(1);
+	ref TestObj b = new TestObj(2);
+	ref TestObj c = new TestObj(3);
+
+	// b деинициализируется в ветке if (переход владения к a), но в ветке else
+	// она ещё жива и должна быть доступна. После if/else b недоступна.
+	if (1 == 1)
+	{
+		ref a = b;
+	}
+	else
+	{
+		PassRef(ref b);
+	}
+
+	printf(ref "%d\n", a.Value);
+	printf(ref "%d\n", c.Value);
+
+	return 0;
+}

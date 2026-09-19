@@ -30,10 +30,74 @@ namespace EvolZero.Core.Analysis.Semantic
 
 	public class LifeTimesAnalyzer : SemanticTreeVisitor<LifeTime?>
 	{
+		public const string LIFETIMES_LAYER = "LifeTimesAnalyzer";
+		public const string DESTRUCTED_ACCESS_ERROR_CODE = "LT001";
+
 		private int _currentBlockNum = -1; // -1 чтобы был 0, потому что при первом входе в HandleStatemetChilds будет инкремент
 		private Dictionary<string, VarMeta> _vars = new();
 		private Stack<CurrentBlock> _currentBlocks = new();
 		private readonly ErrorsBag _errorsBag;
+
+		/// <summary>
+		/// Стек анализа конструкций if/else. Позволяет изолировать состояние переменных
+		/// между параллельными ветками (if/else-if/else): каждая ветка анализируется от
+		/// общего состояния на входе, а после всей конструкции средства совмещаются.
+		/// </summary>
+		private Stack<IfAnalysis> _ifAnalyses = new();
+
+		class IfAnalysis
+		{
+			public Dictionary<string, VarMetaState> Snapshot { get; } = new();
+			public HashSet<string> DestructedInAnyBranch { get; } = new();
+		}
+
+		class VarMetaState
+		{
+			public readonly VarMeta Var;
+			public readonly int BlockNum;
+			public readonly bool IsDestructed;
+			public readonly bool IsInitialized;
+			public readonly List<VarMeta>? IsAliaseTo;
+			public readonly int IsAliaseToCount;
+			public readonly List<VarMeta> Aliases;
+			public readonly int AliasesCount;
+
+			public VarMetaState(VarMeta meta)
+			{
+				Var = meta;
+				BlockNum = meta.BlockNum;
+				IsDestructed = meta.IsDestructed;
+				IsInitialized = meta.IsInitialized;
+				IsAliaseTo = meta.IsAliaseTo;
+				IsAliaseToCount = meta.IsAliaseTo?.Count ?? 0;
+				Aliases = meta.Aliases;
+				AliasesCount = meta.Aliases.Count;
+			}
+
+			public void Restore()
+			{
+				Var.BlockNum = BlockNum;
+				Var.IsDestructed = IsDestructed;
+				Var.IsInitialized = IsInitialized;
+
+				if (IsAliaseTo == null)
+				{
+					Var.IsAliaseTo = null;
+				}
+				else
+				{
+					Var.IsAliaseTo = IsAliaseTo;
+					Truncate(IsAliaseTo, IsAliaseToCount);
+				}
+
+				Truncate(Aliases, AliasesCount);
+			}
+
+			private static void Truncate(List<VarMeta> list, int count)
+			{
+				if (list.Count > count) list.RemoveRange(count, list.Count - count);
+			}
+		}
 
 		private VarMeta? _currentClass;
 		private Dictionary<string, VarMeta>? _currentClassFields;
@@ -71,11 +135,6 @@ namespace EvolZero.Core.Analysis.Semantic
 
 		protected override void HandleFunctionalBlock<TBlock>(TBlock statement)
 		{
-			if (statement.Name == "PassRef")
-			{
-
-			}
-
 			base.HandleFunctionalBlock(statement);
 
 			_currentBlocks = new();
@@ -116,26 +175,84 @@ namespace EvolZero.Core.Analysis.Semantic
 		protected override void HandleIfStatement(IfStatement statement)
 		{
 			_lifetimesConsumer.EnterToIfStatement(statement);
-			base.HandleIfStatement(statement);
-			_lifetimesConsumer.ExitFromIfStatement(statement);
+
+			var analysis = new IfAnalysis();
+			foreach (var (name, meta) in _vars)
+			{
+				analysis.Snapshot[name] = new VarMetaState(meta);
+			}
+
+			_ifAnalyses.Push(analysis);
+
+			try
+			{
+				base.HandleIfStatement(statement);
+				MergeDestructedState(analysis);
+			}
+			finally
+			{
+				_ifAnalyses.Pop();
+				_lifetimesConsumer.ExitFromIfStatement(statement);
+			}
+		}
+
+		/// <summary>Возвращает переменные к состоянию на входе в конструкцию if/else, чтобы ветки не видели изменения соседних.</summary>
+		private void RestoreVariablesToSnapshot()
+		{
+			var snapshot = _ifAnalyses.Peek().Snapshot;
+			foreach (var (name, state) in snapshot)
+			{
+				state.Restore();
+				_vars[name] = state.Var;
+			}
+		}
+
+		/// <summary>Запоминает, какие переменные были деинициализированы в только что обработанной ветке.</summary>
+		private void CollectDestructedVariables()
+		{
+			var analysis = _ifAnalyses.Peek();
+			foreach (var name in analysis.Snapshot.Keys)
+			{
+				if (_vars.TryGetValue(name, out var meta) && meta.IsDestructed)
+					analysis.DestructedInAnyBranch.Add(name);
+			}
+		}
+
+		/// <summary>
+		/// После обработки всех веток любая переменная, деинициализированная хотя бы в одной
+		/// ветке, считается деинициализированной и после всей конструкции if/else.
+		/// </summary>
+		private void MergeDestructedState(IfAnalysis analysis)
+		{
+			foreach (var name in analysis.DestructedInAnyBranch)
+			{
+				if (_vars.TryGetValue(name, out var meta))
+					meta.IsDestructed = true;
+			}
 		}
 
 		protected override void HandleIfChilds(IfStatement statement)
 		{
+			RestoreVariablesToSnapshot();
 			_lifetimesConsumer.HandleConditionSubStatement(statement);
 			base.HandleIfChilds(statement);
+			CollectDestructedVariables();
 		}
 
 		protected override void HandleElseIfChilds(IfStatement statement)
 		{
+			RestoreVariablesToSnapshot();
 			_lifetimesConsumer.HandleConditionSubStatement(statement);
 			base.HandleElseIfChilds(statement);
+			CollectDestructedVariables();
 		}
 
 		protected override void HandleElseChilds(Statement statement)
 		{
+			RestoreVariablesToSnapshot();
 			_lifetimesConsumer.HandleConditionSubStatement(statement);
 			base.HandleElseChilds(statement);
+			CollectDestructedVariables();
 		}
 
 		protected override void SubTreeEnd(LifeTime? value)
@@ -209,10 +326,11 @@ namespace EvolZero.Core.Analysis.Semantic
 		{
 			var structureGetting = HandleExpression(expr.StructureGetting);
 
-			if (structureGetting?.VarData == null)
-				throw new NotImplementedException(); // такой хуйни быть не должно
+			if (structureGetting == null)
+				return null; // ошибка уже зарегистрирована (например, обращение к деинициализированной ссылке)
 
-			if (structureGetting == null) throw new NotImplementedException(); //для дебага. Такого быть не должно
+			if (structureGetting.VarData == null)
+				throw new NotImplementedException(); // такой хуйни быть не должно
 
 			VarMeta meta;
 			if (structureGetting.Expr is AppealToThisExpression)
@@ -256,7 +374,11 @@ namespace EvolZero.Core.Analysis.Semantic
 			if (varMeta == null) throw new NotImplementedException();
 
 			if (varMeta.IsDestructed)
-				throw new NotImplementedException();  // тут ошибка что нельзя обратиться к деинициализированной ссылке
+			{
+				_errorsBag.AddError(LIFETIMES_LAYER, DESTRUCTED_ACCESS_ERROR_CODE,
+					$"Нет доступа к деинициализированной ссылке '{expr.Name}'", expr.Pos);
+				return null;
+			}
 
 			varMeta.IsInitialized = expr.IsInitialized;
 

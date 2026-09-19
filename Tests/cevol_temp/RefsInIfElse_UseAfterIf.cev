@@ -1,0 +1,41 @@
+namespace Program;
+
+extern infargs int printf(refb byte ptr);
+
+class TestObj
+{
+	public int Value;
+
+	public ctor(int value)
+	{
+		Value = value;
+	}
+}
+
+int PassRef(ref TestObj b)
+{
+	return 0;
+}
+
+int main()
+{
+	ref TestObj a = new TestObj(1);
+	ref TestObj b = new TestObj(2);
+	ref TestObj c = new TestObj(3);
+
+	// b деинициализируется в любой ветке if/else, поэтому после блока к ней
+	// обращаться нельзя: использование b ниже должно дать ошибку компиляции.
+	if (1 == 1)
+	{
+		ref a = b;
+	}
+	else
+	{
+		PassRef(ref b);
+	}
+
+	ref TestObj x = b;
+
+	printf(ref "%d\n", x.Value);
+	return 0;
+}
