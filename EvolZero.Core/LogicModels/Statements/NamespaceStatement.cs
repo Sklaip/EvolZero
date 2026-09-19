@@ -8,7 +8,7 @@ namespace EvolZero.Core.LogicModels.Statements
 	{
 		public readonly string NameSpace;
 
-		public NamespaceStatement(string nameSpace, IReadOnlyCollection<ILogicModel> childs, PositionInSources pos) : base(childs, pos)
+		public NamespaceStatement(string nameSpace, IReadOnlyList<ILogicModel> childs, PositionInSources pos) : base(childs, pos)
 		{
 			NameSpace = nameSpace;
 		}

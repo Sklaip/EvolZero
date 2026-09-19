@@ -1,65 +1,150 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using EvolZero.Core.LogicModels.Expressions;
+﻿using EvolZero.Core.LogicModels.Expressions;
 using EvolZero.Core.LogicModels.Statements;
 using EvolZero.Core.MemebersModels;
+using EvolZero.Core.Tools;
+using System;
+using System.Collections.Generic;
+using System.Reflection;
+using System.Text;
 
 namespace EvolZero.Core.Analysis.Semantic
 {
 	public class LifeTime
 	{
 		public Expression Expr { get; set; }
+		public VarMeta? VarData { get; set; }
 		public int BlockNum { get; set; }
-		public bool IsInitialized { get; set; }
 		public bool ToLocalValue { get; set; }
-		public bool IsNotRef { get; set; }
+		public bool IsLocal { get; set; }
 		public bool IsAnonymous { get; set; }
-		public List<LifeTime> ActiveAliases { get; set; }
-		public LifeTime? IsAliaseTo { get; set; }
+	}
+
+	public class VarMeta(int blockNum, bool isDestructed, bool isInitialized, List<VarMeta>? isAliseTo)
+	{
+		public int BlockNum { get; set; } = blockNum;
+		public bool IsDestructed { get; set; } = isDestructed;
+		public bool IsInitialized { get; set; } = isInitialized;
+		public List<VarMeta> Aliases { get; set; } = new();
+		public List<VarMeta>? IsAliaseTo { get; set; } = isAliseTo;
 	}
 
 	public class LifeTimesAnalyzer : SemanticTreeVisitor<LifeTime?>
 	{
 		private int _currentBlockNum = -1; // -1 чтобы был 0, потому что при первом входе в HandleStatemetChilds будет инкремент
-		private Dictionary<string, int> _variablesBlocks = new();
-		private HashSet<string> _givenRefs = new();
-		private Stack<List<LifeTime>> _currentLifetimes = new();
+		private Dictionary<string, VarMeta> _vars = new();
+		private Stack<CurrentBlock> _currentBlocks = new();
 		private readonly ErrorsBag _errorsBag;
+
+		private VarMeta? _currentClass;
+		private Dictionary<string, VarMeta>? _currentClassFields;
+
+		private ILifitemesBypassConsumer _lifetimesConsumer = new LiftimesConsumer();
+
+		class CurrentBlock(Statement codeBlock)
+		{
+			public Statement CodeBlock { get; } = codeBlock;
+			public List<LifeTime> Vars { get; } = new();
+		}
 
 		public LifeTimesAnalyzer(ErrorsBag errorsBag)
 		{
 			_errorsBag = errorsBag;
 		}
 
+		protected override void HandleClass(ClassStatement statement)
+		{
+			_currentClass = new VarMeta(-1, false, true, null);
+
+			_currentClassFields = statement.TypeDesc.Variables.Values.Select(x => (x.Name, new VarMeta(-1, false, false, null)
+			{
+				Aliases = [_currentClass]
+			}
+			)).ToDictionary();
+
+			_currentClass.IsAliaseTo = _currentClassFields.Values.ToList();
+
+			base.HandleClass(statement);
+
+			_currentClass = null;
+			_currentClassFields = null;
+		}
+
 		protected override void HandleFunctionalBlock<TBlock>(TBlock statement)
 		{
+			if (statement.Name == "PassRef")
+			{
+
+			}
+
 			base.HandleFunctionalBlock(statement);
 
-			_givenRefs = new();
-			_currentLifetimes = new();
-			_variablesBlocks = new();
+			_currentBlocks = new();
+			_vars = new();
 			_currentBlockNum = -1;
 		}
 
 		protected override void HandleStatemetChilds(Statement statement)
 		{
-			_currentLifetimes.Push(new());
+			_currentBlocks.Push(new(statement));
 			_currentBlockNum++;
+
+			if (statement is IFunctionalBlockStatement fst)
+			{
+				foreach (var argument in fst.Arguments)
+				{
+					var variable = new VarMeta(_currentBlockNum, false, true, null);
+					_vars.Add(argument.Name, variable);
+
+					var lifetime = new LifeTime()
+					{
+						Expr = new VariableAccessExpression(argument.Name, argument.Declaring, true, statement.Pos),
+						BlockNum = _currentBlockNum,
+						VarData = variable,
+						ToLocalValue = false
+					};
+
+					_currentBlocks.Peek().Vars.Add(lifetime);
+				}
+			}
 
 			base.HandleStatemetChilds(statement);
 
 			_currentBlockNum--;
-			ExitFromBlock();
+			_currentBlocks.Pop();
+		}
+
+		protected override void HandleIfStatement(IfStatement statement)
+		{
+			_lifetimesConsumer.EnterToIfStatement(statement);
+			base.HandleIfStatement(statement);
+			_lifetimesConsumer.ExitFromIfStatement(statement);
+		}
+
+		protected override void HandleIfChilds(IfStatement statement)
+		{
+			_lifetimesConsumer.HandleConditionSubStatement(statement);
+			base.HandleIfChilds(statement);
+		}
+
+		protected override void HandleElseIfChilds(IfStatement statement)
+		{
+			_lifetimesConsumer.HandleConditionSubStatement(statement);
+			base.HandleElseIfChilds(statement);
+		}
+
+		protected override void HandleElseChilds(Statement statement)
+		{
+			_lifetimesConsumer.HandleConditionSubStatement(statement);
+			base.HandleElseChilds(statement);
 		}
 
 		protected override void SubTreeEnd(LifeTime? value)
 		{
 			if (value == null) return;
 
-			if (value.IsAnonymous)
+			if (value.IsAnonymous && value.Expr.ResultTypeSpec.IsOwnerRef)
 			{
-				ToDestructPointer(value, false);
+				//ToDestructPointer(value);
 			}
 		}
 
@@ -69,7 +154,6 @@ namespace EvolZero.Core.Analysis.Semantic
 			{
 				Expr = expr,
 				BlockNum = _currentBlockNum,
-				IsInitialized = true,
 				ToLocalValue = false,
 				IsAnonymous = true
 			};
@@ -81,7 +165,6 @@ namespace EvolZero.Core.Analysis.Semantic
 			{
 				Expr = expr,
 				BlockNum = _currentBlockNum,
-				IsInitialized = true,
 				ToLocalValue = false,
 				IsAnonymous = true
 			};
@@ -93,7 +176,6 @@ namespace EvolZero.Core.Analysis.Semantic
 			{
 				Expr = expr,
 				BlockNum = _currentBlockNum,
-				IsInitialized = true,
 				ToLocalValue = expr.Variable is VariableCreatingExpression or VariableAccessExpression,
 				IsAnonymous = true
 			};
@@ -105,9 +187,9 @@ namespace EvolZero.Core.Analysis.Semantic
 			{
 				Expr = expr,
 				BlockNum = 0,
-				IsInitialized = true,
 				ToLocalValue = false,
-				IsAnonymous = true
+				IsAnonymous = true,
+				VarData = _currentClass
 			};
 		}
 
@@ -118,7 +200,6 @@ namespace EvolZero.Core.Analysis.Semantic
 			{
 				Expr = expr,
 				BlockNum = _currentBlockNum,
-				IsInitialized = true,
 				ToLocalValue = false,
 				IsAnonymous = true
 			};
@@ -128,56 +209,75 @@ namespace EvolZero.Core.Analysis.Semantic
 		{
 			var structureGetting = HandleExpression(expr.StructureGetting);
 
+			if (structureGetting?.VarData == null)
+				throw new NotImplementedException(); // такой хуйни быть не должно
+
+			if (structureGetting == null) throw new NotImplementedException(); //для дебага. Такого быть не должно
+
+			VarMeta meta;
+			if (structureGetting.Expr is AppealToThisExpression)
+			{
+				if (_currentClassFields == null)
+					throw new NotImplementedException(); // такой хуйни быть не должно
+				meta = _currentClassFields[expr.Field.Name];
+				meta.IsInitialized = expr.IsInitialized;
+			}
+			else
+			{
+				meta = new VarMeta(structureGetting.VarData.BlockNum, false, expr.IsInitialized, null)
+				{
+					Aliases = [structureGetting.VarData]
+				};
+			}
+
 			if (!expr.ResultTypeSpec.IsRef)
 			{
 				return new LifeTime()
 				{
 					Expr = expr,
 					BlockNum = structureGetting.BlockNum,
-					IsInitialized = true,
-					IsNotRef = true
+					VarData = meta
 				};
 			}
-
-			if (structureGetting == null) throw new NotImplementedException(); //для дебага. Такого быть не должно
 
 			return new LifeTime()
 			{
 				Expr = expr,
 				BlockNum = structureGetting.BlockNum,
-				IsInitialized = true,
+				VarData = meta,
 				ToLocalValue = false
 			};
 		}
 
 		protected override LifeTime? VarAccess(VariableAccessExpression expr)
 		{
-			int blocknum = 0;
-			_variablesBlocks.TryGetValue(expr.Name, out blocknum);
+			_vars.TryGetValue(expr.Name, out var varMeta);
+
+			if (varMeta == null) throw new NotImplementedException();
+
+			if (varMeta.IsDestructed)
+				throw new NotImplementedException();  // тут ошибка что нельзя обратиться к деинициализированной ссылке
+
+			varMeta.IsInitialized = expr.IsInitialized;
 
 			if (!expr.ResultTypeSpec.IsRef)
 			{
 				return new LifeTime()
 				{
 					Expr = expr,
-					BlockNum = blocknum,
-					IsInitialized = true,
-					IsNotRef = true
+					BlockNum = varMeta.BlockNum,
+					VarData = varMeta,
+					IsLocal = true
 				};
-			}
-
-
-			if (_givenRefs.Contains(expr.Name))
-			{
-				throw new NotImplementedException(); // тут ошибка что нельзя обратиться к ссылке которую мы отдали
 			}
 
 			return new LifeTime()
 			{
 				Expr = expr,
-				BlockNum = blocknum,
-				IsInitialized = true,
-				ToLocalValue = false
+				BlockNum = varMeta.BlockNum,
+				VarData = varMeta,
+				ToLocalValue = false,
+				IsLocal = true
 			};
 		}
 
@@ -185,10 +285,15 @@ namespace EvolZero.Core.Analysis.Semantic
 		{
 			int i = 0;
 			int j = 0;
-			if (expr.Function.DeclaringType != null) j++;
 
 			var acceptedArguments = expr.Function.Arguments;
 			var passedArguments = expr.Arguments;
+
+			if (expr.Function.DeclaringType != null)
+			{
+				HandleExpression(passedArguments[0]);
+				j++;
+			}
 
 			for (; i < acceptedArguments.Length; i++, j++)
 			{
@@ -203,7 +308,6 @@ namespace EvolZero.Core.Analysis.Semantic
 			{
 				Expr = expr,
 				BlockNum = _currentBlockNum,
-				IsInitialized = true,
 				ToLocalValue = false,
 				IsAnonymous = true
 			};
@@ -211,18 +315,20 @@ namespace EvolZero.Core.Analysis.Semantic
 
 		protected override LifeTime? CreateVar(VariableCreatingExpression expr)
 		{
-			_variablesBlocks[expr.Name] = _currentBlockNum;
+			var currentVar = new VarMeta(_currentBlockNum, false, false, null);
+
+			_vars[expr.Name] = currentVar;
 			if (!expr.ResultTypeSpec.IsRef) return null;
 
 			var lifetime = new LifeTime()
 			{
-				Expr = expr,
+				Expr = new VariableAccessExpression(expr.Name, expr.ResultTypeSpec, expr.IsInitialized, expr.Pos),
 				BlockNum = _currentBlockNum,
-				IsInitialized = false,
+				VarData = currentVar,
 				ToLocalValue = false
 			};
 
-			_currentLifetimes.Peek().Add(lifetime);
+			_currentBlocks.Peek().Vars.Add(lifetime);
 
 			return lifetime;
 		}
@@ -238,10 +344,16 @@ namespace EvolZero.Core.Analysis.Semantic
 			{
 				case BinaryOperation.Assing:
 					AssingHandler(left, right);
-					return right;
+					return left;
 				default:
 					return null;
 			}
+		}
+
+		protected override void HandleReturnStatement(ReturnStatement statement)
+		{
+			DestructLifetimes();
+			base.HandleReturnStatement(statement);
 		}
 
 		private void AssingHandler(LifeTime variable, LifeTime value)
@@ -251,10 +363,13 @@ namespace EvolZero.Core.Analysis.Semantic
 			if (value.BlockNum > variable.BlockNum && !value.IsAnonymous)
 				throw new NotImplementedException(); // ошибка что время жизни больше времени жизни ссылки
 
-			if (!value.IsInitialized)
-				throw new NotImplementedException(); // ссылка был деинициализированна. Вообще сюда оно попадть не должно, оно должно отбрасываться на других проверках
+			if (value.VarData != null && (value.VarData.IsDestructed || !value.VarData.IsInitialized))
+				throw new NotImplementedException(); // ссылка была деинициализированна. Вообще сюда оно попадть не должно, оно должно отбрасываться на других проверках
 
 			var varIsOwner = variable.Expr.ResultTypeSpec.IsOwnerRef;
+
+			if (variable.VarData == null)
+				throw new NotImplementedException(); // такой хуйни быть не должно
 
 			if (varIsOwner)
 			{
@@ -264,8 +379,16 @@ namespace EvolZero.Core.Analysis.Semantic
 				if (value.Expr is StructureFieldAccessExpression)
 					throw new NotImplementedException(); // нельзя снимать владеюущие ссылки с классов. Потом для этого сделать оператор замены или ссылку обнулять
 
-				if (variable.IsInitialized && !variable.ToLocalValue)
-					ToDestructPointer(variable, false);
+				if (variable.VarData.IsInitialized)
+				{
+					if (!variable.IsLocal)
+						throw new NotImplementedException(); // нельзя переназначать уже инициализированные не локальные ссылки (поля класов например)
+
+					ToDestructPointer(variable); // удалям старую ссылку
+				}
+
+				if (!value.IsAnonymous && !variable.ToLocalValue)
+					_lifetimesConsumer.GiveAwayOwnershipToRef(value.Expr);
 
 				variable.BlockNum = value.BlockNum;
 
@@ -274,17 +397,32 @@ namespace EvolZero.Core.Analysis.Semantic
 			else
 			{
 				if (value.IsAnonymous && !value.ToLocalValue)
-					throw new NotImplementedException(); // ошибка что анонимные ссылоки (напрмиер те что выдаются через new и loc) можно присвивать только во владеющие ссылки
+					throw new NotImplementedException(); // ошибка что анонимные ссылки (напрмиер те что выдаются через new и loc) можно присвивать только во владеющие ссылки
 
-				var parent = value.IsAliaseTo ?? value;
-				variable.IsAliaseTo = parent;
+				if (value.VarData != null)
+				{
+					if (variable.VarData.IsAliaseTo == null)
+						variable.VarData.IsAliaseTo = new();
 
-				parent.ActiveAliases ??= new List<LifeTime>();
-				parent.ActiveAliases.Add(variable);
+					if (value.VarData.IsAliaseTo != null)
+					{
+						variable.VarData.IsAliaseTo.AddRange(value.VarData.IsAliaseTo);
+					}
+					else
+					{
+						variable.VarData.IsAliaseTo.Add(value.VarData);
+					}
+
+					if (value.VarData.Aliases == null)
+						value.VarData.Aliases = new();
+
+					value.VarData.Aliases.Add(variable.VarData);
+				}
+
 			}
 
-			variable.IsInitialized = true;
 			variable.ToLocalValue = value.ToLocalValue;
+			variable.VarData.IsInitialized = true;
 		}
 
 		private void PassToArgumentHandler(TypeSpec argument, LifeTime value)
@@ -308,36 +446,45 @@ namespace EvolZero.Core.Analysis.Semantic
 			}
 		}
 
-		private void ToDestructPointer(LifeTime pointer, bool isEndBlock)
+		private void ToDestructPointer(LifeTime pointer)
 		{
-			//если у ссылки есть алиасы, то удаляем ее в конце блока, если нету, то немедленно
-		}
+			if (pointer.VarData == null) throw new NotImplementedException(); // такой хуйни быть не должно
 
-		private void GiveAwayOwnership(LifeTime pointer)
-		{
-			if (pointer.ActiveAliases != null && pointer.ActiveAliases.Count > 0)
+			if (pointer.VarData.Aliases != null && pointer.VarData.Aliases.Count > 0)
 			{
 				throw new NotImplementedException(); // ошибка что нельзя передавать владение ссылкой у которой есть алиасы
 			}
 
-			if (pointer.Expr is VariableAccessExpression accessExpression)
+			if (!pointer.VarData.IsInitialized || pointer.VarData.IsDestructed || !pointer.Expr.ResultTypeSpec.IsOwnerRef)
+				return;
+
+			var expr = _lifetimesConsumer.DestructPointer(pointer.Expr);
+			if (expr != null)
 			{
-				_givenRefs.Add(accessExpression.Name);
-				pointer.IsInitialized = false;
+				AddToCurrentStatement(expr);
 			}
 		}
 
-		private void ExitFromBlock()
+		private void GiveAwayOwnership(LifeTime pointer)
 		{
-			foreach (var lifetime in _currentLifetimes.Pop())
+			if (pointer.VarData == null) return;
+
+			if (pointer.VarData.Aliases != null && pointer.VarData.Aliases.Count > 0)
 			{
-				ToDestructPointer(lifetime, true);
+				throw new NotImplementedException(); // ошибка что нельзя передавать владение ссылкой у которой есть алиасы
 			}
+
+			pointer.VarData.IsDestructed = true;
 		}
 
-		/* Правила работы:
-		Если отдали владение ссылки, то дальнейшее ее использование запрещается
+		private void DestructLifetimes()
+		{
+			var block = _currentBlocks.Peek();
 
-		 */
+			foreach (var lifetime in block.Vars)
+			{
+				ToDestructPointer(lifetime);
+			}
+		}
 	}
 }

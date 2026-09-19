@@ -10,7 +10,7 @@ namespace EvolZero.Core.LogicModels.Statements
 		public readonly ConstructorDesc ConstuctorSignature;
 		private readonly TypeSpec _voidType;
 
-		public ConstructorStatement(ConstructorDesc constructorSignature, IReadOnlyCollection<ILogicModel> childs, TypeSpec voidType, PositionInSources pos) : base(childs, pos)
+		public ConstructorStatement(ConstructorDesc constructorSignature, IReadOnlyList<ILogicModel> childs, TypeSpec voidType, PositionInSources pos) : base(childs, pos)
 		{
 			ConstuctorSignature = constructorSignature;
 			_voidType = voidType;
@@ -23,5 +23,7 @@ namespace EvolZero.Core.LogicModels.Statements
 		public IFuncRefData RefData => ConstuctorSignature.RefData;
 
 		public string Name => "ctor";
+
+		public override bool InevitableTerminating => LastStatementIsTerminating();
 	}
 }

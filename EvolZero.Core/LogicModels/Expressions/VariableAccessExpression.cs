@@ -5,12 +5,14 @@ using System.Text;
 
 namespace EvolZero.Core.LogicModels.Expressions
 {
-	public class VariableAccessExpression : Expression
+	public class VariableAccessExpression : Expression, IInitializableExpresion
 	{
 		public readonly string Name;
-		public VariableAccessExpression(string name, TypeSpec resultTypeSpec, PositionInSources pos) : base(resultTypeSpec, pos)
+		public bool IsInitialized { get; set; } = false;
+		public VariableAccessExpression(string name, TypeSpec resultTypeSpec, bool isInitialized, PositionInSources pos) : base(resultTypeSpec, pos)
 		{
 			Name = name;
+			IsInitialized = isInitialized;
 		}
 	}
 }

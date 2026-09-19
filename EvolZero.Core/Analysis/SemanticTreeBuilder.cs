@@ -4,6 +4,8 @@ using EvolZero.Core.LogicModels;
 using EvolZero.Core.LogicModels.Expressions;
 using EvolZero.Core.LogicModels.Statements;
 using EvolZero.Core.MemebersModels;
+using EvolZero.Core.Tools;
+using Microsoft.VisualBasic.FileIO;
 using System.Numerics;
 using System.Reflection.Metadata;
 using System.Text;
@@ -24,18 +26,33 @@ namespace EvolZero.Core.Analysis
 
 		public bool UnsafeMode { get; set; } = true;
 
+		private class Var(TypeSpec type, bool isInit)
+		{
+			public TypeSpec Type { get; set; } = type;
+			public bool IsInit { get; set; } = isInit;
+		}
+
+		private class Field(VariableDesc type, bool isInit)
+		{
+			public VariableDesc Type { get; set; } = type;
+			public bool IsInit { get; set; } = isInit;
+		}
+
 		private class CodeBlock
 		{
 			// TODO: здесь наверное сделать параметр показывающий текущий тип блока (функция, класс и тп) чтобы понимать можно ли сюда пихать выражение
 			public Statement CurentStatement;
 			public List<ILogicModel> StatementChilds;
-			public Dictionary<string, Expression> Variables = new();
+			public Dictionary<string, Var> Variables = new();
+			public Dictionary<string, Field>? CurrentClassFields;
 			public IFunctionalBlockStatement? CurrentFunction;
 			public ClassStatement? CurrentClass;
 
-			public CodeBlock(Statement curentStatement, List<ILogicModel> statementChilds, Dictionary<string, Expression> variables, IFunctionalBlockStatement? currentFunction, ClassStatement? currentClass)
+			public CodeBlock(Statement curentStatement, List<ILogicModel> statementChilds, Dictionary<string, Var> variables,
+				Dictionary<string, Field>? currentClassFields, IFunctionalBlockStatement? currentFunction, ClassStatement? currentClass)
 			{
 				CurentStatement = curentStatement;
+				CurrentClassFields = currentClassFields;
 				StatementChilds = statementChilds;
 				Variables = variables;
 				CurrentFunction = currentFunction;
@@ -56,7 +73,7 @@ namespace EvolZero.Core.Analysis
 			var childs = new List<ILogicModel>();
 			var statement = new NamespaceStatement(nameSpace, childs, CurrentPosition);
 
-			_blocks.Push(new CodeBlock(statement, childs, [], null, null));
+			_blocks.Push(new CodeBlock(statement, childs, [], null, null, null));
 		}
 
 		public void Using(string nameSpace)
@@ -76,7 +93,7 @@ namespace EvolZero.Core.Analysis
 			CodeBlock block = _blocks.Peek();
 			block.StatementChilds.Add(statement);
 
-			_blocks.Push(new CodeBlock(statement, childs, [], null, statement));
+			_blocks.Push(new CodeBlock(statement, childs, [], null, null, statement));
 		}
 
 		public void EnterToFunction(string funcName, List<(TypeSpec Type, string Name)> parameters)
@@ -119,14 +136,16 @@ namespace EvolZero.Core.Analysis
 
 			block.StatementChilds.Add(statement);
 
-			var variables = new Dictionary<string, Expression>();
+			var variables = new Dictionary<string, Var>();
 
 			foreach (var param in parameters)
 			{
-				variables[param.Name] = new VariableAccessExpression(param.Name, param.Type, CurrentPosition);
+				variables[param.Name] = new(param.Type, true);
 			}
 
-			_blocks.Push(new CodeBlock(statement, childs, variables, statement, currentClass));
+			var classFields = currentClass?.TypeDesc.Variables.Values.Select(x => (x.Name, new Field(x, true))).ToDictionary();
+
+			_blocks.Push(new CodeBlock(statement, childs, variables, classFields, statement, currentClass));
 		}
 
 		public void EnterToConstructor(List<(TypeSpec Type, string Name)> parameters)
@@ -156,14 +175,16 @@ namespace EvolZero.Core.Analysis
 
 			block.StatementChilds.Add(statement);
 
-			var variables = new Dictionary<string, Expression>();
+			var variables = new Dictionary<string, Var>();
 
 			foreach (var param in parameters)
 			{
-				variables[param.Name] = new VariableAccessExpression(param.Name, param.Type, CurrentPosition);
+				variables[param.Name] = new(param.Type, true);
 			}
 
-			_blocks.Push(new CodeBlock(statement, childs, variables, statement, currentClass));
+			var classFields = currentClass?.TypeDesc.Variables.Values.Select(x => (x.Name, new Field(x, false))).ToDictionary();
+
+			_blocks.Push(new CodeBlock(statement, childs, variables, classFields, statement, currentClass));
 		}
 
 		public void EnterToIfBlock(Expression condition)
@@ -173,12 +194,15 @@ namespace EvolZero.Core.Analysis
 
 			CodeBlock block = _blocks.Peek();
 			block.StatementChilds.Add(statement);
+
 			var currentFunction = block.CurrentFunction;
 			if (currentFunction == null) throw new NotImplementedException();
 			var currentClass = block.CurrentClass;
-			var variables = new Dictionary<string, Expression>(block.Variables);
 
-			_blocks.Push(new CodeBlock(statement, childs, variables, currentFunction, currentClass));
+			var variables = new Dictionary<string, Var>(block.Variables);
+			var classFields = (block.CurrentClassFields != null) ? new Dictionary<string, Field>(block.CurrentClassFields) : null;
+
+			_blocks.Push(new CodeBlock(statement, childs, variables, classFields, currentFunction, currentClass));
 
 			if (CheckStubForError(condition)) return;
 
@@ -206,9 +230,10 @@ namespace EvolZero.Core.Analysis
 			if (currentFunction == null) throw new NotImplementedException();
 
 			var currentClass = block.CurrentClass;
-			var variables = new Dictionary<string, Expression>(block.Variables);
+			var variables = new Dictionary<string, Var>(block.Variables);
+			var classFields = (block.CurrentClassFields != null) ? new Dictionary<string, Field>(block.CurrentClassFields) : null;
 
-			_blocks.Push(new CodeBlock(statement, childs, variables, currentFunction, currentClass));
+			_blocks.Push(new CodeBlock(statement, childs, variables, classFields, currentFunction, currentClass));
 
 			if (CheckStubForError(condition)) return;
 
@@ -243,9 +268,10 @@ namespace EvolZero.Core.Analysis
 			if (currentFunction == null) throw new NotImplementedException();
 
 			var currentClass = block.CurrentClass;
-			var variables = new Dictionary<string, Expression>(block.Variables);
+			var variables = new Dictionary<string, Var>(block.Variables);
+			var classFields = (block.CurrentClassFields != null) ? new Dictionary<string, Field>(block.CurrentClassFields) : null;
 
-			_blocks.Push(new CodeBlock(statement, childs, variables, currentFunction, currentClass));
+			_blocks.Push(new CodeBlock(statement, childs, variables, classFields, currentFunction, currentClass));
 		}
 
 		public void EnterToWhileBlock(Expression condition)
@@ -255,12 +281,16 @@ namespace EvolZero.Core.Analysis
 
 			CodeBlock block = _blocks.Peek();
 			block.StatementChilds.Add(statement);
+
 			var currentFunction = block.CurrentFunction;
 			if (currentFunction == null) throw new NotImplementedException();
 			var currentClass = block.CurrentClass;
-			var variables = new Dictionary<string, Expression>(block.Variables);
 
-			_blocks.Push(new CodeBlock(statement, childs, variables, currentFunction, currentClass));
+			// TODO: вынести в отдельный метод наверное эти копирования
+			var variables = new Dictionary<string, Var>(block.Variables);
+			var classFields = (block.CurrentClassFields != null) ? new Dictionary<string, Field>(block.CurrentClassFields) : null;
+
+			_blocks.Push(new CodeBlock(statement, childs, variables, classFields, currentFunction, currentClass));
 
 			if (CheckStubForError(condition)) return;
 
@@ -282,6 +312,10 @@ namespace EvolZero.Core.Analysis
 				{
 					block.StatementChilds.Add(new ReturnStatement(new SimpleTypeExpression(new TypeSpec(voidType), CurrentPosition), CurrentPosition));
 				}
+				else if (!statement.InevitableTerminating)
+				{
+					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Не все пути возвращают значение!", CurrentPosition);
+				}
 			}
 
 			return statement;
@@ -298,6 +332,7 @@ namespace EvolZero.Core.Analysis
 			var currentFunction = block.CurrentFunction;
 			if (currentFunction == null) throw new NotImplementedException();
 
+			CheckInitializable(returnResult);
 			returnResult = AutoDereferenceIfPointer(returnResult);
 
 			if (!_typeAnalyzer.CheckTypeMatching(currentFunction.ReturnType, returnResult.ResultTypeSpec, out bool needCast))
@@ -318,6 +353,7 @@ namespace EvolZero.Core.Analysis
 		{
 			if (CheckStubForError(args)) return new StubForErrorExpression(CurrentPosition);
 
+			CheckInitializable(args);
 			var arguments = args.Select(AutoDereferenceIfPointer).ToArray();
 
 			// TODO: внутри класса при вызове метода выдавать ошибку если сигнатура вызываемого метода пересекается с сигнатурой какой-то внешней функции
@@ -358,6 +394,9 @@ namespace EvolZero.Core.Analysis
 		public Expression CallClassMethod(string name, Expression instanceGetting, Expression[] args)
 		{
 			if (CheckStubForError(args) || CheckStubForError(instanceGetting)) return new StubForErrorExpression(CurrentPosition);
+
+			CheckInitializable(instanceGetting);
+			CheckInitializable(args);
 
 			var arguments = args.Select(AutoDereferenceIfPointer).ToArray();
 
@@ -401,6 +440,8 @@ namespace EvolZero.Core.Analysis
 
 		public Expression AllocateHeapMemory(TypeSpec type, Expression[]? args)
 		{
+			CheckInitializable(args);
+
 			if (type.QualifiersExists)
 			{
 				if (args != null && args.Length > 0)
@@ -428,13 +469,7 @@ namespace EvolZero.Core.Analysis
 		{
 			if (CheckStubForError(args)) return new StubForErrorExpression(CurrentPosition);
 
-			//var typeDesc = _membersFinder.TryFindType(typeName);
-			//if (typeDesc == null)
-			//{
-			//	_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", $"The type '{typeName}' was not found", CurrentPosition);
-			//	return new StubForErrorExpression(CurrentPosition);
-			//}
-
+			CheckInitializable(args);
 			var arguments = args.Select(AutoDereferenceIfPointer).ToArray();
 
 			ConstructorDesc? ctorDesc = null;
@@ -463,6 +498,9 @@ namespace EvolZero.Core.Analysis
 		{
 			if (CheckStubForError(objMemoryGetting)) return new StubForErrorExpression(CurrentPosition);
 			if (args != null && CheckStubForError(args)) return new StubForErrorExpression(CurrentPosition);
+
+			CheckInitializable(args);
+			InitializeVariable(objMemoryGetting);
 
 			ConstructorDesc? ctorDesc = null;
 			var constructors = _membersFinder.FindConstructors(typeDesc);
@@ -496,6 +534,8 @@ namespace EvolZero.Core.Analysis
 
 		public Expression ClassFieldAccess(Expression instanceGetting, string fieldName)
 		{
+			CheckInitializable(instanceGetting);
+
 			if (!instanceGetting.ResultTypeSpec.Type.Variables.TryGetValue(fieldName, out VariableDesc variable))
 			{
 				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "The class field does not exist", CurrentPosition);
@@ -503,11 +543,14 @@ namespace EvolZero.Core.Analysis
 			}
 
 			instanceGetting = AutoDereferenceIfPointer(instanceGetting);
-			return new StructureFieldAccessExpression(variable, instanceGetting, variable.Declaring, CurrentPosition);
+			return new StructureFieldAccessExpression(variable, instanceGetting, variable.Declaring, true, CurrentPosition);
 		}
 
 		public Expression ArrayCellAccess(Expression arrayGetting, Expression indexGetting)
 		{
+			CheckInitializable(arrayGetting);
+			CheckInitializable(indexGetting);
+
 			// TODO: сделать проверку indexGetting
 			arrayGetting = AutoDereferenceIfPointer(arrayGetting);
 
@@ -522,6 +565,8 @@ namespace EvolZero.Core.Analysis
 
 		public Expression GetPointerToVar(Expression variable)
 		{
+			CheckInitializable(variable);
+
 			if (CheckStubForError(variable)) return new StubForErrorExpression(CurrentPosition);
 
 			bool isLValue = variable is VariableAccessExpression
@@ -562,6 +607,9 @@ namespace EvolZero.Core.Analysis
 
 		public Expression ArithmeticOperation(Expression left, Expression right, BinaryOperation operation, string operand)
 		{
+			CheckInitializable(left);
+			CheckInitializable(right);
+
 			if (CheckStubForError(left, right)) return new StubForErrorExpression(CurrentPosition);
 
 			var leftAccessor = AutoDereferenceIfPointer(left);
@@ -588,6 +636,9 @@ namespace EvolZero.Core.Analysis
 
 		public Expression Compare(Expression left, Expression right, CompareOperator compareOperator)
 		{
+			CheckInitializable(left);
+			CheckInitializable(right);
+
 			if (CheckStubForError(left, right)) return new StubForErrorExpression(CurrentPosition);
 
 			var uIntType = new TypeSpec(_membersFinder.FindType("uint"));
@@ -625,6 +676,9 @@ namespace EvolZero.Core.Analysis
 
 		public Expression LogicalAnd(Expression left, Expression right)
 		{
+			CheckInitializable(left);
+			CheckInitializable(right);
+
 			if (CheckStubForError(left, right)) return new StubForErrorExpression(CurrentPosition);
 
 			var boolType = _membersFinder.FindType("bool");
@@ -654,6 +708,9 @@ namespace EvolZero.Core.Analysis
 
 		private Expression BitOperationPrepeare(BinaryOperation operation, Expression left, Expression right)
 		{
+			CheckInitializable(left);
+			CheckInitializable(right);
+
 			if (CheckStubForError(left, right)) return new StubForErrorExpression(CurrentPosition);
 
 			var boolType = _membersFinder.FindType("bool");
@@ -689,6 +746,8 @@ namespace EvolZero.Core.Analysis
 
 		public Expression BitNot(Expression expr)
 		{
+			CheckInitializable(expr);
+
 			if (CheckStubForError(expr)) return new StubForErrorExpression(CurrentPosition);
 
 			var boolType = _membersFinder.FindType("bool");
@@ -734,6 +793,8 @@ namespace EvolZero.Core.Analysis
 
 		public Expression CreateLocalVariable(string name, TypeSpec declaring, Expression[]? args)
 		{
+			CheckInitializable(args);
+
 			CodeBlock block = _blocks.Peek();
 			if (block.Variables.ContainsKey(name))
 			{
@@ -742,7 +803,7 @@ namespace EvolZero.Core.Analysis
 			}
 
 			var varExpr = new VariableCreatingExpression(name, declaring, CurrentPosition);
-			block.Variables[name] = new VariableAccessExpression(name, declaring, CurrentPosition);
+			block.Variables[name] = new(declaring, false);
 
 			if (!declaring.QualifiersExists)
 			{
@@ -752,9 +813,31 @@ namespace EvolZero.Core.Analysis
 			return varExpr;
 		}
 
+		private void InitializeVariable(Expression expr)
+		{
+			if (expr is not IInitializableExpresion initializable || initializable.IsInitialized)
+				return;
+
+			if (expr is StructureFieldAccessExpression field)
+			{
+				_blocks.Peek().CurrentClassFields![field.Field.Name].IsInit = true;
+			}
+			else if (expr is VariableAccessExpression varAccess)
+			{
+				_blocks.Peek().Variables[varAccess.Name].IsInit = true;
+			}
+			else if (expr is VariableCreatingExpression varCreate)
+			{
+				_blocks.Peek().Variables[varCreate.Name].IsInit = true;
+			}
+		}
+
 		public Expression VariableAssing(Expression varExpr, Expression expr, Qualifier? assignQualifier)
 		{
+			CheckInitializable(expr);
 			if (CheckStubForError(varExpr, expr)) return new StubForErrorExpression(CurrentPosition);
+
+			InitializeVariable(varExpr);
 
 			bool needCast = false;
 			if (varExpr.ResultTypeSpec.IsRef && !expr.ResultTypeSpec.IsRef)
@@ -821,6 +904,7 @@ namespace EvolZero.Core.Analysis
 			if (CheckStubForError(expr)) return new StubForErrorExpression(CurrentPosition);
 
 			if (!expr.ResultTypeSpec.IsRef || expr is GetPointerToVarExpression || expr is DoNotAutoDereferenceIfPointerExpression) return expr;
+
 			return new PointerDereferenceExpression(expr, CurrentPosition);
 		}
 
@@ -836,21 +920,21 @@ namespace EvolZero.Core.Analysis
 					return new StubForErrorExpression(CurrentPosition);
 				}
 
-				if (!currentClass.Variables.TryGetValue(name, out var field))
+				if (block.CurrentClassFields == null || !block.CurrentClassFields.TryGetValue(name, out var field))
 				{
 					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "No variable or field with that name was found", CurrentPosition);
 					return new StubForErrorExpression(CurrentPosition);
 				}
 
-				TypeSpec fieldDeclaring = field.Declaring;
+				TypeSpec fieldDeclaring = field.Type.Declaring;
 
 				Expression thisGetting = new AppealToThisExpression(currentClass, CurrentPosition);
 				thisGetting = new PointerDereferenceExpression(thisGetting, CurrentPosition);
 
-				return new StructureFieldAccessExpression(field, thisGetting, fieldDeclaring, CurrentPosition);
+				return new StructureFieldAccessExpression(field.Type, thisGetting, fieldDeclaring, field.IsInit, CurrentPosition);
 			}
 
-			return value;
+			return new VariableAccessExpression(name, value.Type, value.IsInit, CurrentPosition);
 		}
 
 		public Expression SetRefQualifier(Expression expr)
@@ -861,6 +945,7 @@ namespace EvolZero.Core.Analysis
 
 		public Expression TypeCast(Expression expr, TypeSpec toType)
 		{
+			CheckInitializable(expr);
 			if (CheckStubForError(expr)) return new StubForErrorExpression(CurrentPosition);
 
 			if (!UnsafeMode)
@@ -952,6 +1037,7 @@ namespace EvolZero.Core.Analysis
 		/// <returns></returns>
 		private Expression ImplicitIntExtenssion(Expression expr, TypeSpec resultType)
 		{
+			CheckInitializable(expr);
 			if (expr.ResultTypeSpec.Type == resultType.Type) return expr;
 
 			var doubleType = _membersFinder.FindType("double");
@@ -992,6 +1078,21 @@ namespace EvolZero.Core.Analysis
 		private bool CheckStubForError(params Expression[] expressions)
 		{
 			return expressions.Any(x => x is StubForErrorExpression);
+		}
+
+		private void CheckInitializable(Expression? expr)
+		{
+			if (expr == null) return;
+			if (expr is IInitializableExpresion initializable && !initializable.IsInitialized)
+			{
+				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Переменная не инициализирована", CurrentPosition);
+			}
+		}
+
+		private void CheckInitializable(IEnumerable<Expression>? exprs)
+		{
+			if (exprs == null) return;
+			exprs.ForEach(x => CheckInitializable(x));
 		}
 
 	}

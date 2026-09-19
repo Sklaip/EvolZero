@@ -6,7 +6,7 @@ namespace EvolZero.Core.LogicModels.Statements
 {
 	public class BlockStatement : Statement
 	{
-		public BlockStatement(IReadOnlyCollection<ILogicModel> childs, PositionInSources pos) : base(childs, pos)
+		public BlockStatement(IReadOnlyList<ILogicModel> childs, PositionInSources pos) : base(childs, pos)
 		{
 		}
 	}

@@ -80,5 +80,10 @@ namespace EvolZero.Core.Analysis.Semantic
 
 			return new ReferencesData(expr.ResultTypeSpec.IsBorrowRef, expr.ResultTypeSpec.IsOwnerRef, expr.Name);
 		}
+
+		protected override void SubTreeEnd(ReferencesData? value)
+		{
+			throw new NotImplementedException();
+		}
 	}
 }

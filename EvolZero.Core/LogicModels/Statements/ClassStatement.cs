@@ -8,7 +8,7 @@ namespace EvolZero.Core.LogicModels.Statements
 	public class ClassStatement : Statement
 	{
 		public readonly TypeDesc TypeDesc;
-		public ClassStatement(TypeDesc typeDesc, IReadOnlyCollection<ILogicModel> childs, PositionInSources pos) : base(childs, pos)
+		public ClassStatement(TypeDesc typeDesc, IReadOnlyList<ILogicModel> childs, PositionInSources pos) : base(childs, pos)
 		{
 			TypeDesc = typeDesc;
 		}

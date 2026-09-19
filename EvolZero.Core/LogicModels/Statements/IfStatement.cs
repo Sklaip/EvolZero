@@ -14,7 +14,15 @@ namespace EvolZero.Core.LogicModels.Statements
 
 		public IReadOnlyCollection<IfStatement> ElseIfStatements { get => _elseIfStatements; }
 
-		public IfStatement(IReadOnlyCollection<ILogicModel> childs, Expression condition, PositionInSources pos) : base(childs, pos)
+		public override bool InevitableTerminating
+		{
+			get
+			{
+				return LastStatementIsTerminating() && ElseStatement?.InevitableTerminating == true && ElseIfStatements.All(x => x.InevitableTerminating);
+			}
+		}
+
+		public IfStatement(List<ILogicModel> childs, Expression condition, PositionInSources pos) : base(childs, pos)
 		{
 			Condition = condition;
 		}
@@ -29,7 +37,7 @@ namespace EvolZero.Core.LogicModels.Statements
 			if (_elseIfStatements.Count == 0) return this;
 
 			var fisrtsElseIf = _elseIfStatements[0];
-			var decreasedStatement = new IfStatement(fisrtsElseIf.Childs, fisrtsElseIf.Condition, fisrtsElseIf.Pos)
+			var decreasedStatement = new IfStatement((List<ILogicModel>)fisrtsElseIf.Childs, fisrtsElseIf.Condition, fisrtsElseIf.Pos) // TODO: че-то сделать с приведением к List<ILogicModel>
 			{
 				ElseStatement = ElseStatement,
 				_elseIfStatements = _elseIfStatements.Skip(1).ToList()

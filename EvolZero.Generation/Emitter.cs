@@ -211,6 +211,8 @@ namespace EvolZero.Generation
 					return VarAccess(varAccess);
 				case AllocateHeapMemoryToType allocateHeapMemoryToType:
 					return AllocateHeapMemory(allocateHeapMemoryToType);
+				case DestructPointerExpression destructPointerExpression:
+					return FreeHeapMemory(destructPointerExpression);
 				case AppealToThisExpression appealToThis:
 					return AppealToThis(appealToThis);
 				case ArrayCellAccessExpression arrayCellAccess:
@@ -295,6 +297,12 @@ namespace EvolZero.Generation
 			if (type == null) throw new NotImplementedException();
 
 			return _codeGenerator.AllocateHeapMemory(type);
+		}
+
+		private IValueAccessor FreeHeapMemory(DestructPointerExpression expr)
+		{
+			var ptr = HandleExpression(expr.Expr);
+			return _codeGenerator.FreeHeapMemory(ptr);
 		}
 
 		private IValueAccessor ArrayCellAccess(ArrayCellAccessExpression expr)

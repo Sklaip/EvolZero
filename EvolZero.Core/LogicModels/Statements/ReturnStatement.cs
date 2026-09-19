@@ -5,9 +5,11 @@ using System.Text;
 
 namespace EvolZero.Core.LogicModels.Statements
 {
-	public class ReturnStatement : Statement
+	public class ReturnStatement : Statement, ITerminatingStatement
 	{
 		public readonly Expression Value;
+
+		public override bool InevitableTerminating => true;
 
 		public ReturnStatement(Expression expr, PositionInSources pos) : base([], pos)
 		{

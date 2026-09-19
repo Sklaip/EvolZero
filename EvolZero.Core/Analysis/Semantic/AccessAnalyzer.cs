@@ -81,5 +81,9 @@ namespace EvolZero.Core.Analysis.Semantic
 
 			return null;
 		}
+
+		protected override void SubTreeEnd(object? value)
+		{
+		}
 	}
 }

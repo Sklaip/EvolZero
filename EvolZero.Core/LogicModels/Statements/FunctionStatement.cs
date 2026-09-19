@@ -6,7 +6,7 @@ namespace EvolZero.Core.LogicModels.Statements
 	{
 		public readonly FuncDesc FunctionSignature;
 
-		public FunctionStatement(FuncDesc functionSignature, IReadOnlyCollection<ILogicModel> childs, PositionInSources pos) : base(childs, pos)
+		public FunctionStatement(FuncDesc functionSignature, IReadOnlyList<ILogicModel> childs, PositionInSources pos) : base(childs, pos)
 		{
 			FunctionSignature = functionSignature;
 		}
@@ -18,5 +18,7 @@ namespace EvolZero.Core.LogicModels.Statements
 		public IFuncRefData RefData => FunctionSignature.RefData;
 
 		public string Name => FunctionSignature.Name;
+
+		public override bool InevitableTerminating => LastStatementIsTerminating();
 	}
 }

@@ -1,14 +1,13 @@
 ﻿using EvolZero.Core.LogicModels.Expressions;
 using EvolZero.Core.LogicModels.Statements;
-using EvolZero.Core.MemebersModels;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace EvolZero.Core.Analysis
 {
 	public abstract class SemanticTreeVisitor<T>
 	{
+		private int _positionInCurrentStatement = 0;
+		private Statement? _currentStatement = null;
+
 		public void Visit(ProgramStatement program)
 		{
 			foreach (var child in program.Childs)
@@ -16,6 +15,14 @@ namespace EvolZero.Core.Analysis
 				if (!(child is Statement stm)) throw new NotImplementedException();
 				HandleStatement(stm);
 			}
+		}
+
+		protected void AddToCurrentStatement(Expression expression)
+		{
+			if (_currentStatement == null) throw new NotImplementedException();
+
+			_currentStatement.AddLogicModel(expression, _positionInCurrentStatement);
+			_positionInCurrentStatement++;
 		}
 
 		protected void HandleStatement(Statement statement)
@@ -68,31 +75,64 @@ namespace EvolZero.Core.Analysis
 
 		protected virtual void HandleFunctionalBlock<TBlock>(TBlock statement) where TBlock : Statement, IFunctionalBlockStatement
 		{
-			HandleStatemetChilds(statement);
+			HandleStatemet(statement);
 		}
 
 		protected virtual void HandleIfStatement(IfStatement statement)
 		{
 			HandleExpression(statement.Condition);
 
-			HandleStatemetChilds(statement);
+			HandleIfChilds(statement);
 			if (statement.ElseIfStatements != null)
 			{
 				foreach (var st in statement.ElseIfStatements)
 				{
-					HandleStatemetChilds(st);
+					HandleElseIfChilds(st);
 				}
 			}
-			if (statement.ElseStatement != null) HandleStatemetChilds(statement.ElseStatement);
+			if (statement.ElseStatement != null) HandleElseChilds(statement.ElseStatement);
+		}
+
+		protected virtual void HandleIfChilds(IfStatement statement)
+		{
+			HandleStatemet(statement);
+		}
+
+		protected virtual void HandleElseIfChilds(IfStatement statement)
+		{
+			HandleStatemet(statement);
+		}
+
+		protected virtual void HandleElseChilds(Statement statement)
+		{
+			HandleStatemet(statement);
+		}
+
+		protected virtual void HandleStatemet(Statement statement)
+		{
+			var lastStatement = _currentStatement;
+			_currentStatement = statement;
+
+			var lastPosition = _positionInCurrentStatement;
+			_positionInCurrentStatement = 0;
+
+			HandleStatemetChilds(statement);
+
+			_positionInCurrentStatement = lastPosition;
+			_currentStatement = lastStatement;
 		}
 
 		protected virtual void HandleStatemetChilds(Statement statement)
 		{
-			foreach (var child in statement.Childs)
+			while (_positionInCurrentStatement < statement.Childs.Count)
 			{
+				var child = statement.Childs[_positionInCurrentStatement];
+
 				if ((child is Statement stm)) HandleStatement(stm);
 				else if (child is Expression expr) SubTreeEnd(HandleExpression(expr));
 				else throw new NotImplementedException();
+
+				_positionInCurrentStatement++;
 			}
 		}
 
@@ -108,13 +148,10 @@ namespace EvolZero.Core.Analysis
 		protected virtual void HandleWhileStatement(WhileStatement statement)
 		{
 			HandleExpression(statement.Condition);
-			HandleStatemetChilds(statement);
+			HandleStatemet(statement);
 		}
 
-		protected virtual void SubTreeEnd(T value)
-		{
-
-		}
+		protected abstract void SubTreeEnd(T value);
 
 		protected T HandleExpression(Expression expression)
 		{
@@ -128,6 +165,8 @@ namespace EvolZero.Core.Analysis
 					return VarAccess(varAccess);
 				case AllocateHeapMemoryToType allocateHeapMemoryToType:
 					return AllocateHeapMemory(allocateHeapMemoryToType);
+				case DestructPointerExpression destructPointerExpression:
+					return FreeHeapMemory(destructPointerExpression);
 				case AppealToThisExpression appealToThis:
 					return AppealToThis(appealToThis);
 				case ArrayCellAccessExpression arrayCellAccess:
@@ -199,6 +238,11 @@ namespace EvolZero.Core.Analysis
 		}
 
 		protected virtual T AllocateHeapMemory(AllocateHeapMemoryToType expr)
+		{
+			return default!;
+		}
+
+		protected virtual T FreeHeapMemory(DestructPointerExpression expr)
 		{
 			return default!;
 		}

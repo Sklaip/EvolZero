@@ -18,8 +18,11 @@ namespace EvolZero.Generation
 		private LLVMTypeRef? _funcReturnType;
 		private LLVMTypeRef? _retType;
 
-		LLVMTypeRef _mallocType;
-		LLVMValueRef _mallocFunc;
+		private LLVMTypeRef _mallocType;
+		private LLVMValueRef _mallocFunc;
+
+		private LLVMTypeRef _freeType;
+		private LLVMValueRef _freeFunc;
 
 		private Stack<LLVMBasicBlockRef> _activeBlocks = new();
 
@@ -33,6 +36,8 @@ namespace EvolZero.Generation
 			_builder = _context.CreateBuilder();
 
 			DeclareMalloc();
+			DeclareFree();
+
 			PointerType = new TypeRef(GetPointerType());
 			VoidType = new TypeRef(_context.VoidType);
 		}
@@ -170,13 +175,13 @@ namespace EvolZero.Generation
 
 		public FuncAccessData DeclareFree()
 		{
-			var freeType = LLVMTypeRef.CreateFunction(_context.VoidType, new[] { GetPointerType() }, false);
-			var freeFunc = _module.AddFunction("free", freeType);
+			_freeType = LLVMTypeRef.CreateFunction(_context.VoidType, new[] { GetPointerType() }, false);
+			_freeFunc = _module.AddFunction("free", _freeType);
 
 			return new FuncAccessData(null, new FuncRefData // TODO: че-то с нулом придумать
 			{
-				FuncRef = freeFunc,
-				TypeRef = freeType
+				FuncRef = _freeFunc,
+				TypeRef = _freeType
 			});
 		}
 
@@ -191,6 +196,12 @@ namespace EvolZero.Generation
 			var memorySize = ToType(type).SizeOf;
 			var ptr = _builder.BuildCall2(_mallocType, _mallocFunc, new[] { memorySize }, "malloc");
 			return new SimpleValueAccessor(ptr, GetPointerType());
+		}
+
+		public IValueAccessor FreeHeapMemory(IValueAccessor accessor)
+		{
+			var stub = _builder.BuildCall2(_freeType, _freeFunc, new[] { accessor.GetValue() }, "");
+			return new SimpleValueAccessor(stub, ToType(VoidType));
 		}
 
 		public IValueAccessor LogicalAnd(IValueAccessor firstOperation, IValueAccessor secondOperation)
