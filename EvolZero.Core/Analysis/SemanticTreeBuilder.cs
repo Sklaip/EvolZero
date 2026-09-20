@@ -584,6 +584,48 @@ namespace EvolZero.Core.Analysis
 			return new GetPointerToVarExpression(variable, false, CurrentPosition);
 		}
 
+		public Expression Exchange(Expression target, Expression value)
+		{
+			CheckInitializable(target);
+			CheckInitializable(value);
+
+			if (CheckStubForError(target, value)) return new StubForErrorExpression(CurrentPosition);
+
+			bool isLValue = target is VariableAccessExpression
+				or StructureFieldAccessExpression
+				or ArrayCellAccessExpression
+				or PointerDereferenceExpression
+				or VariableCreatingExpression;
+
+			if (!isLValue)
+			{
+				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "The '<-' operator can only be applied to a variable or field", CurrentPosition);
+				return new StubForErrorExpression(CurrentPosition);
+			}
+
+			if (!target.ResultTypeSpec.IsRef && value.ResultTypeSpec.IsRef)
+			{
+				value = AutoDereferenceIfPointer(value);
+			}
+			else if (target.ResultTypeSpec.IsRef && !value.ResultTypeSpec.IsRef)
+			{
+				target = new PointerDereferenceExpression(target, CurrentPosition);
+			}
+
+			if (!_typeAnalyzer.CheckTypeMatching(target.ResultTypeSpec, value.ResultTypeSpec, out bool needCast))
+			{
+				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Cannot interchange a value of the specified type", CurrentPosition);
+				return new StubForErrorExpression(CurrentPosition);
+			}
+
+			if (needCast && (value.ResultTypeSpec.Type is IntegerTypeDesc or FloatTypeDesc))
+			{
+				value = ImplicitIntExtenssion(value, target.ResultTypeSpec);
+			}
+
+			return new ExchangeExpression(target, value, target.ResultTypeSpec, CurrentPosition);
+		}
+
 		public Expression Division(Expression left, Expression right)
 		{
 			return ArithmeticOperation(left, right, BinaryOperation.Division, "/");

@@ -219,6 +219,8 @@ namespace EvolZero.Generation
 					return ArrayCellAccess(arrayCellAccess);
 				case SimpleBinaryOperationExpression simpleBinaryOperation:
 					return SimpleBinaryOperationHandle(simpleBinaryOperation);
+				case ExchangeExpression exchange:
+					return ExchangeHandle(exchange);
 				case CallFunctionExpression callFunction:
 					return CallFunction(callFunction);
 				case CompareOperationExpression compareOperation:
@@ -356,6 +358,14 @@ namespace EvolZero.Generation
 				default:
 					throw new NotImplementedException();
 			}
+		}
+
+		private IValueAccessor ExchangeHandle(ExchangeExpression expr)
+		{
+			var target = HandleExpression(expr.Target);
+			var value = HandleExpression(expr.Value);
+
+			return _codeGenerator.Exchange(target, value);
 		}
 
 		private IValueAccessor CallFunction(CallFunctionExpression expr)

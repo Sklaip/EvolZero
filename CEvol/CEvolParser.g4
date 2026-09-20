@@ -87,6 +87,7 @@ expression
     | expression BIT_OR expression # BitOrExpr
     | expression AND expression # LogicalAndExpr
     | expression OR expression # LogicalOrExpr
+    | expression EXCHANGE expression # ExchangeExpr
     ;
 
 args : expression (COMMA expression)* ;

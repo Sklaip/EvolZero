@@ -1,5 +1,6 @@
 ﻿using EvolZero.Core;
 using EvolZero.Generation.Accessors;
+using LLVMSharp;
 using LLVMSharp.Interop;
 
 namespace EvolZero.Generation
@@ -425,6 +426,14 @@ namespace EvolZero.Generation
 		{
 			var value = TruncIfInt(to, from);
 			to.SetValue(value.GetValue());
+		}
+
+		public IValueAccessor Exchange(IValueAccessor to, IValueAccessor from)
+		{
+			var oldValue = to.GetValue();
+			Assign(to, from);
+
+			return new SimpleValueAccessor(oldValue, to.GetInnerType());
 		}
 
 		public IValueAccessor GetValueByPointer(IValueAccessor ponter, ITypeRef type)

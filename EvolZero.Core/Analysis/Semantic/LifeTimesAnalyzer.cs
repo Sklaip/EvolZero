@@ -278,6 +278,7 @@ namespace EvolZero.Core.Analysis.Semantic
 
 		protected override LifeTime CallConstructor(CallConstructorExpression expr)
 		{
+			base.CallConstructor(expr);
 			return new LifeTime()
 			{
 				Expr = expr,
@@ -289,6 +290,7 @@ namespace EvolZero.Core.Analysis.Semantic
 
 		protected override LifeTime GetPointerToVar(GetPointerToVarExpression expr)
 		{
+			base.GetPointerToVar(expr);
 			return new LifeTime()
 			{
 				Expr = expr,
@@ -455,11 +457,11 @@ namespace EvolZero.Core.Analysis.Semantic
 			return lifetime;
 		}
 
-		protected override LifeTime? PointerDereference(PointerDereferenceExpression expr)
-		{
-			base.PointerDereference(expr);
-			return null;
-		}
+		//protected override LifeTime? PointerDereference(PointerDereferenceExpression expr)
+		//{
+		//	base.PointerDereference(expr);
+		//	return null;
+		//}
 
 		protected override LifeTime? SimpleBinaryOperationHandle(SimpleBinaryOperationExpression expr)
 		{
@@ -476,6 +478,70 @@ namespace EvolZero.Core.Analysis.Semantic
 				default:
 					return null;
 			}
+		}
+
+		protected override LifeTime? Exchange(ExchangeExpression expr)
+		{
+			LifeTime? target = HandleExpression(expr.Target);
+			LifeTime? value = HandleExpression(expr.Value);
+
+			if (target == null || value == null) return null;
+
+			if (!target.Expr.ResultTypeSpec.IsRef || !value.Expr.ResultTypeSpec.IsRef) return target;
+
+			if (value.BlockNum > target.BlockNum && !value.IsAnonymous)
+				throw new NotImplementedException(); // ошибка что время жизни больше времени жизни ссылки
+
+			if (value.VarData != null && (value.VarData.IsDestructed || !value.VarData.IsInitialized))
+				throw new NotImplementedException(); // ссылка была деинициализированна. Вообще сюда оно поподать не должно, оно должно отбрасываться на других проверках
+
+			var varIsOwner = target.Expr.ResultTypeSpec.IsOwnerRef;
+
+			if (varIsOwner)
+			{
+				if (!value.Expr.ResultTypeSpec.IsOwnerRef)
+					throw new NotImplementedException(); // ошибка что во владеющую ссылку нельзя пихать заимствованные значения
+
+				if (value.Expr is StructureFieldAccessExpression)
+					throw new NotImplementedException(); // нельзя снимать владеюущие ссылки с классов
+
+				if (!value.IsAnonymous && !target.ToLocalValue)
+					_lifetimesConsumer.GiveAwayOwnershipToRef(value.Expr);
+
+				target.BlockNum = value.BlockNum;
+
+				GiveAwayOwnership(value);
+			}
+			else
+			{
+				if (value.IsAnonymous && !value.ToLocalValue)
+					throw new NotImplementedException(); // ошибка что анонимные ссылки (напрмиер те что выдаются через new и loc) можно присвивать только во владеющие ссылки
+
+				if (value.VarData != null)
+				{
+					if (target.VarData.IsAliaseTo == null)
+						target.VarData.IsAliaseTo = new();
+
+					if (value.VarData.IsAliaseTo != null)
+					{
+						target.VarData.IsAliaseTo.AddRange(value.VarData.IsAliaseTo);
+					}
+					else
+					{
+						target.VarData.IsAliaseTo.Add(value.VarData);
+					}
+
+					if (value.VarData.Aliases == null)
+						value.VarData.Aliases = new();
+
+					value.VarData.Aliases.Add(target.VarData);
+				}
+			}
+
+			target.ToLocalValue = value.ToLocalValue;
+			target.VarData.IsInitialized = true;
+
+			return target;
 		}
 
 		protected override LifeTime? HandleReturnStatement(ReturnStatement statement)

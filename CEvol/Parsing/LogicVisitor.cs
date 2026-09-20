@@ -709,6 +709,19 @@ namespace EvolZero.Parsing
 			return _semanticAnalyzer.LogicalAnd(left, right);
 		}
 
+		public override Expression? VisitExchangeExpr([NotNull] CEvolParser.ExchangeExprContext context)
+		{
+			var lastPos = _semanticAnalyzer.CurrentPosition;
+			SetCurrentPosition(context);
+
+			(Expression leftValue, Expression rightValue) = ParseBinaryExpression(context.expression());
+
+			var res = _semanticAnalyzer.Exchange(leftValue, rightValue);
+
+			_semanticAnalyzer.CurrentPosition = lastPos;
+			return res;
+		}
+
 		private (Expression left, Expression right) ParseBinaryExpression(CEvolParser.ExpressionContext[]? expressions)
 		{
 			if (expressions == null || expressions.Length != 2) throw new NotImplementedException();

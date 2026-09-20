@@ -31,6 +31,7 @@ EQ       : '==';
 NEQ      : '!=';
 LT       : '<';
 GT       : '>';
+EXCHANGE : '<-';
 LPAREN   : '(';
 RPAREN   : ')';
 LBRACE   : '{';

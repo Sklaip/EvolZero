@@ -175,6 +175,8 @@ namespace EvolZero.Core.Analysis
 					return ArrayCellAccess(arrayCellAccess);
 				case SimpleBinaryOperationExpression simpleBinaryOperation:
 					return SimpleBinaryOperationHandle(simpleBinaryOperation);
+				case ExchangeExpression exchange:
+					return Exchange(exchange);
 				case CallFunctionExpression callFunction:
 					return CallFunction(callFunction);
 				case CompareOperationExpression compareOperation:
@@ -260,6 +262,13 @@ namespace EvolZero.Core.Analysis
 		{
 			HandleExpression(expr.LeftExpression);
 			HandleExpression(expr.RightExpression);
+			return default!;
+		}
+
+		protected virtual T Exchange(ExchangeExpression expr)
+		{
+			HandleExpression(expr.Target);
+			HandleExpression(expr.Value);
 			return default!;
 		}
 
