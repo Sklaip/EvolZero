@@ -829,7 +829,7 @@ namespace EvolZero.Core.Analysis
 
 			byte[] strBytes = Encoding.UTF8.GetBytes($"{str.Replace(@"\n", Environment.NewLine)[1..^1]}\0");
 			return new GlobalArrayExpression(strBytes, new TypeSpec(TypeNameToTypeDesc("byte"),
-				[Qualifier.Reference, new ArrayQualifier((ulong)strBytes.LongLength)]), CurrentPosition);
+				[Qualifier.BorrowReference, new ArrayQualifier((ulong)strBytes.LongLength)]), CurrentPosition);
 		}
 
 		public Expression CreateLocalVariable(string name, TypeSpec declaring, Expression[]? args)

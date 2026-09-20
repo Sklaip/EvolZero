@@ -79,7 +79,7 @@ int main()
 	printf(ref "%d\n", holder.Second.Extra);
 
 	// 10. loc на поле heap-экземпляра -> мутация через ссылку.
-	ref int rf = loc holder.Second.Type;
+	refb int rf = loc holder.Second.Type;
 	rf = 200;
 	printf(ref "%d\n", holder.Second.Type);
 	printf(ref "%d\n", second.Type);

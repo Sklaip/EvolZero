@@ -12,7 +12,7 @@ class Conn
 	}
 }
 
-int Swap(ref int x, ref int y)
+int Swap(refb int x, refb int y)
 {
 	int tmp = x;
 	x = y;
@@ -24,8 +24,8 @@ int main()
 {
 	// 1. Псевдонимирование: две ссылки на одну переменную.
 	int a = 10;
-	ref int r1 = loc a;
-	ref int r2 = loc a;
+	refb int r1 = loc a;
+	refb int r2 = loc a;
 	r1 = 5;
 	printf(ref "%d\n", r2);
 	printf(ref "%d\n", a);
@@ -40,7 +40,7 @@ int main()
 	// 3. Переуказание ссылки между чтениями (два независимых адреса).
 	int p = 1;
 	int q = 2;
-	ref int rp = loc p;
+	refb int rp = loc p;
 	rp = rp + 10;
 	printf(ref "%d\n", p);
 	ref rp = loc q;
@@ -51,7 +51,7 @@ int main()
 	// 4. Ссылка на поле объекта, затем переуказание на поле другого объекта.
 	Conn c1(7);
 	Conn c2(9);
-	ref int rc = loc c1.Type;
+	refb int rc = loc c1.Type;
 	rc = 70;
 	printf(ref "%d\n", c1.Type);
 	ref rc = loc c2.Type;
@@ -62,14 +62,14 @@ int main()
 	// 5. Чтение полей через ссылки с одинаковым базовым адресом.
 	int arr0 = 1;
 	int arr1 = 2;
-	ref int ra0 = loc arr0;
-	ref int ra1 = loc arr1;
+	refb int ra0 = loc arr0;
+	refb int ra1 = loc arr1;
 	ra0 = ra0 + ra1;
 	printf(ref "%d\n", arr0);
 
 	// 6. Ссылка, возвращённая методом/выражением, остаётся валидной.
 	ref Conn obj = new Conn(30);
-	ref int ro = loc obj.Type;
+	refb int ro = loc obj.Type;
 	ro = ro + 5;
 	printf(ref "%d\n", obj.Type);
 

@@ -12,7 +12,7 @@ class Structure
 
 	public ctor(int num)
 	{
-		ref byte[15] globalStrTets = "LALALALALALA\n";
+		refb byte[15] globalStrTets = "LALALALALALA\n";
 		printf(ref globalStrTets);
 
 		Num = num;
@@ -23,7 +23,7 @@ int main()
 {
 	ref String serviceStr = new String();
 
-	ref byte[11] globalStrTets = "aboba111\n";
+	refb byte[11] globalStrTets = "aboba111\n";
 
 	refb byte tes = globalStrTets;
 

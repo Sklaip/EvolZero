@@ -55,7 +55,8 @@ int main()
 	ref Item heapItem = new Item(2);
 	heapItem.Open = 10;
 	OtherClass other;
-	ref other.PublicItem = heapItem;
+	ref Item oldPublicItem;
+	ref oldPublicItem = other.PublicItem <- heapItem;
 	printf(ref "%d\n", other.ReadOpen());
 
 	// Public-поле другого экземпляра того же класса.

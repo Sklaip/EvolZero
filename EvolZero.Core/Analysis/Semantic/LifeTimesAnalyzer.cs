@@ -32,7 +32,6 @@ namespace EvolZero.Core.Analysis.Semantic
 	public class LifeTimesAnalyzer : SemanticTreeVisitor<LifeTime?>
 	{
 		public const string LIFETIMES_LAYER = "LifeTimesAnalyzer";
-		public const string DESTRUCTED_ACCESS_ERROR_CODE = "LT001";
 
 		private int _currentBlockNum = -1; // -1 чтобы был 0, потому что при первом входе в HandleStatemetChilds будет инкремент
 		private Dictionary<string, VarMeta> _vars = new();
@@ -321,7 +320,7 @@ namespace EvolZero.Core.Analysis.Semantic
 				Expr = expr,
 				BlockNum = _currentBlockNum,
 				ToLocalValue = false,
-				IsAnonymous = true
+				IsAnonymous = false
 			};
 		}
 
@@ -378,8 +377,7 @@ namespace EvolZero.Core.Analysis.Semantic
 
 			if (varMeta.IsDestructed)
 			{
-				_errorsBag.AddError(LIFETIMES_LAYER, DESTRUCTED_ACCESS_ERROR_CODE,
-					$"Нет доступа к деинициализированной ссылке '{expr.Name}'", expr.Pos);
+				_errorsBag.AddError(LIFETIMES_LAYER, "LT001", $"Нет доступа к деинициализированной ссылке '{expr.Name}'", expr.Pos);
 				return null;
 			}
 
@@ -583,7 +581,7 @@ namespace EvolZero.Core.Analysis.Semantic
 					if (!target.IsLocal)
 						throw new NotImplementedException(); // нельзя переназначать уже инициализированные не локальные ссылки (поля класов например)
 
-					ToDestructPointer(target); // удалям старую ссылку
+					ToDestructPointer(target, true); // удалям старую ссылку
 				}
 
 				if (!value.IsAnonymous && !target.ToLocalValue && !value.IsStrippedViaExchange)
@@ -655,11 +653,11 @@ namespace EvolZero.Core.Analysis.Semantic
 			}
 		}
 
-		private void ToDestructPointer(LifeTime pointer)
+		private void ToDestructPointer(LifeTime pointer, bool checkAliases)
 		{
 			if (pointer.VarData == null) throw new NotImplementedException(); // такой хуйни быть не должно
 
-			if (pointer.VarData.Aliases != null && pointer.VarData.Aliases.Count > 0)
+			if (checkAliases && pointer.VarData.Aliases != null && pointer.VarData.Aliases.Count > 0)
 			{
 				throw new NotImplementedException(); // ошибка что нельзя передавать владение ссылкой у которой есть алиасы
 			}
@@ -693,7 +691,7 @@ namespace EvolZero.Core.Analysis.Semantic
 			foreach (var lifetime in block.Vars)
 			{
 				if (excludedVar != null && lifetime.VarData == excludedVar) continue;
-				ToDestructPointer(lifetime);
+				ToDestructPointer(lifetime, false);
 			}
 		}
 	}
