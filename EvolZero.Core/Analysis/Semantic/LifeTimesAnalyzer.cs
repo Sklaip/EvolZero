@@ -14,7 +14,6 @@ namespace EvolZero.Core.Analysis.Semantic
 		public Expression Expr { get; set; }
 		public VarMeta? VarData { get; set; }
 		public int BlockNum { get; set; }
-		public bool ToLocalValue { get; set; }
 		public bool IsLocal { get; set; }
 		public bool IsAnonymous { get; set; }
 		public bool IsStrippedViaExchange { get; set; }
@@ -158,8 +157,7 @@ namespace EvolZero.Core.Analysis.Semantic
 					{
 						Expr = new VariableAccessExpression(argument.Name, argument.Declaring, true, statement.Pos),
 						BlockNum = _currentBlockNum,
-						VarData = variable,
-						ToLocalValue = false
+						VarData = variable
 					};
 
 					_currentBlocks.Peek().Vars.Add(lifetime);
@@ -271,7 +269,6 @@ namespace EvolZero.Core.Analysis.Semantic
 			{
 				Expr = expr,
 				BlockNum = _currentBlockNum,
-				ToLocalValue = false,
 				IsAnonymous = true
 			};
 		}
@@ -283,7 +280,6 @@ namespace EvolZero.Core.Analysis.Semantic
 			{
 				Expr = expr,
 				BlockNum = _currentBlockNum,
-				ToLocalValue = false,
 				IsAnonymous = true
 			};
 		}
@@ -295,7 +291,6 @@ namespace EvolZero.Core.Analysis.Semantic
 			{
 				Expr = expr,
 				BlockNum = _currentBlockNum,
-				ToLocalValue = expr.Variable is VariableCreatingExpression or VariableAccessExpression,
 				IsAnonymous = false
 			};
 		}
@@ -306,7 +301,6 @@ namespace EvolZero.Core.Analysis.Semantic
 			{
 				Expr = expr,
 				BlockNum = 0,
-				ToLocalValue = false,
 				IsAnonymous = true,
 				VarData = _currentClass
 			};
@@ -319,7 +313,6 @@ namespace EvolZero.Core.Analysis.Semantic
 			{
 				Expr = expr,
 				BlockNum = _currentBlockNum,
-				ToLocalValue = false,
 				IsAnonymous = false
 			};
 		}
@@ -364,8 +357,7 @@ namespace EvolZero.Core.Analysis.Semantic
 			{
 				Expr = expr,
 				BlockNum = structureGetting.BlockNum,
-				VarData = meta,
-				ToLocalValue = false
+				VarData = meta
 			};
 		}
 
@@ -399,7 +391,6 @@ namespace EvolZero.Core.Analysis.Semantic
 				Expr = expr,
 				BlockNum = varMeta.BlockNum,
 				VarData = varMeta,
-				ToLocalValue = false,
 				IsLocal = true
 			};
 		}
@@ -431,7 +422,6 @@ namespace EvolZero.Core.Analysis.Semantic
 			{
 				Expr = expr,
 				BlockNum = _currentBlockNum,
-				ToLocalValue = false,
 				IsAnonymous = true
 			};
 		}
@@ -447,8 +437,7 @@ namespace EvolZero.Core.Analysis.Semantic
 			{
 				Expr = new VariableAccessExpression(expr.Name, expr.ResultTypeSpec, expr.IsInitialized, expr.Pos),
 				BlockNum = _currentBlockNum,
-				VarData = currentVar,
-				ToLocalValue = false
+				VarData = currentVar
 			};
 
 			_currentBlocks.Peek().Vars.Add(lifetime);
@@ -512,7 +501,7 @@ namespace EvolZero.Core.Analysis.Semantic
 					target.IsStrippedViaExchange = true;
 				}
 
-				if (!value.IsAnonymous && !target.ToLocalValue)
+				if (!value.IsAnonymous)
 					_lifetimesConsumer.GiveAwayOwnershipToRef(value.Expr);
 
 				target.BlockNum = value.BlockNum;
@@ -524,7 +513,6 @@ namespace EvolZero.Core.Analysis.Semantic
 				AssignBorrowRef(target, value);
 			}
 
-			target.ToLocalValue = value.ToLocalValue;
 			target.VarData.IsInitialized = true;
 
 			return target;
@@ -584,7 +572,7 @@ namespace EvolZero.Core.Analysis.Semantic
 					ToDestructPointer(target, true); // удалям старую ссылку
 				}
 
-				if (!value.IsAnonymous && !target.ToLocalValue && !value.IsStrippedViaExchange)
+				if (!value.IsAnonymous && !value.IsStrippedViaExchange)
 					_lifetimesConsumer.GiveAwayOwnershipToRef(value.Expr);
 
 				target.BlockNum = value.BlockNum;
@@ -599,14 +587,13 @@ namespace EvolZero.Core.Analysis.Semantic
 				AssignBorrowRef(target, value);
 			}
 
-			target.ToLocalValue = value.ToLocalValue;
 			target.VarData.IsInitialized = true;
 		}
 
 		private void AssignBorrowRef(LifeTime target, LifeTime value)
 		{
-			if (value.IsAnonymous && !value.ToLocalValue)
-				throw new NotImplementedException(); // ошибка что анонимные ссылки (напрмиер те что выдаются через new и loc) можно присвивать только во владеющие ссылки
+			if (value.IsAnonymous)
+				throw new NotImplementedException(); // ошибка что анонимные ссылки (напрмиер те что выдаются через new) можно присвивать только во владеющие ссылки
 
 			if (value.VarData != null)
 			{
