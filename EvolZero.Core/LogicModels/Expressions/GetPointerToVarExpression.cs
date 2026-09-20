@@ -10,15 +10,16 @@ namespace EvolZero.Core.LogicModels.Expressions
 		public readonly Expression Variable;
 		public readonly bool IsOwner;
 
-		public GetPointerToVarExpression(Expression variable, bool isOwner, PositionInSources pos) : base(PointerTypeSpec(variable.ResultTypeSpec), pos)
+		public GetPointerToVarExpression(Expression variable, bool isOwner, PositionInSources pos) 
+			: base(PointerTypeSpec(variable.ResultTypeSpec, isOwner), pos)
 		{
 			Variable = variable;
 			IsOwner = isOwner;
 		}
 
-		private static TypeSpec PointerTypeSpec(TypeSpec typeScec)
+		private static TypeSpec PointerTypeSpec(TypeSpec typeScec, bool isOwner)
 		{
-			return new TypeSpec(typeScec.Type, [Qualifier.Reference, .. typeScec.Qualifiers]);
+			return new TypeSpec(typeScec.Type, [isOwner ? Qualifier.Reference : Qualifier.BorrowReference, .. typeScec.Qualifiers]);
 		}
 	}
 }

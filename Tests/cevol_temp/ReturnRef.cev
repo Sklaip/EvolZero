@@ -1,0 +1,30 @@
+namespace Program;
+
+extern infargs int printf(refb byte ptr);
+
+class TestObj
+{
+	public int X;
+
+	public ctor(int x)
+	{
+		X = x;
+	}
+}
+
+ref TestObj CreateTestObj()
+{
+	ref TestObj a = new TestObj(42);
+	return ref a;
+}
+
+int main()
+{
+	ref TestObj r = CreateTestObj();
+	printf(ref "%d\n", r.X);
+
+	r.X = r.X + 1;
+	printf(ref "%d\n", r.X);
+
+	return 0;
+}

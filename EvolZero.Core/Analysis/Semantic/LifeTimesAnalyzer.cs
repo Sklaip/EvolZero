@@ -294,7 +294,7 @@ namespace EvolZero.Core.Analysis.Semantic
 				Expr = expr,
 				BlockNum = _currentBlockNum,
 				ToLocalValue = expr.Variable is VariableCreatingExpression or VariableAccessExpression,
-				IsAnonymous = true
+				IsAnonymous = false
 			};
 		}
 
@@ -455,6 +455,12 @@ namespace EvolZero.Core.Analysis.Semantic
 			return lifetime;
 		}
 
+		protected override LifeTime? PointerDereference(PointerDereferenceExpression expr)
+		{
+			base.PointerDereference(expr);
+			return null;
+		}
+
 		protected override LifeTime? SimpleBinaryOperationHandle(SimpleBinaryOperationExpression expr)
 		{
 			LifeTime? left = HandleExpression(expr.LeftExpression);
@@ -472,10 +478,19 @@ namespace EvolZero.Core.Analysis.Semantic
 			}
 		}
 
-		protected override void HandleReturnStatement(ReturnStatement statement)
+		protected override LifeTime? HandleReturnStatement(ReturnStatement statement)
 		{
-			DestructLifetimes();
-			base.HandleReturnStatement(statement);
+			var returnedLifetime = base.HandleReturnStatement(statement);
+
+			if (returnedLifetime?.Expr != null
+				&& returnedLifetime.Expr.ResultTypeSpec.IsRef
+				&& !returnedLifetime.Expr.ResultTypeSpec.IsOwnerRef)
+			{
+				throw new NotImplementedException(); // ошибка что возвращаемая ссылка всегда должна быть владеющуй
+			}
+
+			DestructLifetimes(returnedLifetime?.VarData);
+			return returnedLifetime;
 		}
 
 		private void AssingHandler(LifeTime variable, LifeTime value)
@@ -599,12 +614,13 @@ namespace EvolZero.Core.Analysis.Semantic
 			pointer.VarData.IsDestructed = true;
 		}
 
-		private void DestructLifetimes()
+		private void DestructLifetimes(VarMeta? excludedVar = null)
 		{
 			var block = _currentBlocks.Peek();
 
 			foreach (var lifetime in block.Vars)
 			{
+				if (excludedVar != null && lifetime.VarData == excludedVar) continue;
 				ToDestructPointer(lifetime);
 			}
 		}

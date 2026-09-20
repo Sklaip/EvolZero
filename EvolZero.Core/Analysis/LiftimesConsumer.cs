@@ -77,7 +77,7 @@ namespace EvolZero.Core.Analysis
 
 		public void GiveAwayOwnershipToRef(Expression expr)
 		{
-			var currentIf = _blocks.Peek();
+			if (!_blocks.TryPeek(out var currentIf)) return;
 			currentIf.GivenRefs.Add((expr, currentIf.CurrentSubStatement));
 		}
 

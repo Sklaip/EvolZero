@@ -581,8 +581,7 @@ namespace EvolZero.Core.Analysis
 				return new StubForErrorExpression(CurrentPosition);
 			}
 
-			bool isOwner = variable is VariableAccessExpression or VariableCreatingExpression;
-			return new GetPointerToVarExpression(variable, isOwner, CurrentPosition);
+			return new GetPointerToVarExpression(variable, false, CurrentPosition);
 		}
 
 		public Expression Division(Expression left, Expression right)

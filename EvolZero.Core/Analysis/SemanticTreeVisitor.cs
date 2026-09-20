@@ -136,13 +136,15 @@ namespace EvolZero.Core.Analysis
 			}
 		}
 
-		protected virtual void HandleReturnStatement(ReturnStatement statement)
+		protected virtual T? HandleReturnStatement(ReturnStatement statement)
 		{
 			Expression resExpr = statement.Value;
 			if (resExpr.ResultTypeSpec.Type.Name != "void")
 			{
-				HandleExpression(resExpr);
+				return HandleExpression(resExpr);
 			}
+
+			return default;
 		}
 
 		protected virtual void HandleWhileStatement(WhileStatement statement)
