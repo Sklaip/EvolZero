@@ -17,6 +17,7 @@ namespace EvolZero.Core.Analysis.Semantic
 		public bool ToLocalValue { get; set; }
 		public bool IsLocal { get; set; }
 		public bool IsAnonymous { get; set; }
+		public bool IsStrippedViaExchange { get; set; }
 	}
 
 	public class VarMeta(int blockNum, bool isDestructed, bool isInitialized, List<VarMeta>? isAliseTo)
@@ -497,6 +498,9 @@ namespace EvolZero.Core.Analysis.Semantic
 
 			var varIsOwner = target.Expr.ResultTypeSpec.IsOwnerRef;
 
+			if (target.VarData == null)
+				throw new NotImplementedException(); // такой хуйни быть не должно
+
 			if (varIsOwner)
 			{
 				if (!value.Expr.ResultTypeSpec.IsOwnerRef)
@@ -504,6 +508,11 @@ namespace EvolZero.Core.Analysis.Semantic
 
 				if (value.Expr is StructureFieldAccessExpression)
 					throw new NotImplementedException(); // нельзя снимать владеюущие ссылки с классов
+
+				if (target.Expr is StructureFieldAccessExpression fieldAccess)
+				{
+					target.IsStrippedViaExchange = true;
+				}
 
 				if (!value.IsAnonymous && !target.ToLocalValue)
 					_lifetimesConsumer.GiveAwayOwnershipToRef(value.Expr);
@@ -514,28 +523,7 @@ namespace EvolZero.Core.Analysis.Semantic
 			}
 			else
 			{
-				if (value.IsAnonymous && !value.ToLocalValue)
-					throw new NotImplementedException(); // ошибка что анонимные ссылки (напрмиер те что выдаются через new и loc) можно присвивать только во владеющие ссылки
-
-				if (value.VarData != null)
-				{
-					if (target.VarData.IsAliaseTo == null)
-						target.VarData.IsAliaseTo = new();
-
-					if (value.VarData.IsAliaseTo != null)
-					{
-						target.VarData.IsAliaseTo.AddRange(value.VarData.IsAliaseTo);
-					}
-					else
-					{
-						target.VarData.IsAliaseTo.Add(value.VarData);
-					}
-
-					if (value.VarData.Aliases == null)
-						value.VarData.Aliases = new();
-
-					value.VarData.Aliases.Add(target.VarData);
-				}
+				AssignBorrowRef(target, value);
 			}
 
 			target.ToLocalValue = value.ToLocalValue;
@@ -559,19 +547,19 @@ namespace EvolZero.Core.Analysis.Semantic
 			return returnedLifetime;
 		}
 
-		private void AssingHandler(LifeTime variable, LifeTime value)
+		private void AssingHandler(LifeTime target, LifeTime value)
 		{
-			if (!variable.Expr.ResultTypeSpec.IsRef || !value.Expr.ResultTypeSpec.IsRef) return;
+			if (!target.Expr.ResultTypeSpec.IsRef || !value.Expr.ResultTypeSpec.IsRef) return;
 
-			if (value.BlockNum > variable.BlockNum && !value.IsAnonymous)
+			if (value.BlockNum > target.BlockNum && !value.IsAnonymous)
 				throw new NotImplementedException(); // ошибка что время жизни больше времени жизни ссылки
 
 			if (value.VarData != null && (value.VarData.IsDestructed || !value.VarData.IsInitialized))
 				throw new NotImplementedException(); // ссылка была деинициализированна. Вообще сюда оно попадть не должно, оно должно отбрасываться на других проверках
 
-			var varIsOwner = variable.Expr.ResultTypeSpec.IsOwnerRef;
+			var varIsOwner = target.Expr.ResultTypeSpec.IsOwnerRef;
 
-			if (variable.VarData == null)
+			if (target.VarData == null)
 				throw new NotImplementedException(); // такой хуйни быть не должно
 
 			if (varIsOwner)
@@ -580,52 +568,70 @@ namespace EvolZero.Core.Analysis.Semantic
 					throw new NotImplementedException(); // ошибка что во владеющую ссылку нельзя пихать заимствованные значения
 
 				if (value.Expr is StructureFieldAccessExpression)
-					throw new NotImplementedException(); // нельзя снимать владеюущие ссылки с классов. Потом для этого сделать оператор замены или ссылку обнулять
-
-				if (variable.VarData.IsInitialized)
 				{
-					if (!variable.IsLocal)
-						throw new NotImplementedException(); // нельзя переназначать уже инициализированные не локальные ссылки (поля класов например)
+					// снять владеющую ссылку с поля класса можно только через оператор <-,
+					// чтобы поле не осталось деинициализированным, а старая ссылка ушла в приемник
+					if (!value.IsStrippedViaExchange)
+						throw new NotImplementedException(); // нельзя просто так снимать владеющую ссылку с класса
 
-					ToDestructPointer(variable); // удалям старую ссылку
+					if (target.BlockNum > value.BlockNum)
+						throw new NotImplementedException(); // у приемника время жизни меньше, чем у объекта, с которого снимается ссылка
 				}
 
-				if (!value.IsAnonymous && !variable.ToLocalValue)
+				if (target.VarData.IsInitialized)
+				{
+					if (!target.IsLocal)
+						throw new NotImplementedException(); // нельзя переназначать уже инициализированные не локальные ссылки (поля класов например)
+
+					ToDestructPointer(target); // удалям старую ссылку
+				}
+
+				if (!value.IsAnonymous && !target.ToLocalValue && !value.IsStrippedViaExchange)
 					_lifetimesConsumer.GiveAwayOwnershipToRef(value.Expr);
 
-				variable.BlockNum = value.BlockNum;
+				target.BlockNum = value.BlockNum;
 
-				GiveAwayOwnership(value);
+				if (value.IsStrippedViaExchange)
+					value.VarData!.IsDestructed = true; // содержимое поля переехало в приемник (GiveAwayOwnership кинул бы throw на алиасы поля)
+				else
+					GiveAwayOwnership(value);
 			}
 			else
 			{
-				if (value.IsAnonymous && !value.ToLocalValue)
-					throw new NotImplementedException(); // ошибка что анонимные ссылки (напрмиер те что выдаются через new и loc) можно присвивать только во владеющие ссылки
-
-				if (value.VarData != null)
-				{
-					if (variable.VarData.IsAliaseTo == null)
-						variable.VarData.IsAliaseTo = new();
-
-					if (value.VarData.IsAliaseTo != null)
-					{
-						variable.VarData.IsAliaseTo.AddRange(value.VarData.IsAliaseTo);
-					}
-					else
-					{
-						variable.VarData.IsAliaseTo.Add(value.VarData);
-					}
-
-					if (value.VarData.Aliases == null)
-						value.VarData.Aliases = new();
-
-					value.VarData.Aliases.Add(variable.VarData);
-				}
-
+				AssignBorrowRef(target, value);
 			}
 
-			variable.ToLocalValue = value.ToLocalValue;
-			variable.VarData.IsInitialized = true;
+			target.ToLocalValue = value.ToLocalValue;
+			target.VarData.IsInitialized = true;
+		}
+
+		private void AssignBorrowRef(LifeTime target, LifeTime value)
+		{
+			if (value.IsAnonymous && !value.ToLocalValue)
+				throw new NotImplementedException(); // ошибка что анонимные ссылки (напрмиер те что выдаются через new и loc) можно присвивать только во владеющие ссылки
+
+			if (value.VarData != null)
+			{
+				if (target.VarData == null)
+					throw new NotImplementedException(); // такой хуйни быть не должно
+
+				if (target.VarData.IsAliaseTo == null)
+					target.VarData.IsAliaseTo = new();
+
+				if (value.VarData.IsAliaseTo != null)
+				{
+					target.VarData.IsAliaseTo.AddRange(value.VarData.IsAliaseTo);
+				}
+				else
+				{
+					target.VarData.IsAliaseTo.Add(value.VarData);
+				}
+
+				if (value.VarData.Aliases == null)
+					value.VarData.Aliases = new();
+
+				value.VarData.Aliases.Add(target.VarData);
+			}
 		}
 
 		private void PassToArgumentHandler(TypeSpec argument, LifeTime value)
