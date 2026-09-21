@@ -114,6 +114,11 @@ namespace EvolZero.Core.Analysis.Semantic
 			_errorsBag = errorsBag;
 		}
 
+		private void AddLifetimeError(string errorCode, string message, PositionInSources pos)
+		{
+			_errorsBag.AddError(LIFETIMES_LAYER, errorCode, message, pos);
+		}
+
 		protected override void HandleClass(ClassStatement statement)
 		{
 			_currentClass = new VarMeta(-1, false, true, null);
@@ -287,11 +292,11 @@ namespace EvolZero.Core.Analysis.Semantic
 
 		protected override LifeTime GetPointerToVar(GetPointerToVarExpression expr)
 		{
-			base.GetPointerToVar(expr);
+			var lifteime = base.GetPointerToVar(expr);
 			return new LifeTime()
 			{
 				Expr = expr,
-				BlockNum = _currentBlockNum,
+				BlockNum = lifteime?.VarData?.BlockNum ?? _currentBlockNum,
 				IsAnonymous = false
 			};
 		}
@@ -473,7 +478,10 @@ namespace EvolZero.Core.Analysis.Semantic
 			if (!target.Expr.ResultTypeSpec.IsRef || !value.Expr.ResultTypeSpec.IsRef) return target;
 
 			if (value.BlockNum > target.BlockNum && !value.IsAnonymous)
-				throw new NotImplementedException(); // ошибка что время жизни больше времени жизни ссылки
+			{
+				AddLifetimeError("LT002", "Время жизни присваиваемой ссылки больше времени жизни ссылки-получателя", target.Expr.Pos);
+				return null;
+			}
 
 			if (value.VarData != null && (value.VarData.IsDestructed || !value.VarData.IsInitialized))
 				throw new NotImplementedException(); // ссылка была деинициализированна. Вообще сюда оно поподать не должно, оно должно отбрасываться на других проверках
@@ -486,10 +494,16 @@ namespace EvolZero.Core.Analysis.Semantic
 			if (varIsOwner)
 			{
 				if (!value.Expr.ResultTypeSpec.IsOwnerRef)
-					throw new NotImplementedException(); // ошибка что во владеющую ссылку нельзя пихать заимствованные значения
+				{
+					AddLifetimeError("LT003", "Нельзя присвоить заимствованную (refb) ссылку во владеющую (ref) ссылку", value.Expr.Pos);
+					return null;
+				}
 
 				if (value.Expr is StructureFieldAccessExpression)
-					throw new NotImplementedException(); // нельзя снимать владеюущие ссылки с классов
+				{
+					AddLifetimeError("LT004", "Нельзя снимать владеющую (ref) ссылку с поля класса", value.Expr.Pos);
+					return null;
+				}
 
 				if (target.Expr is StructureFieldAccessExpression fieldAccess)
 				{
@@ -521,7 +535,8 @@ namespace EvolZero.Core.Analysis.Semantic
 				&& returnedLifetime.Expr.ResultTypeSpec.IsRef
 				&& !returnedLifetime.Expr.ResultTypeSpec.IsOwnerRef)
 			{
-				throw new NotImplementedException(); // ошибка что возвращаемая ссылка всегда должна быть владеющуй
+				AddLifetimeError("LT005", "Возвращаемая ссылка должна быть владеющей (ref)", returnedLifetime.Expr.Pos);
+				return null;
 			}
 
 			DestructLifetimes(returnedLifetime?.VarData);
@@ -533,7 +548,10 @@ namespace EvolZero.Core.Analysis.Semantic
 			if (!target.Expr.ResultTypeSpec.IsRef || !value.Expr.ResultTypeSpec.IsRef) return;
 
 			if (value.BlockNum > target.BlockNum && !value.IsAnonymous)
-				throw new NotImplementedException(); // ошибка что время жизни больше времени жизни ссылки
+			{
+				AddLifetimeError("LT002", "Время жизни присваиваемой ссылки больше времени жизни ссылки-получателя", target.Expr.Pos);
+				return;
+			}
 
 			if (value.VarData != null && (value.VarData.IsDestructed || !value.VarData.IsInitialized))
 				throw new NotImplementedException(); // ссылка была деинициализированна. Вообще сюда оно попадть не должно, оно должно отбрасываться на других проверках
@@ -546,23 +564,35 @@ namespace EvolZero.Core.Analysis.Semantic
 			if (varIsOwner)
 			{
 				if (!value.Expr.ResultTypeSpec.IsOwnerRef)
-					throw new NotImplementedException(); // ошибка что во владеющую ссылку нельзя пихать заимствованные значения
+				{
+					AddLifetimeError("LT003", "Нельзя присвоить заимствованную (refb) ссылку во владеющую (ref) ссылку", value.Expr.Pos);
+					return;
+				}
 
 				if (value.Expr is StructureFieldAccessExpression)
 				{
 					// снять владеющую ссылку с поля класса можно только через оператор <-,
 					// чтобы поле не осталось деинициализированным, а старая ссылка ушла в приемник
 					if (!value.IsStrippedViaExchange)
-						throw new NotImplementedException(); // нельзя просто так снимать владеющую ссылку с класса
+					{
+						AddLifetimeError("LT006", "Снять владеющую ссылку с поля класса можно только через оператор '<-'", value.Expr.Pos);
+						return;
+					}
 
 					if (target.BlockNum > value.BlockNum)
-						throw new NotImplementedException(); // у приемника время жизни меньше, чем у объекта, с которого снимается ссылка
+					{
+						AddLifetimeError("LT007", "Время жизни ссылки-получателя меньше времени жизни объекта, с которого снимается ссылка", target.Expr.Pos);
+						return;
+					}
 				}
 
 				if (target.VarData.IsInitialized)
 				{
 					if (!target.IsLocal)
-						throw new NotImplementedException(); // нельзя переназначать уже инициализированные не локальные ссылки (поля класов например)
+					{
+						AddLifetimeError("LT008", "Нельзя переназначать уже инициализированную ссылку, не являющуюся локальной (например, поле класса)", target.Expr.Pos);
+						return;
+					}
 
 					ToDestructPointer(target, true); // удалям старую ссылку
 				}
@@ -588,7 +618,10 @@ namespace EvolZero.Core.Analysis.Semantic
 		private void AssignBorrowRef(LifeTime target, LifeTime value)
 		{
 			if (value.IsAnonymous)
-				throw new NotImplementedException(); // ошибка что анонимные ссылки (напрмиер те что выдаются через new) можно присвивать только во владеющие ссылки
+			{
+				AddLifetimeError("LT009", "Анонимные ссылки (например, результат 'new') можно присваивать только во владеющие (ref) ссылки", value.Expr.Pos);
+				return;
+			}
 
 			if (value.VarData != null)
 			{
@@ -611,6 +644,7 @@ namespace EvolZero.Core.Analysis.Semantic
 					value.VarData.Aliases = new();
 
 				value.VarData.Aliases.Add(target.VarData);
+
 				target.BlockNum = value.BlockNum;
 				target.VarData.BlockNum = value.BlockNum;
 			}
@@ -628,10 +662,16 @@ namespace EvolZero.Core.Analysis.Semantic
 			if (varIsOwner)
 			{
 				if (!value.Expr.ResultTypeSpec.IsOwnerRef)
-					throw new NotImplementedException(); // ошибка что во владеющую ссылку нельзя пихать заимствованные значения
+				{
+					AddLifetimeError("LT003", "Нельзя передать заимствованную (refb) ссылку во владеющий (ref) параметр", value.Expr.Pos);
+					return;
+				}
 
 				if (value.Expr is StructureFieldAccessExpression)
-					throw new NotImplementedException(); // нельзя снимать владеюущие ссылки с классов. Потом для этого сделать оператор замены или ссылку обнулять
+				{
+					AddLifetimeError("LT004", "Нельзя снимать владеющую (ref) ссылку с поля класса", value.Expr.Pos);
+					return;
+				}
 
 				GiveAwayOwnership(value);
 			}
@@ -643,7 +683,8 @@ namespace EvolZero.Core.Analysis.Semantic
 
 			if (checkAliases && pointer.VarData.Aliases != null && pointer.VarData.Aliases.Count > 0)
 			{
-				throw new NotImplementedException(); // ошибка что нельзя передавать владение ссылкой у которой есть алиасы
+				AddLifetimeError("LT010", "Нельзя передавать владение ссылкой, у которой есть алиасы", pointer.Expr.Pos);
+				return;
 			}
 
 			if (!pointer.VarData.IsInitialized || pointer.VarData.IsDestructed || !pointer.Expr.ResultTypeSpec.IsOwnerRef)
@@ -662,7 +703,8 @@ namespace EvolZero.Core.Analysis.Semantic
 
 			if (pointer.VarData.Aliases != null && pointer.VarData.Aliases.Count > 0)
 			{
-				throw new NotImplementedException(); // ошибка что нельзя передавать владение ссылкой у которой есть алиасы
+				AddLifetimeError("LT010", "Нельзя передавать владение ссылкой, у которой есть алиасы", pointer.Expr.Pos);
+				return;
 			}
 
 			pointer.VarData.IsDestructed = true;
