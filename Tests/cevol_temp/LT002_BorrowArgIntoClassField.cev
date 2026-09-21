@@ -1,0 +1,36 @@
+namespace Program;
+
+class Box
+{
+	public int V;
+
+	public ctor(int v)
+	{
+		V = v;
+	}
+}
+
+class Holder
+{
+	public refb Box F;
+
+	public ctor()
+	{
+	}
+
+	public void Put(refb Box b)
+	{
+		// Правило 8: refb-параметр (как и this) считается живущим «бесконечно долго».
+		// Такой refb нельзя назначать в поле класса: ссылка может пережить объект.
+		ref F = b; // LT002
+	}
+}
+
+int main()
+{
+	ref Holder h = new Holder();
+	ref Box o = new Box(1);
+	h.Put(ref o);
+
+	return 0;
+}

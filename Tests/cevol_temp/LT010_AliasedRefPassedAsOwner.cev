@@ -1,0 +1,29 @@
+namespace Program;
+
+extern infargs int printf(refb byte ptr);
+
+class Box
+{
+	public int V;
+
+	public ctor(int v)
+	{
+		V = v;
+	}
+}
+
+int Take(ref Box b)
+{
+	printf(ref "%d\n", b.V);
+	return 0;
+}
+
+int main()
+{
+	// Правило 7: нельзя деинициализировать (передавать владение) ссылку, у которой есть алиасы.
+	ref Box o = new Box(5);
+	refb Box alias = o;   // локальный алиас владеющей ссылки
+	Take(ref o);          // LT010: o нельзя передавать как владение — алиас alias ещё жив
+
+	return 0;
+}

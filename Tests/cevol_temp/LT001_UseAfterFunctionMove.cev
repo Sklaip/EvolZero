@@ -1,0 +1,29 @@
+namespace Program;
+
+extern infargs int printf(refb byte ptr);
+
+class Box
+{
+	public int V;
+
+	public ctor(int v)
+	{
+		V = v;
+	}
+}
+
+int Take(ref Box b)
+{
+	printf(ref "%d\n", b.V);
+	return 0;
+}
+
+int main()
+{
+	// Правило 5: передав владение в функцию, использовать переменную нельзя.
+	ref Box a = new Box(1);
+	Take(ref a);
+	a.V = 2; // LT001: a деинициализирована передачей владения
+
+	return 0;
+}

@@ -1,0 +1,37 @@
+namespace Program;
+
+extern infargs int printf(refb byte ptr);
+
+class Box
+{
+	public int V;
+
+	public ctor(int v)
+	{
+		V = v;
+	}
+}
+
+class Holder
+{
+	public ref Box F;
+
+	// Поле класса инициализируется ТОЛЬКО в конструкторе: пока нет отдельного анализа
+	// «поле должно инициализироваться в конструкторе», компилятор считает любое поле
+	// уже инициализированным, и присваивание полю снаружи класса — переназначением (LT008).
+	public ctor(int v)
+	{
+		ref F = new Box(v);
+	}
+}
+
+int main()
+{
+	// Правило 4: лайфтайм поля равен лайфтайму объекта-владельца. Объект создан в
+	// конструкторе и жив, пока жив holder; раннее удаление дало бы мусор или падение.
+	ref Holder holder = new Holder(5);
+
+	printf(ref "%d\n", holder.F.V);
+
+	return 0;
+}

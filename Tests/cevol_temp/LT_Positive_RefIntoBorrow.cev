@@ -1,0 +1,38 @@
+namespace Program;
+
+extern infargs int printf(refb byte ptr);
+
+class Box
+{
+	public int V;
+
+	public ctor(int v)
+	{
+		V = v;
+	}
+}
+
+int TakeBorrow(refb Box b)
+{
+	printf(ref "%d\n", b.V);
+	return 0;
+}
+
+int main()
+{
+	// Правило 3: loc всегда возвращает refb со временем жизни объекта.
+	// ВАЖНО: прямое продвижение ref -> refb в компиляторе не реализовано, поэтому
+	// заимствование выражается оператором loc над стек-значением (без квалификаторов).
+	Box s(10);                // стек-экземпляр
+	refb Box b = loc s;       // правило 3: loc -> refb с временем жизни объекта s
+
+	// Правило 5: передача ссылки как заимствованной НЕ передаёт владение —
+	// объект жив, и к s можно продолжать обращаться после вызова.
+	TakeBorrow(loc s);
+	printf(ref "%d\n", s.V);  // объект не был освобождён заимствованием
+
+	refb int r = loc s.V;
+	printf(ref "%d\n", r);
+
+	return 0;
+}

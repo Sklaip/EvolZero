@@ -1,0 +1,21 @@
+namespace Program;
+
+class Box
+{
+	public int V;
+
+	public ctor(int v)
+	{
+		V = v;
+	}
+}
+
+int main()
+{
+	// Правило 2: в refb можно присвоить ref, но НЕ наоборот.
+	Box s(1);              // стек-экземпляр
+	refb Box b = loc s;    // refb на стек-объект (правило 3)
+	ref Box r = b;         // LT003: заимствованную (refb) ссылку нельзя класть во владеющую (ref)
+
+	return 0;
+}

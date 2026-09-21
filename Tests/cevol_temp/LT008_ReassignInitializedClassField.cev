@@ -1,0 +1,37 @@
+namespace Program;
+
+extern infargs int printf(refb byte ptr);
+
+class Box
+{
+	public int V;
+
+	public ctor(int v)
+	{
+		V = v;
+	}
+}
+
+class Holder
+{
+	public ref Box F;
+
+	public ctor(int v)
+	{
+		ref F = new Box(v);
+	}
+}
+
+int main()
+{
+	// Поле класса инициализируется ровно один раз — в конструкторе, это валидно.
+	// Здесь o2 объявлен РАНЬШЕ holder, чтобы не сработал LT002 (o2 жил бы короче поля).
+	ref Box o2 = new Box(2);
+	ref Holder holder = new Holder(1);
+
+	// Повторное присваивание уже инициализированной нелокальной ссылки запрещено:
+	// это приведёт к потере старого владельца без явного освобождения.
+	ref holder.F = o2; // LT008
+
+	return 0;
+}

@@ -1,0 +1,40 @@
+namespace Program;
+
+extern infargs int printf(refb byte ptr);
+
+class Box
+{
+	public int V;
+
+	public ctor(int v)
+	{
+		V = v;
+	}
+}
+
+class Holder
+{
+	public ref Box F;
+
+	// Поле инициализируется в конструкторе объектом, живущим столько же, сколько holder;
+	// его лайфтайм равен лайфтайму самого Holder (правило 4).
+	public ctor(int v)
+	{
+		ref F = new Box(v);
+	}
+}
+
+int main()
+{
+	// Правило 4: лайфтайм поля равен лайфтайму объекта-владельца (holder живёт дольше,
+	// чем объект t во внутреннем if-блоке) — класть t в поле нельзя.
+	ref Holder holder = new Holder(0);
+
+	if (1 == 1)
+	{
+		ref Box t = new Box(1);
+		ref holder.F = t; // LT002: t (внутренний блок) живёт меньше поля holder.F
+	}
+
+	return 0;
+}

@@ -1,0 +1,31 @@
+namespace Program;
+
+extern infargs int printf(refb byte ptr);
+
+class Box
+{
+	public int V;
+
+	public ctor(int v)
+	{
+		V = v;
+	}
+}
+
+int Take(ref Box b)
+{
+	printf(ref "%d\n", b.V);
+	return 0;
+}
+
+int main()
+{
+	// Правило 5: передав владение функции, исходная переменная больше не используется —
+	// это корректная программа. Объект жив до передачи и освобождается внутри Take.
+	// Внутри функции printf читает объект, которого вне её уже нет (после этой строки
+	// a деинициализирована, обращаться к ней нельзя — см. LT001_UseAfterFunctionMove).
+	ref Box a = new Box(7);
+	Take(ref a);
+
+	return 0;
+}

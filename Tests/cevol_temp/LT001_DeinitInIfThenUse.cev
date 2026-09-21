@@ -1,0 +1,32 @@
+namespace Program;
+
+extern infargs int printf(refb byte ptr);
+
+class Box
+{
+	public int V;
+
+	public ctor(int v)
+	{
+		V = v;
+	}
+}
+
+int Take(ref Box b)
+{
+	return 0;
+}
+
+int main()
+{
+	// Правило 6: деинициализация в любой ветке if => переменная деинициализирована
+	// и после всего условия. Здесь владение ушло в Take только в then-ветке.
+	ref Box a = new Box(1);
+	if (1 == 1)
+	{
+		Take(ref a);
+	}
+	a.V = 2; // LT001
+
+	return 0;
+}

@@ -37,4 +37,28 @@ public static class TestAssertions
 			.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries)
 			.ToArray();
 	}
+
+	/// <summary>
+	/// Проверяет, что компиляция исходника завершилась ошибкой: исполняемый файл не создан,
+	/// а сообщения компилятора содержат ожидаемые коды ошибок (например "error LT002").
+	/// Если компилятор упал в служебное исключение (NotImplementedException), сообщение
+	/// окажется пустым и проверка кода провалится.
+	/// </summary>
+	public static CompilationFailedException AssertCompilationFails(
+		CompilerRunner compiler,
+		string sourceFile,
+		params string[] expectedErrorCodes)
+	{
+		var ex = Assert.Throws<CompilationFailedException>(
+			() => compiler.Compile(new[] { sourceFile }));
+
+		Assert.False(File.Exists(ex.OutputPath), "При ошибке компиляции не должен создаваться exe.");
+
+		foreach (var code in expectedErrorCodes)
+		{
+			Assert.Contains($"error {code}", ex.Message);
+		}
+
+		return ex;
+	}
 }

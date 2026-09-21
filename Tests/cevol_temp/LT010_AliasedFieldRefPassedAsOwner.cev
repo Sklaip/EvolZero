@@ -1,0 +1,39 @@
+namespace Program;
+
+extern infargs int printf(refb byte ptr);
+
+class Box
+{
+	public int V;
+
+	public ctor(int v)
+	{
+		V = v;
+	}
+}
+
+class Holder
+{
+	public refb Box F;
+
+	public ctor()
+	{
+	}
+}
+
+int Take(ref Box b)
+{
+	printf(ref "%d\n", b.V);
+	return 0;
+}
+
+int main()
+{
+	// Правило 7: владеющую ссылку с алиасами (refb-поле класса) нельзя передавать как владение.
+	ref Holder h = new Holder();
+	ref Box o = new Box(5);
+	ref h.F = o;          // o теперь имеет алиас в refb-поле
+	Take(ref o);          // LT010: нельзя передавать владение o — алиас поля F ещё жив
+
+	return 0;
+}

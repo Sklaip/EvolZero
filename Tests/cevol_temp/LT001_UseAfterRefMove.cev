@@ -1,0 +1,24 @@
+namespace Program;
+
+extern infargs int printf(refb byte ptr);
+
+class Box
+{
+	public int V;
+
+	public ctor(int v)
+	{
+		V = v;
+	}
+}
+
+int main()
+{
+	// Правило 5: владение перешло от a к b при реуказании владеющей ссылки.
+	ref Box a = new Box(1);
+	ref Box b;
+	ref b = a;
+	a.V = 2; // LT001: a деинициализирована после переноса владения
+
+	return 0;
+}

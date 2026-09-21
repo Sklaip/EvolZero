@@ -1,0 +1,37 @@
+namespace Program;
+
+extern infargs int printf(refb byte ptr);
+
+class Box
+{
+	public int V;
+
+	public ctor(int v)
+	{
+		V = v;
+	}
+}
+
+int main()
+{
+	// Правило 1 (главная проверка): владеющая ref умирает при выходе из блока, refb — нет.
+	int x = 10;
+	if (1 == 1) {
+		ref Box tmp = new Box(1);
+
+		// refb на долгоживущую переменную переживает блок, эффект виден снаружи.
+		refb int r = loc x;
+		r = r + 1;
+	}
+	printf(ref "%d\n", x); // 11 — borrow пережил блок
+
+	// tmp освобождена при выходе из блока. Новые аллокации не должны затирать живые
+	// объекты: если бы tmp удалили не вовремя, first/second совпали бы по памяти и
+	// значения были бы мусором. Программа должна отработать и напечатать 100 и 200.
+	ref Box first = new Box(100);
+	ref Box second = new Box(200);
+	printf(ref "%d\n", first.V);   // 100
+	printf(ref "%d\n", second.V);  // 200
+
+	return 0;
+}
