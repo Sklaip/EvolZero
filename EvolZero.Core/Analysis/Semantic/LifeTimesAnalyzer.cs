@@ -477,7 +477,7 @@ namespace EvolZero.Core.Analysis.Semantic
 
 			if (!target.Expr.ResultTypeSpec.IsRef || !value.Expr.ResultTypeSpec.IsRef) return target;
 
-			if (value.BlockNum > target.BlockNum && !value.IsAnonymous)
+			if (CheckLifetimes(value.BlockNum, target.BlockNum) && !value.IsAnonymous)
 			{
 				AddLifetimeError("LT002", "Время жизни присваиваемой ссылки больше времени жизни ссылки-получателя", target.Expr.Pos);
 				return null;
@@ -547,7 +547,7 @@ namespace EvolZero.Core.Analysis.Semantic
 		{
 			if (!target.Expr.ResultTypeSpec.IsRef || !value.Expr.ResultTypeSpec.IsRef) return;
 
-			if (value.BlockNum > target.BlockNum && !value.IsAnonymous)
+			if (CheckLifetimes(value.BlockNum, target.BlockNum) && !value.IsAnonymous)
 			{
 				AddLifetimeError("LT002", "Время жизни присваиваемой ссылки больше времени жизни ссылки-получателя", target.Expr.Pos);
 				return;
@@ -579,7 +579,7 @@ namespace EvolZero.Core.Analysis.Semantic
 						return;
 					}
 
-					if (target.BlockNum > value.BlockNum)
+					if (CheckLifetimes(target.BlockNum, value.BlockNum))
 					{
 						AddLifetimeError("LT007", "Время жизни ссылки-получателя меньше времени жизни объекта, с которого снимается ссылка", target.Expr.Pos);
 						return;
@@ -719,6 +719,12 @@ namespace EvolZero.Core.Analysis.Semantic
 				if (excludedVar != null && lifetime.VarData == excludedVar) continue;
 				ToDestructPointer(lifetime, false);
 			}
+		}
+
+		private bool CheckLifetimes(int value, int target)
+		{
+			if (target == int.MinValue || value == int.MinValue) return true;
+			return value > target;
 		}
 	}
 }
