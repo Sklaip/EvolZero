@@ -155,7 +155,7 @@ namespace EvolZero.Core.Analysis.Semantic
 			{
 				foreach (var argument in fst.Arguments)
 				{
-					var liftime = argument.Declaring.IsBorrowRef ? (_currentBlockNum - 1) : _currentBlockNum;
+					var liftime = argument.Declaring.IsBorrowRef ? int.MinValue : _currentBlockNum;
 					var variable = new VarMeta(liftime, false, true, null);
 					_vars.Add(argument.Name, variable);
 
@@ -479,7 +479,7 @@ namespace EvolZero.Core.Analysis.Semantic
 
 			if (CheckLifetimes(value.BlockNum, target.BlockNum) && !value.IsAnonymous)
 			{
-				AddLifetimeError("LT002", "Время жизни присваиваемой ссылки больше времени жизни ссылки-получателя", target.Expr.Pos);
+				AddLifetimeError("LT002", "Время жизни присваиваемой ссылки меньше времени жизни ссылки-получателя", target.Expr.Pos);
 				return null;
 			}
 
@@ -549,7 +549,7 @@ namespace EvolZero.Core.Analysis.Semantic
 
 			if (CheckLifetimes(value.BlockNum, target.BlockNum) && !value.IsAnonymous)
 			{
-				AddLifetimeError("LT002", "Время жизни присваиваемой ссылки больше времени жизни ссылки-получателя", target.Expr.Pos);
+				AddLifetimeError("LT002", "Время жизни присваиваемой ссылки меньше времени жизни ссылки-получателя", target.Expr.Pos);
 				return;
 			}
 
