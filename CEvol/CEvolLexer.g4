@@ -4,11 +4,13 @@ lexer grammar CEvolLexer;
 NAMESPACE: 'namespace';
 USING: 'using';
 CLASS    : 'class';
+LIFETIMES    : 'lifetimes';
 IF       : 'if';
 ELSEIF     : 'else if';
 ELSE     : 'else';
 WHILE    : 'while';
 RETURN   : 'return';
+THIS   : 'this';
 LOC  : 'loc';
 NEW : 'new';
 CONSTRUCTOR : 'ctor';
@@ -41,6 +43,7 @@ RBRACK : ']' ;
 SEMICOLON: ';';
 COMMA : ',';
 DOT : '.' ;
+//LIFETIMEASSING  '~';
 
 // Модификаторы
 PUBLIC : 'public';

@@ -34,6 +34,8 @@ constructorDecl : accessModifier? extraModifier* CONSTRUCTOR LPAREN params? RPAR
 desctructorDecl : accessModifier? extraModifier* DESTRUCTOR LPAREN params? RPAREN block ;
 
 params : typeSpec IDENTIFIER (COMMA typeSpec IDENTIFIER)* ;
+//lifetimeDecl : (RETURN | THIS | IDENTIFIER) LIFETIMEASSING (RETURN | THIS | IDENTIFIER) ;
+//lifetimesDecl : LIFETIMES LPAREN lifetimeDecl (COMMA lifetimeDecl)* RPAREN ;
 
 // --- Инструкции ---
 classDecl : CLASS IDENTIFIER LBRACE (fieldDecl | functionDecl | abstractFunctionDecl | constructorDecl | desctructorDecl)* RBRACE ;

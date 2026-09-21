@@ -124,7 +124,7 @@ namespace EvolZero.Parsing
 						funcRefs = _codeGenerator.CreateFunctionSiganture(funcName, QualifierToTypeRef(returnTypeQualifers[0], _codeGenerator), agrumentsRefs, infArgs);
 					}
 
-					var funcDesc = new FuncDesc(new TypeSpec(returnType, returnTypeQualifers), func.Name, arguments.ToArray(), funcRefs, infArgs, func.Access, currentClass);
+					var funcDesc = new FuncDesc(new TypeSpec(returnType, returnTypeQualifers), func.Name, arguments.ToArray(), funcRefs, infArgs, func.Access, [], currentClass);
 					funcList.Add(funcDesc);
 				}
 

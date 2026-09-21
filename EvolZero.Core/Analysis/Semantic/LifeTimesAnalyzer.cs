@@ -150,13 +150,14 @@ namespace EvolZero.Core.Analysis.Semantic
 			{
 				foreach (var argument in fst.Arguments)
 				{
-					var variable = new VarMeta(_currentBlockNum, false, true, null);
+					var liftime = argument.Declaring.IsBorrowRef ? (_currentBlockNum - 1) : _currentBlockNum;
+					var variable = new VarMeta(liftime, false, true, null);
 					_vars.Add(argument.Name, variable);
 
 					var lifetime = new LifeTime()
 					{
 						Expr = new VariableAccessExpression(argument.Name, argument.Declaring, true, statement.Pos),
-						BlockNum = _currentBlockNum,
+						BlockNum = liftime,
 						VarData = variable
 					};
 
@@ -445,12 +446,6 @@ namespace EvolZero.Core.Analysis.Semantic
 			return lifetime;
 		}
 
-		//protected override LifeTime? PointerDereference(PointerDereferenceExpression expr)
-		//{
-		//	base.PointerDereference(expr);
-		//	return null;
-		//}
-
 		protected override LifeTime? SimpleBinaryOperationHandle(SimpleBinaryOperationExpression expr)
 		{
 			LifeTime? left = HandleExpression(expr.LeftExpression);
@@ -616,6 +611,8 @@ namespace EvolZero.Core.Analysis.Semantic
 					value.VarData.Aliases = new();
 
 				value.VarData.Aliases.Add(target.VarData);
+				target.BlockNum = value.BlockNum;
+				target.VarData.BlockNum = value.BlockNum;
 			}
 		}
 
