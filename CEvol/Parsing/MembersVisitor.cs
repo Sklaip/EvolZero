@@ -18,6 +18,7 @@ namespace EvolZero.Parsing
 		private Dictionary<string, VariableSignature>? _currentClassVariables = null;
 		private Dictionary<string, List<FuncSignature>>? _currentClassFunctions = null;
 		private List<ConstructorSignature>? _currentClassConstructors = null;
+		private List<DestructorSignature>? _currentClassDestructors = null;
 
 		public override object? VisitNamespaceDecl([NotNull] CEvolParser.NamespaceDeclContext context)
 		{
@@ -42,6 +43,7 @@ namespace EvolZero.Parsing
 			_currentClassVariables = new();
 			_currentClassFunctions = new();
 			_currentClassConstructors = new();
+			_currentClassDestructors = new();
 
 			var typeName = context.IDENTIFIER().ToString();
 			var fullTypeName = $"{CurrentNameSpace}.{typeName}";
@@ -63,12 +65,14 @@ namespace EvolZero.Parsing
 				Visit(funcDecl);
 			}
 
-			var currentClassDesc = new ClassSignature(fullTypeName, _currentClassConstructors, _currentClassFunctions, _currentClassVariables);
+			var currentClassDesc = new ClassSignature(fullTypeName, _currentClassConstructors, 
+				_currentClassDestructors, _currentClassFunctions, _currentClassVariables);
 			Classes[fullTypeName] = currentClassDesc;
 
 			_currentClassVariables = null;
 			_currentClassFunctions = null;
 			_currentClassConstructors = null;
+			_currentClassDestructors = null;
 
 			return null;
 		}
@@ -153,7 +157,7 @@ namespace EvolZero.Parsing
 			return null;
 		}
 
-		public override object VisitConstructorDecl([NotNull] CEvolParser.ConstructorDeclContext context)
+		public override object? VisitConstructorDecl([NotNull] CEvolParser.ConstructorDeclContext context)
 		{
 			var prms = context.@params();
 
@@ -169,6 +173,17 @@ namespace EvolZero.Parsing
 			AccessModifier access = ParseAccessModifier(context.accessModifier(), isClassMember: true);
 
 			_currentClassConstructors.Add(new ConstructorSignature(parameters, [], access));
+
+			return null;
+		}
+
+		public override object? VisitDesctructorDecl([NotNull] DesctructorDeclContext context)
+		{
+			if (_currentClassDestructors == null) throw new NotImplementedException();
+
+			AccessModifier access = ParseAccessModifier(context.accessModifier(), isClassMember: true);
+
+			_currentClassDestructors.Add(new DestructorSignature([], access));
 
 			return null;
 		}

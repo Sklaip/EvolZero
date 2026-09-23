@@ -22,6 +22,8 @@ namespace EvolZero.Parsing
 
 		public Statement ResultStatement { get; private set; }
 
+		private bool _currentClassDestructorHandled = false; // TODO: эту логику от сюда куда-нибудь вынести, здесь ее быть не должно
+
 		public LogicVisitor(MembersFinder membersFinder, ErrorsBag errorsBag, string currentFile)
 		{
 			_typeAnalyzer = new TypeAnalyzer(membersFinder);
@@ -78,9 +80,17 @@ namespace EvolZero.Parsing
 
 			_semanticAnalyzer.EnterToClass(context.IDENTIFIER().GetText());
 			base.VisitClassDecl(context);
-			_semanticAnalyzer.ExitFromBlock();
 
+			if (!_currentClassDestructorHandled)
+			{
+				_semanticAnalyzer.EnterToDestructor();
+				_semanticAnalyzer.ExitFromBlock();
+			}
+
+
+			_semanticAnalyzer.ExitFromBlock();
 			_semanticAnalyzer.CurrentPosition = lastPos;
+			_currentClassDestructorHandled = false;
 
 			return null;
 		}
@@ -114,7 +124,7 @@ namespace EvolZero.Parsing
 			return null;
 		}
 
-		public override Expression VisitConstructorDecl([NotNull] CEvolParser.ConstructorDeclContext context)
+		public override Expression? VisitConstructorDecl([NotNull] CEvolParser.ConstructorDeclContext context)
 		{
 			var lastPos = _semanticAnalyzer.CurrentPosition;
 			SetCurrentPosition(context);
@@ -136,6 +146,22 @@ namespace EvolZero.Parsing
 
 			_semanticAnalyzer.ExitFromBlock();
 			_semanticAnalyzer.CurrentPosition = lastPos;
+
+			return null;
+		}
+
+		public override Expression? VisitDesctructorDecl([NotNull] DesctructorDeclContext context)
+		{
+			var lastPos = _semanticAnalyzer.CurrentPosition;
+			SetCurrentPosition(context);
+
+			_semanticAnalyzer.EnterToDestructor();
+
+			Visit(context.block());
+
+			_semanticAnalyzer.ExitFromBlock();
+			_semanticAnalyzer.CurrentPosition = lastPos;
+			_currentClassDestructorHandled = true;
 
 			return null;
 		}

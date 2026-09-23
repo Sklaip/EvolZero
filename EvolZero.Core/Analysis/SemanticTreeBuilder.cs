@@ -24,7 +24,7 @@ namespace EvolZero.Core.Analysis
 
 		public PositionInSources CurrentPosition { get; set; }
 
-		public bool UnsafeMode { get; set; } = true;
+		public bool UnsafeMode { get; set; } = false;
 
 		private class Var(TypeSpec type, bool isInit)
 		{
@@ -183,6 +183,39 @@ namespace EvolZero.Core.Analysis
 			}
 
 			var classFields = currentClass?.TypeDesc.Variables.Values.Select(x => (x.Name, new Field(x, false))).ToDictionary();
+
+			_blocks.Push(new CodeBlock(statement, childs, variables, classFields, statement, currentClass));
+		}
+
+		public void EnterToDestructor()
+		{
+			CodeBlock block = _blocks.Peek();
+			var currentClass = block.CurrentClass;
+
+			if (currentClass == null)
+			{
+				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Declaring a constructor outside of a class is not allowed", CurrentPosition);
+				return;
+			}
+
+			DestructorDesc? dtorDesc = null;
+			var destructors = _membersFinder.FindDesctructors(currentClass.TypeDesc);
+
+			dtorDesc = _typeAnalyzer.FindSuitableDestructor(destructors);
+
+			if (dtorDesc == null)
+			{
+				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Destructor with specified arguments could not be found", CurrentPosition);
+				return;
+			}
+
+			var childs = new List<ILogicModel>();
+			var statement = new DestructorStatement(dtorDesc, childs, new TypeSpec(_membersFinder.FindType("void")), CurrentPosition);
+
+			block.StatementChilds.Add(statement);
+
+			var variables = new Dictionary<string, Var>();
+			var classFields = currentClass?.TypeDesc.Variables.Values.Select(x => (x.Name, new Field(x, true))).ToDictionary();
 
 			_blocks.Push(new CodeBlock(statement, childs, variables, classFields, statement, currentClass));
 		}
@@ -903,6 +936,7 @@ namespace EvolZero.Core.Analysis
 				{
 					if (!UnsafeMode)
 					{
+						// TODO: эта поебота отъбывает если в поле класса присвоить переменную (поле было refb, перменная ref с типом кастомного класса)
 						_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Reassignment of a reference without a 'ref' qualifier requires an unsafe context", CurrentPosition);
 						return new StubForErrorExpression(CurrentPosition);
 					}

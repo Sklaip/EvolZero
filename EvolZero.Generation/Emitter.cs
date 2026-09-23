@@ -48,6 +48,9 @@ namespace EvolZero.Generation
 				case ConstructorStatement contructorStatetment:
 					HandleFunctionalBlock(contructorStatetment);
 					break;
+				case DestructorStatement destructorStatetment:
+					HandleFunctionalBlock(destructorStatetment);
+					break;
 				case IfStatement ifStatement:
 					HandleIfStatement(ifStatement);
 					break;
@@ -237,6 +240,8 @@ namespace EvolZero.Generation
 					return HandleExpression(doNotAutoDereferenceIfPointerExpression.Expression);
 				case CallConstructorExpression callConstructorExpression:
 					return CallConstructor(callConstructorExpression);
+				case CallDesructorExpression callDesructorExpression:
+					return CallDestructor(callDesructorExpression);
 				case GlobalArrayExpression globalArrayExpression:
 					return CreateGlobalArray(globalArrayExpression);
 				case CastExpression castExpression:
@@ -431,6 +436,15 @@ namespace EvolZero.Generation
 
 			return memoryGetting;
 		}
+
+		private IValueAccessor CallDestructor(CallDesructorExpression expr)
+		{
+			var memoryGetting = HandleExpression(expr.MemoryGetting);
+			IValueAccessor[] accessors = [memoryGetting];
+			_codeGenerator.FunctionCall(expr.Destructor.RefData, accessors);
+
+			return memoryGetting;
+		}		
 
 		private IValueAccessor CastHandle(CastExpression expr)
 		{

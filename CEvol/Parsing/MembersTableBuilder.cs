@@ -77,6 +77,19 @@ namespace EvolZero.Parsing
 			}
 		}
 
+		private void DestructorsAnalyze(List<DestructorSignature> destructorsList, CodeGenerator codeGenerator, TypeDesc currentClass)
+		{
+			foreach (var dtor in destructorsList)
+			{
+				string funcName = $"{currentClass.Name}_dtor";
+
+				IFuncRefData funcRefs;
+				funcRefs = codeGenerator.CreateFunctionSiganture(funcName, codeGenerator.VoidType, [codeGenerator.PointerType], false);
+
+				currentClass.Destructors.Add(new DestructorDesc(funcRefs, dtor.Access));
+			}
+		}
+
 		private void FunctionsAnalyze(Dictionary<string, List<FuncSignature>> rawFunctionsList,  Dictionary<string, FuncDesc[]> listToAdd, TypeDesc? currentClass = null)
 		{
 			foreach (var funcsKey in rawFunctionsList.Keys)
@@ -147,7 +160,7 @@ namespace EvolZero.Parsing
 
 				var classStructure = _codeGenerator.CreateStructure(currentClass.Name);
 
-				var classDesc = new TypeDesc(currentClass.Name, classStructure, [], [], []);
+				var classDesc = new TypeDesc(currentClass.Name, classStructure, [], [], [], []);
 				_parsedClasses.Add(currentClass.Name, classDesc);
 				generalTypesList.Add(currentClass.Name, classDesc);
 			}
@@ -185,8 +198,12 @@ namespace EvolZero.Parsing
 
 				_codeGenerator.FillStructureBody(currentClassTypeDesc.TypeRef, filedTypes);
 
+				if (currentClass.Ctors.Count == 0) currentClass.Ctors.Add(new ConstructorSignature(null, [], AccessModifier.Public));
+				if (currentClass.Dtors.Count == 0) currentClass.Dtors.Add(new DestructorSignature([], AccessModifier.Public));
+
 				FunctionsAnalyze(currentClass.Functions, currentClassTypeDesc.Functions, currentClassTypeDesc);
 				ConstructorsAnalyze(currentClass.Ctors, _codeGenerator, currentClassTypeDesc);
+				DestructorsAnalyze(currentClass.Dtors, _codeGenerator, currentClassTypeDesc);
 			}
 		}
 

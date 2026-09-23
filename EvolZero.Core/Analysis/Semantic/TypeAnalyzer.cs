@@ -114,6 +114,11 @@ namespace EvolZero.Core.Analysis.Semantic
 			return null;
 		}
 
+		public DestructorDesc? FindSuitableDestructor(IEnumerable<DestructorDesc> constructors)
+		{
+			return constructors.FirstOrDefault();
+		}
+
 		private bool TryCastArrayRefToTypeRef(TypeSpec to, TypeSpec from)
 		{
 			if (!to.QualifiersExists || !from.QualifiersExists) return false;

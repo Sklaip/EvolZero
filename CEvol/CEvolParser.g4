@@ -31,7 +31,7 @@ fieldDecl : accessModifier? extraModifier* typeSpec IDENTIFIER (LPAREN args? RPA
 functionDecl : accessModifier? extraModifier* typeSpec IDENTIFIER LPAREN params? RPAREN block ;
 abstractFunctionDecl : accessModifier? extraModifier* typeSpec IDENTIFIER LPAREN params? RPAREN SEMICOLON ;
 constructorDecl : accessModifier? extraModifier* CONSTRUCTOR LPAREN params? RPAREN block ;
-desctructorDecl : accessModifier? extraModifier* DESTRUCTOR LPAREN params? RPAREN block ;
+desctructorDecl : accessModifier? extraModifier* DESTRUCTOR LPAREN RPAREN block ;
 
 params : typeSpec IDENTIFIER (COMMA typeSpec IDENTIFIER)* ;
 //lifetimeDecl : (RETURN | THIS | IDENTIFIER) LIFETIMEASSING (RETURN | THIS | IDENTIFIER) ;

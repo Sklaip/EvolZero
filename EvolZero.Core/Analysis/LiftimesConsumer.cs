@@ -1,6 +1,7 @@
 ﻿using EvolZero.Core.LogicModels;
 using EvolZero.Core.LogicModels.Expressions;
 using EvolZero.Core.LogicModels.Statements;
+using EvolZero.Core.MemebersModels;
 using System.Reflection;
 
 namespace EvolZero.Core.Analysis
@@ -41,13 +42,14 @@ namespace EvolZero.Core.Analysis
 				else if (statement.ElseIfStatements?.Any(x => x == givenRef.SubStatement) != null)
 				{
 					var elseIfs = statement.ElseIfStatements?.Where(x => x != givenRef.SubStatement);
-					AddPointerDestruct(givenRef.refExpr, statement, statement.ElseIfStatements);
+					AddPointerDestruct(givenRef.refExpr, statement, elseIfs);
 
 					if (statement.ElseStatement == null)
 					{
 						statement.ElseStatement = new BlockStatement(new List<ILogicModel>(), statement.Pos);
-						statement.ElseStatement.AddLogicModel(new DestructPointerExpression(givenRef.refExpr));
 					}
+
+					statement.ElseStatement.AddLogicModel(GetDestructor(givenRef.refExpr));
 				}
 				else
 				{
@@ -62,11 +64,11 @@ namespace EvolZero.Core.Analysis
 			{
 				foreach (var st in otherStatements)
 				{
-					st.AddLogicModel(new DestructPointerExpression(pointer));
+					st.AddLogicModel(GetDestructor(pointer));
 				}
 			}
 
-			statement.AddLogicModel(new DestructPointerExpression(pointer));
+			statement.AddLogicModel(GetDestructor(pointer));
 		}
 
 		public void HandleConditionSubStatement(Statement statement)
@@ -75,15 +77,47 @@ namespace EvolZero.Core.Analysis
 			currentIf.CurrentSubStatement = statement;
 		}
 
-		public void GiveAwayOwnershipToRef(Expression expr)
+		public void GiveAwayOwnership(Expression expr)
 		{
 			if (!_blocks.TryPeek(out var currentIf)) return;
 			currentIf.GivenRefs.Add((expr, currentIf.CurrentSubStatement));
 		}
 
-		public Expression? DestructPointer(Expression pointerExpr)
+		public Expression? PointerLifetimeEnd(Expression pointerExpr)
 		{
+			if (!pointerExpr.ResultTypeSpec.Type.IsBaseType)
+			{
+				return GetDestructor(pointerExpr);
+			}
+
 			return new DestructPointerExpression(pointerExpr); // TODO: emitter потом просто повторно въебет этот Statement (если например это был new), поэтому нужно сохранять в какую-нибудь анонимную ссылку
+		}
+
+		public List<Expression> HandleDestructor(TypeDesc typeDesc, DestructorStatement destructorStatement)
+		{
+			var pos = destructorStatement.Pos;
+			var result = new List<Expression>();
+
+			foreach (var field in typeDesc.Variables.Values)
+			{
+				if (field.Declaring.IsOwnerRef && !field.Declaring.Type.IsBaseType)
+				{
+					var thisGetting = new PointerDereferenceExpression(new AppealToThisExpression(typeDesc, pos), pos);
+					Expression fieldAccess = new StructureFieldAccessExpression(field, thisGetting, field.Declaring, true, pos);
+
+					result.Add(GetDestructor(fieldAccess));
+				}
+			}
+
+			result.Add(new DestructPointerExpression(new AppealToThisExpression(typeDesc, pos)));
+
+			return result;
+		}
+
+		private CallDesructorExpression GetDestructor(Expression expr)
+		{
+			var typeDestructor = expr.ResultTypeSpec.Type.Destructors.First();
+			return new CallDesructorExpression(expr, typeDestructor, expr.Pos);
 		}
 
 	}

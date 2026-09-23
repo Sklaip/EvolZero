@@ -41,6 +41,9 @@ namespace EvolZero.Core.Analysis
 				case ConstructorStatement contructorStatetment:
 					HandleFunctionalBlock(contructorStatetment);
 					break;
+				case DestructorStatement destructorStatetment:
+					HandleFunctionalBlock(destructorStatetment);
+					break;
 				case IfStatement ifStatement:
 					HandleIfStatement(ifStatement);
 					break;
@@ -193,6 +196,8 @@ namespace EvolZero.Core.Analysis
 					return HandleExpression(doNotAutoDereferenceIfPointerExpression.Expression);
 				case CallConstructorExpression callConstructorExpression:
 					return CallConstructor(callConstructorExpression);
+				case CallDesructorExpression callDesructorExpression:
+					return CallDestructor(callDesructorExpression);
 				case GlobalArrayExpression globalArrayExpression:
 					return CreateGlobalArray(globalArrayExpression);
 				case CastExpression castExpression:
@@ -309,6 +314,12 @@ namespace EvolZero.Core.Analysis
 		{
 			HandleExpression(expr.MemoryGetting);
 			foreach (var arg in expr.Arguments) HandleExpression(arg);
+			return default!;
+		}
+
+		protected virtual T CallDestructor(CallDesructorExpression expr)
+		{
+			HandleExpression(expr.MemoryGetting);
 			return default!;
 		}
 

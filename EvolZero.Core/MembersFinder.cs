@@ -77,5 +77,10 @@ namespace EvolZero.Core
 		{
 			return parentType.Constructors;
 		}
+
+		public IReadOnlyCollection<DestructorDesc> FindDesctructors(TypeDesc parentType)
+		{
+			return parentType.Destructors;
+		}
 	}
 }

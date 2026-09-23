@@ -100,6 +100,8 @@ namespace EvolZero.Core.Analysis.Semantic
 
 		private VarMeta? _currentClass;
 		private Dictionary<string, VarMeta>? _currentClassFields;
+		private TypeDesc? _currentDesc;
+		private DestructorStatement? _currentDestructor;
 
 		private ILifitemesBypassConsumer _lifetimesConsumer = new LiftimesConsumer();
 
@@ -121,6 +123,7 @@ namespace EvolZero.Core.Analysis.Semantic
 
 		protected override void HandleClass(ClassStatement statement)
 		{
+			_currentDesc = statement.TypeDesc;
 			_currentClass = new VarMeta(-1, false, true, null);
 
 			_currentClassFields = statement.TypeDesc.Variables.Values.Select(x => (x.Name, new VarMeta(-1, false, false, null)
@@ -135,6 +138,7 @@ namespace EvolZero.Core.Analysis.Semantic
 
 			_currentClass = null;
 			_currentClassFields = null;
+			_currentDesc = null;
 		}
 
 		protected override void HandleFunctionalBlock<TBlock>(TBlock statement)
@@ -170,7 +174,16 @@ namespace EvolZero.Core.Analysis.Semantic
 				}
 			}
 
-			base.HandleStatemetChilds(statement);
+			if (statement is DestructorStatement destructor)
+			{
+				_currentDestructor = destructor;
+				base.HandleStatemetChilds(statement);
+				_currentDestructor = null;
+			}
+			else
+			{
+				base.HandleStatemetChilds(statement);
+			}
 
 			_currentBlockNum--;
 			_currentBlocks.Pop();
@@ -511,7 +524,7 @@ namespace EvolZero.Core.Analysis.Semantic
 				}
 
 				if (!value.IsAnonymous)
-					_lifetimesConsumer.GiveAwayOwnershipToRef(value.Expr);
+					_lifetimesConsumer.GiveAwayOwnership(value.Expr);
 
 				target.BlockNum = value.BlockNum;
 
@@ -540,6 +553,15 @@ namespace EvolZero.Core.Analysis.Semantic
 			}
 
 			DestructLifetimes(returnedLifetime?.VarData);
+
+			if (_currentDestructor != null)
+			{
+				foreach (var newStatement in _lifetimesConsumer.HandleDestructor(_currentDesc!, _currentDestructor))
+				{
+					AddToCurrentStatement(newStatement);
+				}
+			}
+
 			return returnedLifetime;
 		}
 
@@ -598,7 +620,7 @@ namespace EvolZero.Core.Analysis.Semantic
 				}
 
 				if (!value.IsAnonymous && !value.IsStrippedViaExchange)
-					_lifetimesConsumer.GiveAwayOwnershipToRef(value.Expr);
+					_lifetimesConsumer.GiveAwayOwnership(value.Expr);
 
 				target.BlockNum = value.BlockNum;
 
@@ -652,6 +674,14 @@ namespace EvolZero.Core.Analysis.Semantic
 
 		private void PassToArgumentHandler(TypeSpec argument, LifeTime value)
 		{
+			if (value.VarData?.IsDestructed == true)
+			{
+				_errorsBag.AddError(LIFETIMES_LAYER, "LT001", 
+					$"Нет доступа к деинициализированной ссылке переданной в аргумент", value.Expr.Pos); // TODO: выводить чо за именно аргумент
+				return;
+			}
+
+
 			if (!argument.IsRef) return;
 
 			if (argument.IsRef && !value.Expr.ResultTypeSpec.IsRef)
@@ -673,6 +703,9 @@ namespace EvolZero.Core.Analysis.Semantic
 					return;
 				}
 
+				if (!value.IsAnonymous)
+					_lifetimesConsumer.GiveAwayOwnership(value.Expr);
+
 				GiveAwayOwnership(value);
 			}
 		}
@@ -690,7 +723,7 @@ namespace EvolZero.Core.Analysis.Semantic
 			if (!pointer.VarData.IsInitialized || pointer.VarData.IsDestructed || !pointer.Expr.ResultTypeSpec.IsOwnerRef)
 				return;
 
-			var expr = _lifetimesConsumer.DestructPointer(pointer.Expr);
+			var expr = _lifetimesConsumer.PointerLifetimeEnd(pointer.Expr);
 			if (expr != null)
 			{
 				AddToCurrentStatement(expr);
