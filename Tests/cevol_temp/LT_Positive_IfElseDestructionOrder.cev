@@ -1,0 +1,122 @@
+namespace Program;
+
+extern infargs int printf(refb byte ptr);
+extern infargs int scanf(refb byte ptr);
+
+class Structure 
+{
+	public int Num;
+
+	public ctor(int num)
+	{
+		Num = num;
+	}
+
+	public dtor()
+	{
+		printf(ref "Structure destructor. Num: ");
+		printf(ref "%d\n", Num);
+	}
+}
+
+class TestObj
+{
+	public int ObjectNum;
+	public ref Structure Data;
+	public refb Structure BorrowData;
+
+	public ctor(ref Structure data, int objectNum)
+	{
+		ref Data = data;
+		ObjectNum = objectNum;
+	}
+
+	public ctor(int objectNum)
+	{
+		ref Data = new Structure(300);
+		ObjectNum = objectNum;
+	}
+
+	public int SumStructuresNums()
+	{
+		return Data.Num + BorrowData.Num;
+	}
+
+	public dtor()
+	{
+		printf(ref "\n");
+		printf(ref "TestObj destructor. ObjectNum: ");
+		printf(ref "%d\n", ObjectNum);
+		printf(ref "  Data.Num: ");
+		printf(ref "%d\n", Data.Num);
+		printf(ref "  BorrowData.Num: ");
+		printf(ref "%d\n", BorrowData.Num);
+		printf(ref "\n");
+	}
+}
+
+void PassOwnerRef(ref TestObj ownering)
+{
+	int sum = ownering.SumStructuresNums();
+	printf(ref "ownering sum: ");
+	printf(ref "%d\n", sum);
+}
+
+void PassBorrowRef(refb TestObj borrow)
+{
+	int sum = borrow.SumStructuresNums();
+	printf(ref "borrow sum: ");
+	printf(ref "%d\n", sum);
+}
+
+void Test(ref TestObj outsideObj)
+{
+	ref Structure structureStub = new Structure(10);
+	refb outsideObj.BorrowData = structureStub;
+
+	int num = 0;
+    scanf(ref "%d", loc num);
+
+	ref TestObj obj = new TestObj(ref new Structure(2), 2);
+
+	ref Structure structureOne = new Structure(21);
+	ref Structure strcRec = new Structure(57);
+
+	if (num == 1) 
+	{
+		printf(ref "num is 1\n");
+		refb obj.BorrowData = structureStub;
+		ref strcRec = obj.Data <- structureOne;
+		// тут strcRec должен удалиться, structureOne деинциализируется
+		printf(ref "Test function\n");
+		// тут должен удалиться obj, тк в блоке else if мы его передаем в PassOwnerRef (PassOwnerRef его удалит, тк получил владение)
+		// а значит obj должен быть удален и во всех остальных ветках блока if/else-if/else
+	}
+	else if (num == 2)
+	{
+		printf(ref "num is 2\n");
+		refb obj.BorrowData = structureOne;
+		PassOwnerRef(ref obj);
+		printf(ref "Test function\n");
+		//тут structureOne должен удалиться, тк в блоке if мы эту переменную деинциализировали через оператор <-
+	} 
+	else
+	{
+		printf(ref "num is 3\n");
+		refb obj.BorrowData = strcRec;
+		PassBorrowRef(ref obj);
+		printf(ref "Test function\n");
+		//тут structureOne должен удалиться, тк в блоке if мы эту переменную деинциализировали через оператор <-
+		// тут должен удалиться obj
+	}
+
+	printf(ref "End function\n");
+}
+
+
+int main()
+{
+	Test(ref new TestObj(1));
+
+	return 0;
+}

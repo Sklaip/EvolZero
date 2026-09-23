@@ -81,6 +81,82 @@ public sealed class LifetimeAnalyzerPositiveTests : IDisposable
 		});
 	}
 
+	[Theory]
+	// Ввод 1: обмен obj.Data <- structureOne только в if-ветке:
+	// старый strcRec (57) удалён при переназначении через обмен; obj удалён в конце if-ветки
+	// (деинициализация в else-if); obj.Data = structureOne освобождается вместе с obj;
+	// strcRec = старый obj.Data (2).
+	[InlineData(1,
+		"num is 1\n" +
+		"Structure destructor. Num: 57\n" +
+		"Test function\n" +
+		"TestObj destructor. ObjectNum: 2\n" +
+		"  Data.Num: 21\n" +
+		"  BorrowData.Num: 10\n" +
+		"Structure destructor. Num: 21\n" +
+		"End function\n" +
+		"TestObj destructor. ObjectNum: 1\n" +
+		"  Data.Num: 300\n" +
+		"  BorrowData.Num: 10\n" +
+		"Structure destructor. Num: 300\n" +
+		"Structure destructor. Num: 10\n" +
+		"Structure destructor. Num: 2")]
+	// Ввод 2: PassOwnerRef забирает владение obj в else-if-ветке (объект удалён внутри неё);
+	// structureOne деинициализирован в if-ветке, поэтому его деструктор вставлен в else-if-ветку.
+	[InlineData(2,
+		"num is 2\n" +
+		"ownering sum: 23\n" +
+		"TestObj destructor. ObjectNum: 2\n" +
+		"  Data.Num: 2\n" +
+		"  BorrowData.Num: 21\n" +
+		"Structure destructor. Num: 2\n" +
+		"Test function\n" +
+		"Structure destructor. Num: 21\n" +
+		"End function\n" +
+		"TestObj destructor. ObjectNum: 1\n" +
+		"  Data.Num: 300\n" +
+		"  BorrowData.Num: 10\n" +
+		"Structure destructor. Num: 300\n" +
+		"Structure destructor. Num: 10\n" +
+		"Structure destructor. Num: 57")]
+	// Ввод 3: PassBorrowRef не забирает владение; в else-ветку вставлены деструкторы structureOne и obj.
+	[InlineData(3,
+		"num is 3\n" +
+		"borrow sum: 59\n" +
+		"Test function\n" +
+		"Structure destructor. Num: 21\n" +
+		"TestObj destructor. ObjectNum: 2\n" +
+		"  Data.Num: 2\n" +
+		"  BorrowData.Num: 57\n" +
+		"Structure destructor. Num: 2\n" +
+		"End function\n" +
+		"TestObj destructor. ObjectNum: 1\n" +
+		"  Data.Num: 300\n" +
+		"  BorrowData.Num: 10\n" +
+		"Structure destructor. Num: 300\n" +
+		"Structure destructor. Num: 10\n" +
+		"Structure destructor. Num: 57")]
+	public void IfElseDestructionOrder_OwnershipAndBorrowAcrossBranches(int input, string expectedOutput)
+	{
+		// Правило 6 + механика LiftimesConsumer: деинициализация в любой ветке if/else-if/else
+		// приводит к вставке деинициализации в остальные ветки. Тест проверяет точный порядок
+		// вызова деструкторов по каждой ветке.
+		// Пустые строки (printf("\n") в начале/в конце dtor) NormalizeLines отбрасывает.
+		string exePath = _compiler.Compile(["LT_Positive_IfElseDestructionOrder.cev"]);
+
+		var result = ExecutableRunner.Run(
+			exePath,
+			workingDirectory: _compiler.WorkDir,
+			standardInput: input + "\n");
+
+		Assert.False(result.TimedOut, "Программа превысила таймаут.");
+		Assert.Equal(0, result.ExitCode);
+
+		var expectedLines = TestAssertions.NormalizeLines(expectedOutput);
+		var actualLines = TestAssertions.NormalizeLines(result.StandardOutput);
+		Assert.Equal(expectedLines, actualLines);
+	}
+
 	public void Dispose()
 	{
 		_compiler.Dispose();
