@@ -1,0 +1,41 @@
+namespace Program;
+
+class Structure
+{
+	public int Num;
+
+	public ctor(int num)
+	{
+		Num = num;
+	}
+}
+
+class TestObj
+{
+	public int ObjectNum;
+	public ref Structure Data;
+	public refb Structure BorrowData;
+
+	public ctor(int objectNum)
+	{
+		ref Data = new Structure(300);
+		ObjectNum = objectNum;
+	}
+
+	public void Pin(refb TestObj external)
+	{
+		// refb-параметр (как и this) считается живущим «бесконечно долго», значит
+		// его поля имеют лайфтайм внешнего мира. Локальный владелец s живёт короче.
+		ref Structure s = new Structure(7);
+		ref external.Data = s; // LT002
+	}
+}
+
+int main()
+{
+	ref TestObj obj = new TestObj(1);
+	ref TestObj inner = new TestObj(2);
+	obj.Pin(ref inner);
+
+	return 0;
+}

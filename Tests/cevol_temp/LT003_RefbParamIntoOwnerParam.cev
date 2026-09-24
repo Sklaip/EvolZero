@@ -1,0 +1,30 @@
+namespace Program;
+
+class Structure
+{
+	public int Num;
+
+	public ctor(int num)
+	{
+		Num = num;
+	}
+}
+
+void TakeOwner(ref Structure s)
+{
+	s.Num = s.Num;
+}
+
+void Use(refb Structure s)
+{
+	// Заимствованную (refb) ссылку нельзя передавать во владеющий (ref) параметр.
+	TakeOwner(ref s); // LT003
+}
+
+int main()
+{
+	ref Structure structure = new Structure(5);
+	Use(ref structure);
+
+	return 0;
+}

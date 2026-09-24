@@ -115,6 +115,84 @@ public sealed class LifetimeAnalyzerNegativeTests : IDisposable
 			_compiler, "LT010_AliasedFieldRefPassedAsOwner.cev", "LT010");
 	}
 
+	[Fact]
+	public void UseAfterExchangeAcrossBranches_FailsWithLT001()
+	{
+		// Правило 6: деинициализация ('<-') в if-ветке распространяется на всё условие.
+		TestAssertions.AssertCompilationFails(
+			_compiler, "LT001_UseAfterExchangeAcrossBranches.cev", "LT001");
+	}
+
+	[Fact]
+	public void DoubleMoveAfterBranchMerge_FailsWithLT001()
+	{
+		// Правило 6: переназначение в else-ветке не «оживляет» переменную,
+		// деинициализированную в if-ветке (двойной перенос владения запрещён).
+		TestAssertions.AssertCompilationFails(
+			_compiler, "LT001_DoubleMoveAfterBranchMerge.cev", "LT001");
+	}
+
+	[Fact]
+	public void OwnerIntoRefbParamField_FailsWithLT002()
+	{
+		// Правило 8: refb-параметр живёт «бесконечно долго», как и его поля;
+		// локальный владелец живёт короче и не может туда попасть.
+		TestAssertions.AssertCompilationFails(
+			_compiler, "LT002_OwnerIntoRefbParamField.cev", "LT002");
+	}
+
+	[Fact]
+	public void InnerOwnerIntoBorrowField_FailsWithLT002()
+	{
+		// Правило 4: лайфтайм поля = лайфтайм объекта; объект внутреннего блока
+		// не может попасть в refb-поле объекта из внешнего блока.
+		TestAssertions.AssertCompilationFails(
+			_compiler, "LT002_InnerOwnerIntoBorrowField.cev", "LT002");
+	}
+
+	[Fact]
+	public void RefbParamIntoOwnerParam_FailsWithLT003()
+	{
+		// Правило 2: заимствованную (refb) ссылку нельзя передавать во владеющий (ref) параметр.
+		TestAssertions.AssertCompilationFails(
+			_compiler, "LT003_RefbParamIntoOwnerParam.cev", "LT003");
+	}
+
+	[Fact]
+	public void OwnerFieldIntoOwnerParam_FailsWithLT004()
+	{
+		// Правило: владеющую (ref) ссылку с поля класса можно снять только через '<-',
+		// но не передачей поля во владеющий параметр.
+		TestAssertions.AssertCompilationFails(
+			_compiler, "LT004_OwnerFieldIntoOwnerParam.cev", "LT004");
+	}
+
+	[Fact]
+	public void ExchangeStripShorterReceiver_FailsWithLT007()
+	{
+		// Правило: получатель, рождённый во внутреннем блоке, живёт короче объекта,
+		// с поля которого снимается ссылка через '<-' => LT007.
+		TestAssertions.AssertCompilationFails(
+			_compiler, "LT007_ExchangeStripShorterReceiver.cev", "LT007");
+	}
+
+	[Fact]
+	public void AnonymousNewIntoBorrow_FailsWithLT009()
+	{
+		// Правило: анонимный 'new' можно присваивать только во владеющую (ref) ссылку.
+		TestAssertions.AssertCompilationFails(
+			_compiler, "LT009_AnonymousNewIntoBorrow.cev", "LT009");
+	}
+
+	[Fact]
+	public void MoveAfterRefbFieldAlias_FailsWithLT010()
+	{
+		// Правило 7: владеющую ссылку с алиасом (задаваемым через refb-поле класса)
+		// нельзя передавать как владение.
+		TestAssertions.AssertCompilationFails(
+			_compiler, "LT010_MoveAfterRefbFieldAlias.cev", "LT010");
+	}
+
 	public void Dispose()
 	{
 		_compiler.Dispose();

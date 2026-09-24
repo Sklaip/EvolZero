@@ -1,0 +1,50 @@
+namespace Program;
+
+extern infargs int printf(refb byte ptr);
+
+class Structure
+{
+	public int Num;
+
+	public ctor(int num)
+	{
+		Num = num;
+	}
+}
+
+class TestObj
+{
+	public int ObjectNum;
+	public ref Structure Data;
+	public refb Structure BorrowData;
+
+	public ctor(int objectNum)
+	{
+		ref Data = new Structure(300);
+		ObjectNum = objectNum;
+	}
+}
+
+void TakeStruct(ref Structure s)
+{
+	printf(ref "%d\n", s.Num);
+}
+
+void Test(ref TestObj outsideObj)
+{
+	// structureStub получила aliас в refb-поле класса.
+	ref Structure structureStub = new Structure(10);
+	refb outsideObj.BorrowData = structureStub;
+
+	// Владение нельзя переносить, пока жив алиас.
+	TakeStruct(ref structureStub); // LT010
+
+	printf(ref "%d\n", outsideObj.ObjectNum);
+}
+
+int main()
+{
+	Test(ref new TestObj(1));
+
+	return 0;
+}

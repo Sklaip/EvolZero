@@ -1,0 +1,42 @@
+namespace Program;
+
+extern infargs int printf(refb byte ptr);
+
+class Structure
+{
+	public int Num;
+
+	public ctor(int num)
+	{
+		Num = num;
+	}
+}
+
+class TestObj
+{
+	public int ObjectNum;
+	public ref Structure Data;
+	public refb Structure BorrowData;
+
+	public ctor(int objectNum)
+	{
+		ref Data = new Structure(300);
+		ObjectNum = objectNum;
+	}
+}
+
+void Test(ref TestObj outsideObj)
+{
+	// 'new' создаёт анонимную (временную) ссылку, живующую вместе с выражением.
+	// Сохранить её можно только во владеющую (ref) ссылку, а не в заимствованную (refb).
+	refb outsideObj.BorrowData = new Structure(5); // LT009
+
+	printf(ref "%d\n", outsideObj.ObjectNum);
+}
+
+int main()
+{
+	Test(ref new TestObj(1));
+
+	return 0;
+}

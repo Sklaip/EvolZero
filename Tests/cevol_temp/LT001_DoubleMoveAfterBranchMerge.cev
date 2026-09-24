@@ -1,0 +1,61 @@
+namespace Program;
+
+extern infargs int printf(refb byte ptr);
+
+class Structure
+{
+	public int Num;
+
+	public ctor(int num)
+	{
+		Num = num;
+	}
+}
+
+class TestObj
+{
+	public int ObjectNum;
+	public ref Structure Data;
+
+	public ctor(int objectNum)
+	{
+		ref Data = new Structure(300);
+		ObjectNum = objectNum;
+	}
+}
+
+void TakeOwner(ref TestObj obj)
+{
+	obj.ObjectNum = obj.ObjectNum + 1;
+}
+
+void Test(ref TestObj outsideObj)
+{
+	int num = 0;
+
+	ref TestObj obj = new TestObj(2);
+
+	if (num == 1)
+	{
+		// В if-ветке владение obj ушло в TakeOwner => obj деинициализирована.
+		TakeOwner(ref obj);
+	}
+	else
+	{
+		// Переназначение obj в else-ветке не «оживляет» obj после merge.
+		ref obj = new TestObj(3);
+	}
+
+	// obj деинициализирована в if-ветке, значит недоступна и после условия,
+	// даже несмотря на переназначение в else.
+	TakeOwner(ref obj); // LT001
+
+	printf(ref "%d\n", outsideObj.ObjectNum);
+}
+
+int main()
+{
+	Test(ref new TestObj(1));
+
+	return 0;
+}

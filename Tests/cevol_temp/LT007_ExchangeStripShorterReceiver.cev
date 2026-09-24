@@ -1,0 +1,56 @@
+namespace Program;
+
+extern infargs int printf(refb byte ptr);
+
+class Structure
+{
+	public int Num;
+
+	public ctor(int num)
+	{
+		Num = num;
+	}
+}
+
+class TestObj
+{
+	public int ObjectNum;
+	public ref Structure Data;
+	public refb Structure BorrowData;
+
+	public ctor(ref Structure data, int objectNum)
+	{
+		ref Data = data;
+		ObjectNum = objectNum;
+	}
+
+	public ctor(int objectNum)
+	{
+		ref Data = new Structure(300);
+		ObjectNum = objectNum;
+	}
+}
+
+void Test(ref TestObj obj)
+{
+	int num = 0;
+
+	ref Structure structureOuter = new Structure(21);
+
+	if (num == 1)
+	{
+		// '<-' снимает владеющую ссылку с поля obj.Data, но только если получатель
+		// живёт НЕ короче объекта, с поля которого снимается ссылка. obj живёт во
+		// внешнем блоке (0), а локальный stripped рождается во внутреннем (1) => LT007.
+		ref Structure stripped = obj.Data <- structureOuter; // LT007
+	}
+
+	printf(ref "%d\n", obj.ObjectNum);
+}
+
+int main()
+{
+	Test(ref new TestObj(1));
+
+	return 0;
+}

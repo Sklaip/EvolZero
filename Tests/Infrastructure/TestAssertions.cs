@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace Tests.Infrastructure;
 
 /// <summary>
@@ -40,7 +42,9 @@ public static class TestAssertions
 
 	/// <summary>
 	/// Проверяет, что компиляция исходника завершилась ошибкой: исполняемый файл не создан,
-	/// а сообщения компилятора содержат ожидаемые коды ошибок (например "error LT002").
+	/// а список ошибок компилятора чётко совпадает с ожидаемым: те же коды, то же количество
+	/// и тот же порядок (например "error LT002"). Любая лишняя, неверная или иначе
+	/// упорядоченная ошибка приводит к падению теста.
 	/// Если компилятор упал в служебное исключение (NotImplementedException), сообщение
 	/// окажется пустым и проверка кода провалится.
 	/// </summary>
@@ -54,11 +58,26 @@ public static class TestAssertions
 
 		Assert.False(File.Exists(ex.OutputPath), "При ошибке компиляции не должен создаваться exe.");
 
-		foreach (var code in expectedErrorCodes)
-		{
-			Assert.Contains($"error {code}", ex.Message);
-		}
+		var actualCodes = ExtractErrorCodes(ex.Message);
+		Assert.True(expectedErrorCodes.SequenceEqual(actualCodes),
+			"Набор ошибок компиляции не совпал с ожидаемым.\n" +
+			$"Ожидалось: [{string.Join(", ", expectedErrorCodes)}]\n" +
+			$"Получено:  [{string.Join(", ", actualCodes)}]");
 
 		return ex;
+	}
+
+	/// <summary>
+	/// Извлекает коды всех ошибок из сообщения компилятора в порядке их появления.
+	/// Матч идёт только по заголовочным строкам вида "[файл](строка,кол): error КОД [Слой]:",
+	/// поэтому комментарии в коде вида "// LT001" и сниппеты исходников не учитываются.
+	/// </summary>
+	private static string[] ExtractErrorCodes(string compilerOutput)
+	{
+		const string pattern = @"^\[[^\]]*\]\(\d+,\d+\): error (?<code>[A-Za-z0-9_]+) \[[^\]]+\]:";
+
+		return Regex.Matches(compilerOutput, pattern, RegexOptions.Multiline)
+			.Select(x => x.Groups["code"].Value)
+			.ToArray();
 	}
 }

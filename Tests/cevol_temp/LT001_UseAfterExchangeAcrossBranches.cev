@@ -1,0 +1,65 @@
+namespace Program;
+
+extern infargs int printf(refb byte ptr);
+
+class Structure
+{
+	public int Num;
+
+	public ctor(int num)
+	{
+		Num = num;
+	}
+}
+
+class TestObj
+{
+	public int ObjectNum;
+	public ref Structure Data;
+	public refb Structure BorrowData;
+
+	public ctor(ref Structure data, int objectNum)
+	{
+		ref Data = data;
+		ObjectNum = objectNum;
+	}
+
+	public ctor(int objectNum)
+	{
+		ref Data = new Structure(300);
+		ObjectNum = objectNum;
+	}
+}
+
+void Test(ref TestObj outsideObj)
+{
+	int num = 0;
+
+	ref TestObj obj = new TestObj(ref new Structure(2), 2);
+	ref Structure structureOne = new Structure(21);
+	ref Structure strcRec = new Structure(57);
+
+	if (num == 1)
+	{
+		// '<-' перевёл владение structureOne в obj.Data и деинициализировал источник.
+		ref strcRec = obj.Data <- structureOne;
+		printf(ref "num is 1\n");
+	}
+	else
+	{
+		printf(ref "num is not 1\n");
+	}
+
+	printf(ref "%d\n", outsideObj.ObjectNum);
+
+	// Деинициализация в if-ветке распространяется на всё условие:
+	// structureOne недоступна и после if/else.
+	structureOne.Num = 7; // LT001
+}
+
+int main()
+{
+	Test(ref new TestObj(1));
+
+	return 0;
+}
