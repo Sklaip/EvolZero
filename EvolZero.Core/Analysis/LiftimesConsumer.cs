@@ -48,7 +48,7 @@ namespace EvolZero.Core.Analysis
 					{
 						statement.ElseStatement = new BlockStatement(new List<ILogicModel>(), statement.Pos);
 					}
-
+					  
 					statement.ElseStatement.AddLogicModel(GetDestructor(givenRef.refExpr));
 				}
 				else

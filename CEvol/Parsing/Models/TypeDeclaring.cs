@@ -6,10 +6,17 @@ using System.Text;
 namespace EvolZero.Parsing.Models
 {
 	internal record TypeDeclaring(string TypeName, QualifierWorkpiece[] Qualifiers, string[] Modifiers);
-	internal record FuncSignature(string Name, TypeDeclaring ReturnType, List<(TypeDeclaring Type, string Name)>? Arguments, string[] modifiers, AccessModifier Access);
-	internal record ConstructorSignature(List<(TypeDeclaring Type, string Name)>? Arguments, string[] modifiers, AccessModifier Access);
+
+	internal record FuncSignature(string Name, TypeDeclaring ReturnType, List<(TypeDeclaring Type, string Name)>? Arguments, 
+		string[] modifiers, AccessModifier Access, List<LifetimeDecl>? Lifetimes);
+
+	internal record ConstructorSignature(List<(TypeDeclaring Type, string Name)>? Arguments,
+		string[] modifiers, AccessModifier Access, List<LifetimeDecl>? Lifetimes);
+
 	internal record DestructorSignature(string[] modifiers, AccessModifier Access);
+
 	internal record VariableSignature(string Name, TypeDeclaring Type, AccessModifier Access);
+
 	internal record ClassSignature(string Name, List<ConstructorSignature> Ctors, List<DestructorSignature> Dtors, 
 		Dictionary<string, List<FuncSignature>> Functions, Dictionary<string, VariableSignature> Fields);
 }

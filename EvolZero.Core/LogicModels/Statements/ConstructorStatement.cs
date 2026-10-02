@@ -25,5 +25,7 @@ namespace EvolZero.Core.LogicModels.Statements
 		public string Name => "ctor";
 
 		public override bool InevitableTerminating => LastStatementIsTerminating();
+
+		public LifetimeDecl[] Lifetimes => ConstuctorSignature.Lifetimes;
 	}
 }

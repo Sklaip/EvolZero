@@ -43,7 +43,7 @@ RBRACK : ']' ;
 SEMICOLON: ';';
 COMMA : ',';
 DOT : '.' ;
-//LIFETIMEASSING  '~';
+LIFETIMEASSING : '~';
 
 // Модификаторы
 PUBLIC : 'public';

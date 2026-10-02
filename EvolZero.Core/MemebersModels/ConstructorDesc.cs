@@ -10,11 +10,14 @@ namespace EvolZero.Core.MemebersModels
 		public readonly IFuncRefData RefData;
 		public readonly AccessModifier Access;
 
-		public ConstructorDesc(Argument[] arguments, IFuncRefData refData, AccessModifier access)
+		public readonly LifetimeDecl[] Lifetimes;
+
+		public ConstructorDesc(Argument[] arguments, IFuncRefData refData, AccessModifier access, LifetimeDecl[] lifetimes)
 		{
 			Arguments = arguments;
 			RefData = refData;
 			Access = access;
+			Lifetimes = lifetimes;
 		}
 
 	}

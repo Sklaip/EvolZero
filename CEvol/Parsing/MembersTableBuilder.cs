@@ -5,7 +5,6 @@ using EvolZero.Parsing.Models;
 using System;
 using System.Collections.Generic;
 using System.Text;
-using EvolZero.Core.MemebersModels;
 
 namespace EvolZero.Parsing
 {
@@ -32,7 +31,8 @@ namespace EvolZero.Parsing
 
 		private TypeDesc FindTypeForDeclaring(TypeDeclaring typeDecl)
 		{
-			if (!_parsedClasses.TryGetValue(typeDecl.TypeName, out TypeDesc? type) && !_parsedClasses.TryGetValue($"{_currentNameSpace}.{typeDecl.TypeName}", out type))
+			if (!_parsedClasses.TryGetValue(typeDecl.TypeName, out TypeDesc? type)
+				&& !_parsedClasses.TryGetValue($"{_currentNameSpace}.{typeDecl.TypeName}", out type))
 			{
 				if (_existsClasses.TryGetValue($"{typeDecl.TypeName}", out type)) return type;
 
@@ -73,7 +73,21 @@ namespace EvolZero.Parsing
 				bool infArgs = ctor.modifiers.Contains("infargs"); // TODO: енумом модификаторы сделать что ли, или флагами
 				funcRefs = codeGenerator.CreateFunctionSiganture(funcName, codeGenerator.VoidType, agrumentsRefs, infArgs);
 
-				currentClass.Constructors.Add(new ConstructorDesc(arguments.ToArray(), funcRefs, ctor.Access));
+				LifetimeDecl[] lifetimes;
+				if (ctor.Lifetimes == null)
+				{
+					lifetimes = arguments.Where(x => x.Declaring.IsOwnerRef).Select(x => 
+						new LifetimeDecl(
+							new LifetimeDecl.Key(LifetimeDecl.KeyType.This, null),
+							new LifetimeDecl.Key(LifetimeDecl.KeyType.Var, x.Name)
+						)).ToArray();
+				}
+				else
+				{
+					lifetimes = ctor.Lifetimes.ToArray();
+				}
+
+				currentClass.Constructors.Add(new ConstructorDesc(arguments.ToArray(), funcRefs, ctor.Access, lifetimes));
 			}
 		}
 
@@ -90,7 +104,8 @@ namespace EvolZero.Parsing
 			}
 		}
 
-		private void FunctionsAnalyze(Dictionary<string, List<FuncSignature>> rawFunctionsList,  Dictionary<string, FuncDesc[]> listToAdd, TypeDesc? currentClass = null)
+		private void FunctionsAnalyze(Dictionary<string, List<FuncSignature>> rawFunctionsList,
+			Dictionary<string, FuncDesc[]> listToAdd, TypeDesc? currentClass = null)
 		{
 			foreach (var funcsKey in rawFunctionsList.Keys)
 			{
@@ -137,7 +152,8 @@ namespace EvolZero.Parsing
 						funcRefs = _codeGenerator.CreateFunctionSiganture(funcName, QualifierToTypeRef(returnTypeQualifers[0], _codeGenerator), agrumentsRefs, infArgs);
 					}
 
-					var funcDesc = new FuncDesc(new TypeSpec(returnType, returnTypeQualifers), func.Name, arguments.ToArray(), funcRefs, infArgs, func.Access, [], currentClass);
+					var funcDesc = new FuncDesc(new TypeSpec(returnType, returnTypeQualifers), func.Name,
+						arguments.ToArray(), funcRefs, infArgs, func.Access, func.Lifetimes?.ToArray() ?? [], currentClass);
 					funcList.Add(funcDesc);
 				}
 
@@ -198,7 +214,7 @@ namespace EvolZero.Parsing
 
 				_codeGenerator.FillStructureBody(currentClassTypeDesc.TypeRef, filedTypes);
 
-				if (currentClass.Ctors.Count == 0) currentClass.Ctors.Add(new ConstructorSignature(null, [], AccessModifier.Public));
+				if (currentClass.Ctors.Count == 0) currentClass.Ctors.Add(new ConstructorSignature(null, [], AccessModifier.Public, []));
 				if (currentClass.Dtors.Count == 0) currentClass.Dtors.Add(new DestructorSignature([], AccessModifier.Public));
 
 				FunctionsAnalyze(currentClass.Functions, currentClassTypeDesc.Functions, currentClassTypeDesc);

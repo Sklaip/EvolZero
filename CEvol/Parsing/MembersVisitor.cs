@@ -1,5 +1,6 @@
 ﻿using Antlr4.Runtime.Misc;
 using EvolZero.Core;
+using EvolZero.Core.Analysis.Semantic;
 using EvolZero.Core.MemebersModels;
 using EvolZero.Generation;
 using EvolZero.Parsing.Models;
@@ -65,7 +66,7 @@ namespace EvolZero.Parsing
 				Visit(funcDecl);
 			}
 
-			var currentClassDesc = new ClassSignature(fullTypeName, _currentClassConstructors, 
+			var currentClassDesc = new ClassSignature(fullTypeName, _currentClassConstructors,
 				_currentClassDestructors, _currentClassFunctions, _currentClassVariables);
 			Classes[fullTypeName] = currentClassDesc;
 
@@ -93,7 +94,7 @@ namespace EvolZero.Parsing
 			return null;
 		}
 
-		public override object VisitFunctionDecl([NotNull] CEvolParser.FunctionDeclContext context)
+		public override object? VisitFunctionDecl([NotNull] CEvolParser.FunctionDeclContext context)
 		{
 			var prms = context.@params();
 
@@ -118,12 +119,14 @@ namespace EvolZero.Parsing
 				funcsList[funcName] = functions;
 			}
 
-			functions.Add(new FuncSignature(funcName, typeSpec, parameters, [], access));
+			List<LifetimeDecl>? lifetimes = ParseLifetimesDecl(context.lifetimesDecl());
+
+			functions.Add(new FuncSignature(funcName, typeSpec, parameters, [], access, lifetimes));
 
 			return null;
 		}
 
-		public override object VisitAbstractFunctionDecl([NotNull] CEvolParser.AbstractFunctionDeclContext context)
+		public override object? VisitAbstractFunctionDecl([NotNull] CEvolParser.AbstractFunctionDeclContext context)
 		{
 			var prms = context.@params();
 
@@ -152,7 +155,7 @@ namespace EvolZero.Parsing
 				funcsList[funcName] = functions;
 			}
 
-			functions.Add(new FuncSignature(funcName, typeSpec, parameters, modifers, access));
+			functions.Add(new FuncSignature(funcName, typeSpec, parameters, modifers, access, []));
 
 			return null;
 		}
@@ -172,7 +175,20 @@ namespace EvolZero.Parsing
 
 			AccessModifier access = ParseAccessModifier(context.accessModifier(), isClassMember: true);
 
-			_currentClassConstructors.Add(new ConstructorSignature(parameters, [], access));
+			List<LifetimeDecl>? lifetimes = ParseLifetimesDecl(context.lifetimesDecl());
+
+			bool error = lifetimes != null &&
+						lifetimes.Any(x => (x.LeftKey.KeyType == LifetimeDecl.KeyType.Var
+												&& (parameters == null || !parameters.Any(p => p.Name == x.LeftKey.VarName))) ||
+											(x.RightKey.KeyType == LifetimeDecl.KeyType.Var
+												&& (parameters == null || !parameters.Any(p => p.Name == x.RightKey.VarName))));
+
+			if (error)
+			{
+				throw new NotImplementedException(); // тут ошибка что лайфтаймы можно определять только для аргументов функций, this и return
+			}
+
+			_currentClassConstructors.Add(new ConstructorSignature(parameters, [], access, lifetimes));
 
 			return null;
 		}
@@ -186,6 +202,42 @@ namespace EvolZero.Parsing
 			_currentClassDestructors.Add(new DestructorSignature([], access));
 
 			return null;
+		}
+
+		public List<LifetimeDecl>? ParseLifetimesDecl(LifetimesDeclContext? context)
+		{
+			if (context == null) return null;
+
+			var res = new List<LifetimeDecl>();
+			var lifetimes = context?.lifetimesArgs()?.lifetimeDecl();
+			if (lifetimes == null) return res;
+
+			foreach (var lifetime in lifetimes)
+			{
+				var left = lifetime.lifetimeMember(0);
+				var right = lifetime.lifetimeMember(1);
+
+				if (left == null || right == null) throw new NotImplementedException();
+
+				res.Add(new LifetimeDecl(ParseLifetimeMember(left), ParseLifetimeMember(right)));
+			}
+
+			return res;
+		}
+
+		public LifetimeDecl.Key ParseLifetimeMember(LifetimeMemberContext context)
+		{
+			if (context.RETURN() != null)
+				return new LifetimeDecl.Key(LifetimeDecl.KeyType.Return, null);
+
+			if (context.THIS() != null)
+				return new LifetimeDecl.Key(LifetimeDecl.KeyType.This, null);
+
+			var varName = context.IDENTIFIER().GetText();
+			if (varName == null)
+				throw new NotImplementedException();
+
+			return new LifetimeDecl.Key(LifetimeDecl.KeyType.Var, varName);
 		}
 
 		private AccessModifier ParseAccessModifier(CEvolParser.AccessModifierContext? context, bool isClassMember)

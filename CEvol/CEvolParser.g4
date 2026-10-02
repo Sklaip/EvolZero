@@ -28,14 +28,16 @@ typeSpec : (qualifier)* IDENTIFIER arraySpec* ;
 fieldDecl : accessModifier? extraModifier* typeSpec IDENTIFIER (LPAREN args? RPAREN)? (ASSIGN expression)? SEMICOLON ;
 
 // Функция/Метод
-functionDecl : accessModifier? extraModifier* typeSpec IDENTIFIER LPAREN params? RPAREN block ;
+functionDecl : accessModifier? extraModifier* typeSpec IDENTIFIER LPAREN params? RPAREN lifetimesDecl? block ;
 abstractFunctionDecl : accessModifier? extraModifier* typeSpec IDENTIFIER LPAREN params? RPAREN SEMICOLON ;
-constructorDecl : accessModifier? extraModifier* CONSTRUCTOR LPAREN params? RPAREN block ;
+constructorDecl : accessModifier? extraModifier* CONSTRUCTOR LPAREN params? RPAREN lifetimesDecl? block ;
 desctructorDecl : accessModifier? extraModifier* DESTRUCTOR LPAREN RPAREN block ;
 
 params : typeSpec IDENTIFIER (COMMA typeSpec IDENTIFIER)* ;
-//lifetimeDecl : (RETURN | THIS | IDENTIFIER) LIFETIMEASSING (RETURN | THIS | IDENTIFIER) ;
-//lifetimesDecl : LIFETIMES LPAREN lifetimeDecl (COMMA lifetimeDecl)* RPAREN ;
+lifetimeMember : (RETURN | THIS | IDENTIFIER) ;
+lifetimeDecl : lifetimeMember LIFETIMEASSING lifetimeMember ;
+lifetimesArgs : lifetimeDecl (COMMA lifetimeDecl)* ;
+lifetimesDecl : LIFETIMES LPAREN lifetimesArgs? RPAREN ;
 
 // --- Инструкции ---
 classDecl : CLASS IDENTIFIER LBRACE (fieldDecl | functionDecl | abstractFunctionDecl | constructorDecl | desctructorDecl)* RBRACE ;

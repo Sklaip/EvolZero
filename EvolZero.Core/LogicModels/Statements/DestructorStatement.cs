@@ -26,5 +26,7 @@ namespace EvolZero.Core.LogicModels.Statements
 		public string Name => "dtor";
 
 		public override bool InevitableTerminating => LastStatementIsTerminating();
+
+		public LifetimeDecl[] Lifetimes => [];
 	}
 }

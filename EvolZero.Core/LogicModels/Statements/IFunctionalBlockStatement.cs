@@ -10,6 +10,7 @@ namespace EvolZero.Core.LogicModels.Statements
 		TypeSpec ReturnType { get; }
 		Argument[] Arguments { get; }
 		IFuncRefData RefData { get; }
+		LifetimeDecl[] Lifetimes { get; }
 		string Name { get; }
 	}
 }

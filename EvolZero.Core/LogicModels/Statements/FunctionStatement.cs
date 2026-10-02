@@ -20,5 +20,7 @@ namespace EvolZero.Core.LogicModels.Statements
 		public string Name => FunctionSignature.Name;
 
 		public override bool InevitableTerminating => LastStatementIsTerminating();
+
+		public LifetimeDecl[] Lifetimes => FunctionSignature.Lifetimes;
 	}
 }
