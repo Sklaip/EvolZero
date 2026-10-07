@@ -10,14 +10,14 @@ namespace EvolZero.Core.Analysis.Semantic
 		public Expression Expr { get; set; }
 		public VarMeta? VarData { get; set; }
 		public bool IsLocal { get; set; }
-		public bool IsAnonymous { get; set; }
+		public bool IsAnonymous => VarData == null;
 		public bool IsStrippedViaExchange { get; set; }
 	}
 
-	public class VarMeta(int blockNum, bool isDestructed, bool isInitialized)
+	public class VarMeta(int lifetimeNum, bool isDestructed, bool isInitialized)
 	{
 		public string? Name { get; set; } // TODO: для дебага
-		public int LifetimeNum { get; set; } = blockNum; // Чем меньше LifetimeNum (номер лайфтайма), тем больше время жизни
+		public int LifetimeNum { get; set; } = lifetimeNum; // Чем меньше LifetimeNum (номер лайфтайма), тем больше время жизни
 		public bool IsDestructed { get; set; } = isDestructed;
 		public bool IsInitialized { get; set; } = isInitialized;
 		public List<VarMeta> Aliases { get; set; } = new();
@@ -284,8 +284,7 @@ namespace EvolZero.Core.Analysis.Semantic
 		{
 			return new ValueMeta()
 			{
-				Expr = expr,
-				IsAnonymous = true
+				Expr = expr
 			};
 		}
 
@@ -307,18 +306,20 @@ namespace EvolZero.Core.Analysis.Semantic
 
 			return new ValueMeta()
 			{
-				Expr = expr,
-				IsAnonymous = true
+				Expr = expr
 			};
 		}
 
 		protected override ValueMeta GetPointerToVar(GetPointerToVarExpression expr)
 		{
 			var lifteime = base.GetPointerToVar(expr);
+			if (lifteime?.VarData == null)
+				throw new NotImplementedException(); // такой хуйни быть не должно
+
 			return new ValueMeta()
 			{
 				Expr = expr,
-				IsAnonymous = false
+				VarData = lifteime.VarData
 			};
 		}
 
@@ -327,7 +328,6 @@ namespace EvolZero.Core.Analysis.Semantic
 			return new ValueMeta()
 			{
 				Expr = expr,
-				IsAnonymous = true,
 				VarData = _currentClass
 			};
 		}
@@ -338,7 +338,7 @@ namespace EvolZero.Core.Analysis.Semantic
 			return new ValueMeta()
 			{
 				Expr = expr,
-				IsAnonymous = false
+				VarData = new VarMeta(int.MinValue + 1, false, true)
 			};
 		}
 
@@ -430,8 +430,7 @@ namespace EvolZero.Core.Analysis.Semantic
 
 			return new ValueMeta()
 			{
-				Expr = expr,
-				IsAnonymous = true
+				Expr = expr
 			};
 		}
 
@@ -491,12 +490,12 @@ namespace EvolZero.Core.Analysis.Semantic
 				throw new NotImplementedException(); // такой хуйни быть не должно
 			}
 
-			if (value.VarData != null)
+			if (!value.IsAnonymous)
 			{
-				if (value.VarData.IsDestructed || !value.VarData.IsInitialized)
+				if (value.VarData!.IsDestructed || !value.VarData.IsInitialized)
 					throw new NotImplementedException(); // ссылка была деинициализированна. Вообще сюда оно поподать не должно, оно должно отбрасываться на других проверках
 
-				if (CheckLifetimesError(value.VarData.LifetimeNum, target.VarData.LifetimeNum) && !value.IsAnonymous)
+				if (CheckLifetimesError(value.VarData.LifetimeNum, target.VarData.LifetimeNum))
 				{
 					ErrorLT002(target.Expr.Pos);
 					return null;
@@ -582,12 +581,12 @@ namespace EvolZero.Core.Analysis.Semantic
 				throw new NotImplementedException(); // такой хуйни быть не должно
 			}
 
-			if (value.VarData != null)
+			if (!value.IsAnonymous)
 			{
-				if (value.VarData.IsDestructed || !value.VarData.IsInitialized)
+				if (value.VarData!.IsDestructed || !value.VarData.IsInitialized)
 					throw new NotImplementedException(); // ссылка была деинициализированна. Вообще сюда оно попадть не должно, оно должно отбрасываться на других проверках
 
-				if (CheckLifetimesError(value.VarData.LifetimeNum, target.VarData.LifetimeNum) && !value.IsAnonymous)
+				if (CheckLifetimesError(value.VarData.LifetimeNum, target.VarData.LifetimeNum))
 				{
 					ErrorLT002(target.Expr.Pos);
 					return;
@@ -662,19 +661,16 @@ namespace EvolZero.Core.Analysis.Semantic
 				return;
 			}
 
-			if (value.VarData != null)
-			{
-				if (target.VarData == null)
-					throw new NotImplementedException(); // такой хуйни быть не должно
+			if (target.VarData == null)
+				throw new NotImplementedException(); // такой хуйни быть не должно
 
-				if (value.VarData.Aliases == null)
-					value.VarData.Aliases = new();
+			if (value.VarData!.Aliases == null)
+				value.VarData.Aliases = new();
 
-				value.VarData.Aliases.Add(target.VarData);
+			value.VarData.Aliases.Add(target.VarData);
 
-				target.VarData.LifetimeNum = value.VarData.LifetimeNum;
-				target.VarData.LifetimeNum = value.VarData.LifetimeNum;
-			}
+			target.VarData.LifetimeNum = value.VarData.LifetimeNum;
+			target.VarData.LifetimeNum = value.VarData.LifetimeNum;
 		}
 
 		private void PassToArgumentHandler(Argument arg, ValueMeta value, LifetimeDecl[] functionLifetimes, ValueMeta? objectGetting)
