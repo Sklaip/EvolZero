@@ -9,7 +9,6 @@ namespace EvolZero.Core.Analysis.Semantic
 	{
 		public Expression Expr { get; set; }
 		public VarMeta? VarData { get; set; }
-		public int LifetimeNum { get; set; } // Чем меньше LifetimeNum (номер лайфтайма), тем больше время жизни
 		public bool IsLocal { get; set; }
 		public bool IsAnonymous { get; set; }
 		public bool IsStrippedViaExchange { get; set; }
@@ -90,7 +89,11 @@ namespace EvolZero.Core.Analysis.Semantic
 		private Dictionary<string, VarMeta>? _currentClassFields;
 		private TypeDesc? _currentDesc;
 		private DestructorStatement? _currentDestructor;
-		private ValueMeta? _lifetimeForAssign = null; // тут находится лайфтайм в который сейчас происходит присваение (AssingHandler)
+
+		/// <summary>
+		/// тут находится лайфтайм в который сейчас происходит присваение (AssingHandler)
+		/// </summary>
+		private ValueMeta? _lifetimeForAssign = null;
 
 		private ILifitemesBypassConsumer _lifetimesConsumer = new LiftimesConsumer();
 
@@ -162,7 +165,6 @@ namespace EvolZero.Core.Analysis.Semantic
 					var lifetime = new ValueMeta()
 					{
 						Expr = new VariableAccessExpression(argument.Name, argument.Declaring, true, statement.Pos),
-						LifetimeNum = liftime,
 						VarData = variable
 					};
 
@@ -283,7 +285,6 @@ namespace EvolZero.Core.Analysis.Semantic
 			return new ValueMeta()
 			{
 				Expr = expr,
-				LifetimeNum = _lifetimeForAssign?.LifetimeNum ?? _currentBlockNum,
 				IsAnonymous = true
 			};
 		}
@@ -307,7 +308,6 @@ namespace EvolZero.Core.Analysis.Semantic
 			return new ValueMeta()
 			{
 				Expr = expr,
-				LifetimeNum = _currentBlockNum,
 				IsAnonymous = true
 			};
 		}
@@ -318,7 +318,6 @@ namespace EvolZero.Core.Analysis.Semantic
 			return new ValueMeta()
 			{
 				Expr = expr,
-				LifetimeNum = lifteime?.VarData?.LifetimeNum ?? _currentBlockNum,
 				IsAnonymous = false
 			};
 		}
@@ -328,7 +327,6 @@ namespace EvolZero.Core.Analysis.Semantic
 			return new ValueMeta()
 			{
 				Expr = expr,
-				LifetimeNum = 0,
 				IsAnonymous = true,
 				VarData = _currentClass
 			};
@@ -340,7 +338,6 @@ namespace EvolZero.Core.Analysis.Semantic
 			return new ValueMeta()
 			{
 				Expr = expr,
-				LifetimeNum = _currentBlockNum,
 				IsAnonymous = false
 			};
 		}
@@ -376,7 +373,6 @@ namespace EvolZero.Core.Analysis.Semantic
 			return new ValueMeta()
 			{
 				Expr = expr,
-				LifetimeNum = meta.LifetimeNum,
 				VarData = meta
 			};
 		}
@@ -398,7 +394,6 @@ namespace EvolZero.Core.Analysis.Semantic
 			return new ValueMeta()
 			{
 				Expr = expr,
-				LifetimeNum = varMeta.LifetimeNum,
 				VarData = varMeta,
 				IsLocal = true
 			};
@@ -411,6 +406,10 @@ namespace EvolZero.Core.Analysis.Semantic
 
 			var acceptedArguments = expr.Function.Arguments;
 			var passedArguments = expr.Arguments;
+
+			// обнуляем текущий лайфтайм в который сейчас происходит присвоение
+			var lastAssignLifetime = _lifetimeForAssign; 
+			_lifetimeForAssign = null;
 
 			ValueMeta? thisGetting = null; // если это метод класса, щдесь будет лайфтайм this, если обычная функция, то просто null
 			if (expr.Function.DeclaringType != null)
@@ -426,10 +425,12 @@ namespace EvolZero.Core.Analysis.Semantic
 				PassToArgumentHandler(acceptedArguments[i], arg, expr.Function.Lifetimes, thisGetting);
 			}
 
+			// возвращаем лайфтайм обратно
+			_lifetimeForAssign = lastAssignLifetime;
+
 			return new ValueMeta()
 			{
 				Expr = expr,
-				LifetimeNum = _currentBlockNum,
 				IsAnonymous = true
 			};
 		}
@@ -444,7 +445,6 @@ namespace EvolZero.Core.Analysis.Semantic
 			var lifetime = new ValueMeta()
 			{
 				Expr = new VariableAccessExpression(expr.Name, expr.ResultTypeSpec, expr.IsInitialized, expr.Pos),
-				LifetimeNum = _currentBlockNum,
 				VarData = currentVar
 			};
 
@@ -486,14 +486,22 @@ namespace EvolZero.Core.Analysis.Semantic
 
 			if (!target.Expr.ResultTypeSpec.IsRef || !value.Expr.ResultTypeSpec.IsRef) return target;
 
-			if (CheckLifetimesError(value.LifetimeNum, target.LifetimeNum) && !value.IsAnonymous)
+			if (target.VarData == null)
 			{
-				AddLifetimeError("LT002", "Время жизни присваиваемой ссылки меньше времени жизни ссылки-получателя", target.Expr.Pos);
-				return null;
+				throw new NotImplementedException(); // такой хуйни быть не должно
 			}
 
-			if (value.VarData != null && (value.VarData.IsDestructed || !value.VarData.IsInitialized))
-				throw new NotImplementedException(); // ссылка была деинициализированна. Вообще сюда оно поподать не должно, оно должно отбрасываться на других проверках
+			if (value.VarData != null)
+			{
+				if (value.VarData.IsDestructed || !value.VarData.IsInitialized)
+					throw new NotImplementedException(); // ссылка была деинициализированна. Вообще сюда оно поподать не должно, оно должно отбрасываться на других проверках
+
+				if (CheckLifetimesError(value.VarData.LifetimeNum, target.VarData.LifetimeNum) && !value.IsAnonymous)
+				{
+					ErrorLT002(target.Expr.Pos);
+					return null;
+				}
+			}
 
 			var varIsOwner = target.Expr.ResultTypeSpec.IsOwnerRef;
 
@@ -522,9 +530,7 @@ namespace EvolZero.Core.Analysis.Semantic
 				if (!value.IsAnonymous)
 					_lifetimesConsumer.GiveAwayOwnership(value.Expr);
 
-				target.LifetimeNum = value.LifetimeNum;
-
-				GiveAwayOwnership(value, target.LifetimeNum, true);
+				GiveAwayOwnership(value, target.VarData.LifetimeNum, true);
 			}
 			else
 			{
@@ -571,14 +577,22 @@ namespace EvolZero.Core.Analysis.Semantic
 		{
 			if (!target.Expr.ResultTypeSpec.IsRef || !value.Expr.ResultTypeSpec.IsRef) return;
 
-			if (CheckLifetimesError(value.LifetimeNum, target.LifetimeNum) && !value.IsAnonymous)
+			if (target.VarData == null)
 			{
-				AddLifetimeError("LT002", "Время жизни присваиваемой ссылки меньше времени жизни ссылки-получателя", target.Expr.Pos);
-				return;
+				throw new NotImplementedException(); // такой хуйни быть не должно
 			}
 
-			if (value.VarData != null && (value.VarData.IsDestructed || !value.VarData.IsInitialized))
-				throw new NotImplementedException(); // ссылка была деинициализированна. Вообще сюда оно попадть не должно, оно должно отбрасываться на других проверках
+			if (value.VarData != null)
+			{
+				if (value.VarData.IsDestructed || !value.VarData.IsInitialized)
+					throw new NotImplementedException(); // ссылка была деинициализированна. Вообще сюда оно попадть не должно, оно должно отбрасываться на других проверках
+
+				if (CheckLifetimesError(value.VarData.LifetimeNum, target.VarData.LifetimeNum) && !value.IsAnonymous)
+				{
+					ErrorLT002(target.Expr.Pos);
+					return;
+				}
+			}
 
 			var varIsOwner = target.Expr.ResultTypeSpec.IsOwnerRef;
 
@@ -603,7 +617,7 @@ namespace EvolZero.Core.Analysis.Semantic
 						return;
 					}
 
-					if (CheckLifetimesError(target.LifetimeNum, value.LifetimeNum))
+					if (value.VarData != null && CheckLifetimesError(target.VarData.LifetimeNum, value.VarData.LifetimeNum))
 					{
 						AddLifetimeError("LT007", "Время жизни ссылки-получателя меньше времени жизни объекта, с которого снимается ссылка", target.Expr.Pos);
 						return;
@@ -624,15 +638,13 @@ namespace EvolZero.Core.Analysis.Semantic
 				if (!value.IsAnonymous && !value.IsStrippedViaExchange)
 					_lifetimesConsumer.GiveAwayOwnership(value.Expr);
 
-				target.LifetimeNum = value.LifetimeNum;
-
 				if (value.IsStrippedViaExchange)
 				{
 					value.VarData!.IsDestructed = true; // содержимое поля переехало в приемник (GiveAwayOwnership кинул бы throw на алиасы поля)
 					LinkVars(value.VarData, target.VarData);
 				}
 				else
-					GiveAwayOwnership(value, target.LifetimeNum, true);
+					GiveAwayOwnership(value, target.VarData.LifetimeNum, true);
 			}
 			else
 			{
@@ -660,8 +672,8 @@ namespace EvolZero.Core.Analysis.Semantic
 
 				value.VarData.Aliases.Add(target.VarData);
 
-				target.LifetimeNum = value.LifetimeNum;
-				target.VarData.LifetimeNum = value.LifetimeNum;
+				target.VarData.LifetimeNum = value.VarData.LifetimeNum;
+				target.VarData.LifetimeNum = value.VarData.LifetimeNum;
 			}
 		}
 
@@ -680,11 +692,12 @@ namespace EvolZero.Core.Analysis.Semantic
 			if (argument.IsRef && !value.Expr.ResultTypeSpec.IsRef)
 				throw new NotImplementedException(); // рассмотреть эти ситуации. Вроде на уровне семантического древа такого быть не может
 
-			bool linkWithObjectExists = objectGetting != null && CheckLinkWithThis(functionLifetimes, arg.Name);
+			bool linkWithObjectExists = CheckLinkWithThis(functionLifetimes, arg.Name);
 
-			if (linkWithObjectExists && CheckLifetimesError(value.LifetimeNum, objectGetting!.LifetimeNum))
+			if (value.VarData != null && linkWithObjectExists
+				&& objectGetting?.VarData != null && CheckLifetimesError(value.VarData.LifetimeNum, objectGetting.VarData.LifetimeNum))
 			{
-				AddLifetimeError("LT002", "Время жизни присваиваемой ссылки меньше времени жизни ссылки-получателя", value.Expr.Pos);
+				ErrorLT002(value.Expr.Pos);
 				return;
 			}
 
@@ -707,7 +720,14 @@ namespace EvolZero.Core.Analysis.Semantic
 				if (!value.IsAnonymous)
 					_lifetimesConsumer.GiveAwayOwnership(value.Expr);
 
-				GiveAwayOwnership(value, linkWithObjectExists ? objectGetting!.LifetimeNum : _currentBlockNum + 1, true);
+				int lifetimeToGiveAway = _currentBlockNum + 1;
+				var variable = objectGetting?.VarData ?? _lifetimeForAssign?.VarData;
+				if (linkWithObjectExists && variable != null)
+				{
+					lifetimeToGiveAway = variable.LifetimeNum;
+				}
+
+				GiveAwayOwnership(value, lifetimeToGiveAway, true);
 			}
 		}
 
@@ -743,7 +763,7 @@ namespace EvolZero.Core.Analysis.Semantic
 
 			if (CheckLinkedVarsLifetimesError(lifetimeToGiveAway, pointer.VarData))
 			{
-				AddLifetimeError("LT011", "Попытка передать владение ссылкой, у которой есть связанные ссылки, в область с меньшим временем жизни", pointer.Expr.Pos);
+				AddLifetimeError("LT011", "Попытка передать владение ссылкой, у которой есть связанные ссылки, в область с другим временем жизни", pointer.Expr.Pos);
 				return;
 			}
 
@@ -795,6 +815,11 @@ namespace EvolZero.Core.Analysis.Semantic
 		{
 			return lifetimes.Any(x => (x.LeftKey.VarName == argumentName || x.RightKey.VarName == argumentName) &&
 									(x.LeftKey.KeyType == LifetimeDecl.KeyType.This || x.RightKey.KeyType == LifetimeDecl.KeyType.This));
+		}
+
+		public void ErrorLT002(PositionInSources pos)
+		{
+			AddLifetimeError("LT002", "Время жизни присваиваемой ссылки меньше времени жизни ссылки-получателя", pos);
 		}
 	}
 }
