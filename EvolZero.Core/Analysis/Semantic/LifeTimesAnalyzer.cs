@@ -14,7 +14,7 @@ namespace EvolZero.Core.Analysis.Semantic
 		public bool IsStrippedViaExchange { get; set; }
 	}
 
-	public class VarMeta(int lifetimeNum, bool isDestructed, bool isInitialized)
+	public class VarMeta(int lifetimeNum, bool isDestructed, bool isInitialized, VarMeta? parent = null)
 	{
 		public string? Name { get; set; } // TODO: для дебага
 		public int LifetimeNum { get; set; } = lifetimeNum; // Чем меньше LifetimeNum (номер лайфтайма), тем больше время жизни
@@ -22,6 +22,45 @@ namespace EvolZero.Core.Analysis.Semantic
 		public bool IsInitialized { get; set; } = isInitialized;
 		public List<VarMeta> Aliases { get; set; } = new();
 		public List<VarMeta> LinkedVars { get; set; } = new();
+		private VarMeta? Parent { get; set; } = parent;
+
+		public bool LinkedVarsExists => LinkedVars != null && LinkedVars.Count > 0;
+		public bool AliasesExists => (Aliases != null && Aliases.Count > 0) || Parent != null;
+
+		public void SetParent(VarMeta parent)
+		{
+			Parent = parent;
+		}
+
+		public void SetAliase(VarMeta aliase)
+		{
+			if (Aliases == null)
+				Aliases = new();
+
+			Aliases.Add(aliase);
+			Parent?.SetAliase(aliase);
+		}
+
+		public void LinkVars(VarMeta varToLink)
+		{
+			if (this == varToLink) return;
+
+			LinkedVars.Add(varToLink);
+			varToLink.LinkedVars.Add(this);
+
+			Parent?.LinkVars(varToLink);
+			varToLink.Parent?.LinkVars(this);
+
+			foreach (var linkedVar in Aliases)
+			{
+				varToLink.LinkVars(linkedVar);
+			}
+
+			foreach (var linkedVar in varToLink.Aliases)
+			{
+				LinkVars(linkedVar);
+			}
+		}
 	}
 
 	public class LifeTimesAnalyzer : SemanticTreeVisitor<ValueMeta?>
@@ -119,9 +158,8 @@ namespace EvolZero.Core.Analysis.Semantic
 			_currentClass = new VarMeta(-1, false, true);
 			_currentClass.Name = "this";
 
-			_currentClassFields = statement.TypeDesc.Variables.Values.Select(x => (x.Name, new VarMeta(-1, false, false)
+			_currentClassFields = statement.TypeDesc.Variables.Values.Select(x => (x.Name, new VarMeta(-1, false, false, _currentClass)
 			{
-				Aliases = [_currentClass],
 				Name = x.Name
 			}
 			)).ToDictionary();
@@ -362,13 +400,11 @@ namespace EvolZero.Core.Analysis.Semantic
 			}
 			else
 			{
-				meta = new VarMeta(structureGetting.VarData.LifetimeNum, false, expr.IsInitialized)
-				{
-					Aliases = [structureGetting.VarData]
-				};
-
+				meta = new VarMeta(structureGetting.VarData.LifetimeNum, false, expr.IsInitialized);
 				meta.Name = expr.Field.Name;
 			}
+
+			meta.SetParent(structureGetting.VarData);
 
 			return new ValueMeta()
 			{
@@ -408,7 +444,7 @@ namespace EvolZero.Core.Analysis.Semantic
 			var passedArguments = expr.Arguments;
 
 			// обнуляем текущий лайфтайм в который сейчас происходит присвоение
-			var lastAssignLifetime = _lifetimeForAssign; 
+			var lastAssignLifetime = _lifetimeForAssign;
 			_lifetimeForAssign = null;
 
 			ValueMeta? thisGetting = null; // если это метод класса, щдесь будет лайфтайм this, если обычная функция, то просто null
@@ -457,22 +493,30 @@ namespace EvolZero.Core.Analysis.Semantic
 			switch (expr.OperationType)
 			{
 				case BinaryOperation.Assing:
-					var lastLifetime = _lifetimeForAssign;
-					ValueMeta? left = HandleExpression(expr.LeftExpression);
+					{
+						var lastLifetime = _lifetimeForAssign;
+						ValueMeta? left = HandleExpression(expr.LeftExpression);
 
-					if (left == null) return null;
+						_lifetimeForAssign = left;
+						ValueMeta? right = HandleExpression(expr.RightExpression);
+						_lifetimeForAssign = lastLifetime;
 
-					_lifetimeForAssign = left;
-					ValueMeta? right = HandleExpression(expr.RightExpression);
-					_lifetimeForAssign = lastLifetime;
+						if (right == null || left == null) return null;
 
-					if (right == null) return null;
+						AssingHandler(left, right);
 
-					AssingHandler(left, right);
-
-					return left;
+						return left;
+					}
 				default:
-					return null;
+					{
+						var lastLifetime = _lifetimeForAssign;
+						_lifetimeForAssign = null;
+						HandleExpression(expr.LeftExpression);
+						HandleExpression(expr.RightExpression);
+						_lifetimeForAssign = lastLifetime;
+
+						return null;
+					}
 			}
 		}
 
@@ -553,7 +597,7 @@ namespace EvolZero.Core.Analysis.Semantic
 				return null;
 			}
 
-			if (returnedLifetime?.VarData != null && returnedLifetime.VarData.LinkedVars.Count > 0)
+			if (returnedLifetime?.VarData != null && returnedLifetime.VarData.LinkedVarsExists)
 			{
 				AddLifetimeError("LT012", "Возвращаемая ссылка не должна иметь связанных ссылок!", returnedLifetime.Expr.Pos);
 				return null;
@@ -640,7 +684,7 @@ namespace EvolZero.Core.Analysis.Semantic
 				if (value.IsStrippedViaExchange)
 				{
 					value.VarData!.IsDestructed = true; // содержимое поля переехало в приемник (GiveAwayOwnership кинул бы throw на алиасы поля)
-					LinkVars(value.VarData, target.VarData);
+					value.VarData.LinkVars(target.VarData);
 				}
 				else
 					GiveAwayOwnership(value, target.VarData.LifetimeNum, true);
@@ -655,7 +699,7 @@ namespace EvolZero.Core.Analysis.Semantic
 
 		private void AssignBorrowRef(ValueMeta target, ValueMeta value)
 		{
-			if (value.IsAnonymous)
+			if (value.IsAnonymous || (value.IsStrippedViaExchange && value.Expr.ResultTypeSpec.IsOwnerRef))
 			{
 				AddLifetimeError("LT009", "Анонимные ссылки (например, результат 'new') можно присваивать только во владеющие (ref) ссылки", value.Expr.Pos);
 				return;
@@ -664,13 +708,8 @@ namespace EvolZero.Core.Analysis.Semantic
 			if (target.VarData == null)
 				throw new NotImplementedException(); // такой хуйни быть не должно
 
-			if (value.VarData!.Aliases == null)
-				value.VarData.Aliases = new();
-
-			value.VarData.Aliases.Add(target.VarData);
-
-			target.VarData.LifetimeNum = value.VarData.LifetimeNum;
-			target.VarData.LifetimeNum = value.VarData.LifetimeNum;
+			value.VarData!.SetAliase(target.VarData);
+			target.VarData.LifetimeNum = value.VarData!.LifetimeNum;
 		}
 
 		private void PassToArgumentHandler(Argument arg, ValueMeta value, LifetimeDecl[] functionLifetimes, ValueMeta? objectGetting)
@@ -731,7 +770,7 @@ namespace EvolZero.Core.Analysis.Semantic
 		{
 			if (pointer.VarData == null) throw new NotImplementedException(); // такой хуйни быть не должно
 
-			if (checkAliases && pointer.VarData.Aliases != null && pointer.VarData.Aliases.Count > 0)
+			if (checkAliases && pointer.VarData.AliasesExists)
 			{
 				AddLifetimeError("LT010", "Нельзя передавать владение ссылкой, у которой есть алиасы", pointer.Expr.Pos);
 				return;
@@ -751,7 +790,7 @@ namespace EvolZero.Core.Analysis.Semantic
 		{
 			if (pointer.VarData == null) return;
 
-			if (checkAliases && pointer.VarData.Aliases != null && pointer.VarData.Aliases.Count > 0)
+			if (checkAliases && pointer.VarData.AliasesExists)
 			{
 				AddLifetimeError("LT010", "Нельзя передавать владение ссылкой, у которой есть алиасы", pointer.Expr.Pos);
 				return;
@@ -785,26 +824,8 @@ namespace EvolZero.Core.Analysis.Semantic
 
 		private bool CheckLinkedVarsLifetimesError(int lifetime, VarMeta varMeta)
 		{
-			if (varMeta.LinkedVars.Count == 0) return false;
+			if (!varMeta.LinkedVarsExists) return false;
 			return varMeta.LifetimeNum != lifetime;
-		}
-
-		private void LinkVars(VarMeta var1, VarMeta var2)
-		{
-			if (var1 == var2) return;
-
-			var1.LinkedVars.Add(var2);
-			var2.LinkedVars.Add(var1);
-
-			foreach (var linkedVar in var1.Aliases)
-			{
-				LinkVars(var2, linkedVar);
-			}
-
-			foreach (var linkedVar in var2.Aliases)
-			{
-				LinkVars(var1, linkedVar);
-			}
 		}
 
 		private bool CheckLinkWithThis(LifetimeDecl[] lifetimes, string argumentName)
