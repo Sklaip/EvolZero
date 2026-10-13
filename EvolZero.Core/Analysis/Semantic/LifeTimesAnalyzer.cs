@@ -21,11 +21,13 @@ namespace EvolZero.Core.Analysis.Semantic
 		public bool IsDestructed { get; set; } = isDestructed;
 		public bool IsInitialized { get; set; } = isInitialized;
 		public List<VarMeta> Aliases { get; set; } = new();
+		public List<VarMeta> IsAliaseTo { get; set; } = new();
 		public List<VarMeta> LinkedVars { get; set; } = new();
 		private VarMeta? Parent { get; set; } = parent;
 
 		public bool LinkedVarsExists => LinkedVars != null && LinkedVars.Count > 0;
 		public bool AliasesExists => (Aliases != null && Aliases.Count > 0) || Parent != null;
+		public bool IsAliaseToSomething => (IsAliaseTo != null && IsAliaseTo.Count > 0);
 
 		public void SetParent(VarMeta parent)
 		{
@@ -39,6 +41,13 @@ namespace EvolZero.Core.Analysis.Semantic
 
 			Aliases.Add(aliase);
 			Parent?.SetAliase(aliase);
+			aliase.SetIsAliaseTo(this);
+		}
+
+		private void SetIsAliaseTo(VarMeta toAliase)
+		{
+			IsAliaseTo.Add(toAliase);
+			Parent?.SetIsAliaseTo(toAliase);
 		}
 
 		public void LinkVars(VarMeta varToLink)
@@ -92,8 +101,10 @@ namespace EvolZero.Core.Analysis.Semantic
 			public readonly bool IsDestructed;
 			public readonly bool IsInitialized;
 			public readonly List<VarMeta> Aliases;
+			public readonly List<VarMeta> IsAliaseTo;
 			public readonly List<VarMeta> LinkedVars;
 			public readonly int AliasesCount;
+			public readonly int IsAliaseToCount;
 			public readonly int LinkedVarsCount;
 
 			public VarMetaState(VarMeta meta)
@@ -104,6 +115,8 @@ namespace EvolZero.Core.Analysis.Semantic
 				IsInitialized = meta.IsInitialized;
 				Aliases = meta.Aliases;
 				AliasesCount = meta.Aliases.Count;
+				IsAliaseTo = meta.IsAliaseTo;
+				IsAliaseToCount = meta.IsAliaseTo.Count;
 				LinkedVars = meta.LinkedVars;
 				LinkedVarsCount = meta.LinkedVars.Count;
 			}
@@ -115,6 +128,7 @@ namespace EvolZero.Core.Analysis.Semantic
 				Var.IsInitialized = IsInitialized;
 
 				Truncate(Aliases, AliasesCount);
+				Truncate(IsAliaseTo, IsAliaseToCount);
 				Truncate(LinkedVars, LinkedVarsCount);
 			}
 
@@ -597,7 +611,7 @@ namespace EvolZero.Core.Analysis.Semantic
 				return null;
 			}
 
-			if (returnedLifetime?.VarData != null && returnedLifetime.VarData.LinkedVarsExists)
+			if (returnedLifetime?.VarData != null && (returnedLifetime.VarData.LinkedVarsExists || returnedLifetime.VarData.IsAliaseToSomething))
 			{
 				AddLifetimeError("LT012", "Возвращаемая ссылка не должна иметь связанных ссылок!", returnedLifetime.Expr.Pos);
 				return null;
