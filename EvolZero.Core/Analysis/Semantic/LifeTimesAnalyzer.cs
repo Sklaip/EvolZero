@@ -1,7 +1,6 @@
 ﻿using EvolZero.Core.LogicModels.Expressions;
 using EvolZero.Core.LogicModels.Statements;
 using EvolZero.Core.MemebersModels;
-using System.Xml.Linq;
 
 namespace EvolZero.Core.Analysis.Semantic
 {
@@ -14,10 +13,10 @@ namespace EvolZero.Core.Analysis.Semantic
 		public bool IsStrippedViaExchange { get; set; }
 	}
 
-	public class VarMeta(int lifetimeNum, bool isDestructed, bool isInitialized, VarMeta? parent = null)
+	public class VarMeta(Lifetime lifetime, bool isDestructed, bool isInitialized, VarMeta? parent = null)
 	{
 		public string? Name { get; set; } // TODO: для дебага
-		public int LifetimeNum { get; set; } = lifetimeNum; // Чем меньше LifetimeNum (номер лайфтайма), тем больше время жизни
+		public Lifetime Lifetime { get; set; } = lifetime; 
 		public bool IsDestructed { get; set; } = isDestructed;
 		public bool IsInitialized { get; set; } = isInitialized;
 		public List<VarMeta> Aliases { get; set; } = new();
@@ -97,7 +96,7 @@ namespace EvolZero.Core.Analysis.Semantic
 		class VarMetaState
 		{
 			public readonly VarMeta Var;
-			public readonly int BlockNum;
+			public readonly Lifetime Lifetime;
 			public readonly bool IsDestructed;
 			public readonly bool IsInitialized;
 			public readonly List<VarMeta> Aliases;
@@ -110,7 +109,7 @@ namespace EvolZero.Core.Analysis.Semantic
 			public VarMetaState(VarMeta meta)
 			{
 				Var = meta;
-				BlockNum = meta.LifetimeNum;
+				Lifetime = meta.Lifetime;
 				IsDestructed = meta.IsDestructed;
 				IsInitialized = meta.IsInitialized;
 				Aliases = meta.Aliases;
@@ -123,7 +122,7 @@ namespace EvolZero.Core.Analysis.Semantic
 
 			public void Restore()
 			{
-				Var.LifetimeNum = BlockNum;
+				Var.Lifetime = Lifetime;
 				Var.IsDestructed = IsDestructed;
 				Var.IsInitialized = IsInitialized;
 
@@ -169,14 +168,15 @@ namespace EvolZero.Core.Analysis.Semantic
 		protected override void HandleClass(ClassStatement statement)
 		{
 			_currentDesc = statement.TypeDesc;
-			_currentClass = new VarMeta(-1, false, true);
+			_currentClass = new VarMeta(Lifetime.ForThis(), false, true);
 			_currentClass.Name = "this";
 
-			_currentClassFields = statement.TypeDesc.Variables.Values.Select(x => (x.Name, new VarMeta(-1, false, false, _currentClass)
-			{
-				Name = x.Name
-			}
-			)).ToDictionary();
+			_currentClassFields = statement.TypeDesc.Variables.Values
+				.Select(x => (x.Name, new VarMeta(Lifetime.ForThis(), false, false, _currentClass)
+				{
+					Name = x.Name
+				}
+				)).ToDictionary();
 
 			base.HandleClass(statement);
 
@@ -203,11 +203,11 @@ namespace EvolZero.Core.Analysis.Semantic
 			{
 				foreach (var argument in fst.Arguments)
 				{
-					int liftime = _currentBlockNum;
+					var liftime = Lifetime.ForArgument();
 					if (argument.Declaring.IsRef)
 					{
-						if (CheckLinkWithThis(fst.Lifetimes, argument.Name)) liftime = _currentClass!.LifetimeNum;
-						else if (argument.Declaring.IsBorrowRef) liftime = int.MinValue;
+						if (CheckLinkWithThis(fst.Lifetimes, argument.Name)) liftime.Connect(Lifetime.ForThis());
+						else if (argument.Declaring.IsBorrowRef) liftime = Lifetime.Undefined();
 					}
 
 					var variable = new VarMeta(liftime, false, true);
@@ -390,7 +390,7 @@ namespace EvolZero.Core.Analysis.Semantic
 			return new ValueMeta()
 			{
 				Expr = expr,
-				VarData = new VarMeta(int.MinValue + 1, false, true)
+				VarData = new VarMeta(Lifetime.ForGlobal(), false, true)
 			};
 		}
 
@@ -414,7 +414,7 @@ namespace EvolZero.Core.Analysis.Semantic
 			}
 			else
 			{
-				meta = new VarMeta(structureGetting.VarData.LifetimeNum, false, expr.IsInitialized);
+				meta = new VarMeta(structureGetting.VarData.Lifetime, false, expr.IsInitialized);
 				meta.Name = expr.Field.Name;
 			}
 
@@ -486,7 +486,7 @@ namespace EvolZero.Core.Analysis.Semantic
 
 		protected override ValueMeta? CreateVar(VariableCreatingExpression expr)
 		{
-			var currentVar = new VarMeta(_currentBlockNum, false, false);
+			var currentVar = new VarMeta(new Lifetime(_currentBlockNum), false, false);
 			currentVar.Name = expr.Name;
 
 			_vars[expr.Name] = currentVar;
@@ -553,7 +553,7 @@ namespace EvolZero.Core.Analysis.Semantic
 				if (value.VarData!.IsDestructed || !value.VarData.IsInitialized)
 					throw new NotImplementedException(); // ссылка была деинициализированна. Вообще сюда оно поподать не должно, оно должно отбрасываться на других проверках
 
-				if (CheckLifetimesError(value.VarData.LifetimeNum, target.VarData.LifetimeNum))
+				if (!CheckLifetimes(value.VarData.Lifetime, target.VarData.Lifetime))
 				{
 					ErrorLT002(target.Expr.Pos);
 					return null;
@@ -587,7 +587,7 @@ namespace EvolZero.Core.Analysis.Semantic
 				if (!value.IsAnonymous)
 					_lifetimesConsumer.GiveAwayOwnership(value.Expr);
 
-				GiveAwayOwnership(value, target.VarData.LifetimeNum, true);
+				GiveAwayOwnership(value, target.VarData.Lifetime, true);
 			}
 			else
 			{
@@ -644,7 +644,7 @@ namespace EvolZero.Core.Analysis.Semantic
 				if (value.VarData!.IsDestructed || !value.VarData.IsInitialized)
 					throw new NotImplementedException(); // ссылка была деинициализированна. Вообще сюда оно попадть не должно, оно должно отбрасываться на других проверках
 
-				if (CheckLifetimesError(value.VarData.LifetimeNum, target.VarData.LifetimeNum))
+				if (!CheckLifetimes(value.VarData.Lifetime, target.VarData.Lifetime))
 				{
 					ErrorLT002(target.Expr.Pos);
 					return;
@@ -674,7 +674,7 @@ namespace EvolZero.Core.Analysis.Semantic
 						return;
 					}
 
-					if (value.VarData != null && CheckLifetimesError(target.VarData.LifetimeNum, value.VarData.LifetimeNum))
+					if (value.VarData != null && !CheckLifetimes(target.VarData.Lifetime, value.VarData.Lifetime))
 					{
 						AddLifetimeError("LT007", "Время жизни ссылки-получателя меньше времени жизни объекта, с которого снимается ссылка", target.Expr.Pos);
 						return;
@@ -701,7 +701,7 @@ namespace EvolZero.Core.Analysis.Semantic
 					value.VarData.LinkVars(target.VarData);
 				}
 				else
-					GiveAwayOwnership(value, target.VarData.LifetimeNum, true);
+					GiveAwayOwnership(value, target.VarData.Lifetime, true);
 			}
 			else
 			{
@@ -723,7 +723,7 @@ namespace EvolZero.Core.Analysis.Semantic
 				throw new NotImplementedException(); // такой хуйни быть не должно
 
 			value.VarData!.SetAliase(target.VarData);
-			target.VarData.LifetimeNum = value.VarData!.LifetimeNum;
+			target.VarData.Lifetime = value.VarData!.Lifetime;
 		}
 
 		private void PassToArgumentHandler(Argument arg, ValueMeta value, LifetimeDecl[] functionLifetimes, ValueMeta? objectGetting)
@@ -744,7 +744,7 @@ namespace EvolZero.Core.Analysis.Semantic
 			bool linkWithObjectExists = CheckLinkWithThis(functionLifetimes, arg.Name);
 
 			if (value.VarData != null && linkWithObjectExists
-				&& objectGetting?.VarData != null && CheckLifetimesError(value.VarData.LifetimeNum, objectGetting.VarData.LifetimeNum))
+				&& objectGetting?.VarData != null && !CheckLifetimes(value.VarData.Lifetime, objectGetting.VarData.Lifetime))
 			{
 				ErrorLT002(value.Expr.Pos);
 				return;
@@ -769,11 +769,11 @@ namespace EvolZero.Core.Analysis.Semantic
 				if (!value.IsAnonymous)
 					_lifetimesConsumer.GiveAwayOwnership(value.Expr);
 
-				int lifetimeToGiveAway = _currentBlockNum + 1;
+				Lifetime lifetimeToGiveAway = new Lifetime(_currentBlockNum + 1);
 				var variable = objectGetting?.VarData ?? _lifetimeForAssign?.VarData;
 				if (linkWithObjectExists && variable != null)
 				{
-					lifetimeToGiveAway = variable.LifetimeNum;
+					lifetimeToGiveAway = variable.Lifetime;
 				}
 
 				GiveAwayOwnership(value, lifetimeToGiveAway, true);
@@ -800,7 +800,7 @@ namespace EvolZero.Core.Analysis.Semantic
 			}
 		}
 
-		private void GiveAwayOwnership(ValueMeta pointer, int lifetimeToGiveAway, bool checkAliases)
+		private void GiveAwayOwnership(ValueMeta pointer, Lifetime lifetimeToGiveAway, bool checkAliases)
 		{
 			if (pointer.VarData == null) return;
 
@@ -830,16 +830,15 @@ namespace EvolZero.Core.Analysis.Semantic
 			}
 		}
 
-		private bool CheckLifetimesError(int value, int target)
+		private bool CheckLifetimes(Lifetime value, Lifetime target)
 		{
-			if (target == int.MinValue || value == int.MinValue) return true;
-			return value > target;
+			return value <= target;
 		}
 
-		private bool CheckLinkedVarsLifetimesError(int lifetime, VarMeta varMeta)
+		private bool CheckLinkedVarsLifetimesError(Lifetime lifetime, VarMeta varMeta)
 		{
 			if (!varMeta.LinkedVarsExists) return false;
-			return varMeta.LifetimeNum != lifetime;
+			return varMeta.Lifetime != lifetime;
 		}
 
 		private bool CheckLinkWithThis(LifetimeDecl[] lifetimes, string argumentName)
