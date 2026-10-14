@@ -553,7 +553,7 @@ namespace EvolZero.Core.Analysis.Semantic
 				if (value.VarData!.IsDestructed || !value.VarData.IsInitialized)
 					throw new NotImplementedException(); // ссылка была деинициализированна. Вообще сюда оно поподать не должно, оно должно отбрасываться на других проверках
 
-				if (!CheckLifetimes(value.VarData.Lifetime, target.VarData.Lifetime))
+				if (!CheckLifetimes(value.VarData, target.VarData))
 				{
 					ErrorLT002(target.Expr.Pos);
 					return null;
@@ -644,7 +644,7 @@ namespace EvolZero.Core.Analysis.Semantic
 				if (value.VarData!.IsDestructed || !value.VarData.IsInitialized)
 					throw new NotImplementedException(); // ссылка была деинициализированна. Вообще сюда оно попадть не должно, оно должно отбрасываться на других проверках
 
-				if (!CheckLifetimes(value.VarData.Lifetime, target.VarData.Lifetime))
+				if (!CheckLifetimes(value.VarData, target.VarData))
 				{
 					ErrorLT002(target.Expr.Pos);
 					return;
@@ -674,7 +674,7 @@ namespace EvolZero.Core.Analysis.Semantic
 						return;
 					}
 
-					if (value.VarData != null && !CheckLifetimes(target.VarData.Lifetime, value.VarData.Lifetime))
+					if (value.VarData != null && !CheckLifetimes(target.VarData, value.VarData))
 					{
 						AddLifetimeError("LT007", "Время жизни ссылки-получателя меньше времени жизни объекта, с которого снимается ссылка", target.Expr.Pos);
 						return;
@@ -744,7 +744,7 @@ namespace EvolZero.Core.Analysis.Semantic
 			bool linkWithObjectExists = CheckLinkWithThis(functionLifetimes, arg.Name);
 
 			if (value.VarData != null && linkWithObjectExists
-				&& objectGetting?.VarData != null && !CheckLifetimes(value.VarData.Lifetime, objectGetting.VarData.Lifetime))
+				&& objectGetting?.VarData != null && !CheckLifetimes(value.VarData, objectGetting.VarData))
 			{
 				ErrorLT002(value.Expr.Pos);
 				return;
@@ -830,9 +830,9 @@ namespace EvolZero.Core.Analysis.Semantic
 			}
 		}
 
-		private bool CheckLifetimes(Lifetime value, Lifetime target)
+		private bool CheckLifetimes(VarMeta value, VarMeta target)
 		{
-			return value <= target;
+			return value.Lifetime >= target.Lifetime;
 		}
 
 		private bool CheckLinkedVarsLifetimesError(Lifetime lifetime, VarMeta varMeta)

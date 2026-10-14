@@ -37,7 +37,7 @@
 			if (Connected(a, b)) return true;
 			if (a.IsUndefined || b.IsUndefined) return false;
 
-			return a._lifetimeNum <= b._lifetimeNum;
+			return a._lifetimeNum >= b._lifetimeNum;
 		}
 
 		public static bool operator >=(Lifetime a, Lifetime b)
@@ -45,7 +45,7 @@
 			if (Connected(a, b)) return true;
 			if (a.IsUndefined || b.IsUndefined) return false;
 
-			return a._lifetimeNum >= b._lifetimeNum;
+			return a._lifetimeNum <= b._lifetimeNum;
 		}
 
 		public static bool operator ==(Lifetime a, Lifetime b)
