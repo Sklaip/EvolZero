@@ -76,9 +76,9 @@ namespace EvolZero.Core.Analysis.Semantic
 		private DestructorStatement? _currentDestructor;
 
 		/// <summary>
-		/// тут находится лайфтайм в который сейчас происходит присваение (AssingHandler)
+		/// тут находится лайфтайм в который сейчас происходит присваение
 		/// </summary>
-		private ValueMeta? _lifetimeForAssign = null;
+		private Lifetime? _lifetimeForAssign = null;
 
 		private ILifitemesBypassConsumer _lifetimesConsumer = new LiftimesConsumer();
 
@@ -140,7 +140,7 @@ namespace EvolZero.Core.Analysis.Semantic
 					if (argument.Declaring.IsRef)
 					{
 						if (CheckLinkWithThis(fst.Lifetimes, argument.Name)) liftime.Connect(Lifetime.ForThis());
-						else if (argument.Declaring.IsBorrowRef) liftime = Lifetime.Undefined();
+						else if (CheckLinkWithReturn(fst.Lifetimes, argument.Name)) liftime.Connect(Lifetime.ForReturn());
 					}
 
 					var variable = new VarMeta(liftime, false, true);
@@ -277,6 +277,10 @@ namespace EvolZero.Core.Analysis.Semantic
 		{
 			base.CallConstructor(expr);
 
+			// обнуляем текущий лайфтайм в который сейчас происходит присвоение
+			var lastAssignLifetime = _lifetimeForAssign;
+			_lifetimeForAssign = null;
+
 			var acceptedArguments = expr.Constructor.Arguments;
 			var passedArguments = expr.Arguments;
 
@@ -284,10 +288,17 @@ namespace EvolZero.Core.Analysis.Semantic
 
 			for (int i = 0; i < acceptedArguments.Length; i++)
 			{
+				// TODO: и DefineArgumentLifetime, и PassToArgumentHandler под капотом вызывают CheckLinkWithReturn и CheckLinkWithThis. Как-то это оптимизировать, чтобы вызовы не дублировались
+				var lifetimes = expr.Constructor.Lifetimes;
+				(_lifetimeForAssign, _, _) = DefineArgumentLifetime(acceptedArguments[i], lifetimes, thisGetting?.VarData?.Lifetime, lastAssignLifetime);
+
 				var arg = HandleExpression(passedArguments[i]);
 				if (arg == null) continue;
-				PassToArgumentHandler(acceptedArguments[i], arg, expr.Constructor.Lifetimes, thisGetting);
+				PassToArgumentHandler(acceptedArguments[i], arg, lifetimes, thisGetting, lastAssignLifetime);
 			}
+
+			// возвращаем лайфтайм обратно
+			_lifetimeForAssign = lastAssignLifetime;
 
 			return new ValueMeta()
 			{
@@ -401,19 +412,48 @@ namespace EvolZero.Core.Analysis.Semantic
 				j++;
 			}
 
+			bool linkWithThisExists = false;
+			bool linkWithReturnExists = false;
+			Lifetime? minReturnLifetime = null;
+
 			for (; i < acceptedArguments.Length; i++, j++)
 			{
+				// TODO: и DefineArgumentLifetime, и PassToArgumentHandler под капотом вызывают CheckLinkWithReturn и CheckLinkWithThis. Как-то это оптимизировать, чтобы вызовы не дублировались
+				var lifetimes = expr.Function.Lifetimes;
+				(_lifetimeForAssign, bool linkWithThis, bool linkWithReturn) = DefineArgumentLifetime(acceptedArguments[i],
+					lifetimes, thisGetting?.VarData?.Lifetime, lastAssignLifetime);
+
+				linkWithThisExists = linkWithThisExists || linkWithThis;
+				linkWithReturnExists = linkWithReturnExists || linkWithReturn;
+
+				if (linkWithReturn && (minReturnLifetime == null || _lifetimeForAssign < minReturnLifetime))
+					minReturnLifetime = _lifetimeForAssign;
+
 				var arg = HandleExpression(passedArguments[j]);
 				if (arg == null) continue;
-				PassToArgumentHandler(acceptedArguments[i], arg, expr.Function.Lifetimes, thisGetting);
+				PassToArgumentHandler(acceptedArguments[i], arg, lifetimes, thisGetting, lastAssignLifetime);
 			}
 
 			// возвращаем лайфтайм обратно
 			_lifetimeForAssign = lastAssignLifetime;
 
+
+			VarMeta? varMeta = null;
+			if (linkWithThisExists)
+			{
+				if (thisGetting?.VarData == null)
+					throw new NotImplementedException(); // такой хуйни быть не должно
+				varMeta = new VarMeta(thisGetting.VarData.Lifetime, false, true);
+			}
+			else if (linkWithReturnExists)
+			{
+				varMeta = new VarMeta(minReturnLifetime!.Value, false, true);
+			}
+
 			return new ValueMeta()
 			{
-				Expr = expr
+				Expr = expr,
+				VarData = varMeta
 			};
 		}
 
@@ -444,7 +484,7 @@ namespace EvolZero.Core.Analysis.Semantic
 						var lastLifetime = _lifetimeForAssign;
 						ValueMeta? left = HandleExpression(expr.LeftExpression);
 
-						_lifetimeForAssign = left;
+						_lifetimeForAssign = left?.VarData?.Lifetime;
 						ValueMeta? right = HandleExpression(expr.RightExpression);
 						_lifetimeForAssign = lastLifetime;
 
@@ -536,18 +576,29 @@ namespace EvolZero.Core.Analysis.Semantic
 		{
 			var returnedLifetime = base.HandleReturnStatement(statement);
 
-			if (returnedLifetime?.Expr != null
-				&& returnedLifetime.Expr.ResultTypeSpec.IsRef
-				&& !returnedLifetime.Expr.ResultTypeSpec.IsOwnerRef)
+			var returnedExpr = returnedLifetime?.Expr;
+			if (returnedExpr != null && returnedExpr.ResultTypeSpec.IsRef && !returnedExpr.ResultTypeSpec.IsOwnerRef
+				&& returnedLifetime!.VarData != null && !CheckLifetimes(returnedLifetime.VarData.Lifetime, Lifetime.ForReturn()))
 			{
-				AddLifetimeError("LT005", "Возвращаемая ссылка должна быть владеющей (ref)", returnedLifetime.Expr.Pos);
+				// TODO: тут нормальный текст ошибки написать
+				AddLifetimeError("LT005", "Возвращаемая ссылка должна быть владеющей (ref)", returnedExpr.Pos);
 				return null;
 			}
 
-			if (returnedLifetime?.VarData != null && (returnedLifetime.VarData.LinkedVarsExists || returnedLifetime.VarData.IsAliaseToSomething))
+			if (returnedLifetime?.VarData != null)
 			{
-				AddLifetimeError("LT012", "Возвращаемая ссылка не должна иметь связанных ссылок!", returnedLifetime.Expr.Pos);
-				return null;
+				if (returnedLifetime.VarData.LinkedVarsExists)
+				{
+					AddLifetimeError("LT012", "Возвращаемая ссылка не должна иметь связанных ссылок!", returnedLifetime.Expr.Pos);
+					return null;
+				}
+
+				if (returnedLifetime.VarData.IsAliaseToSomething && !CheckByAliaseLifetimes(returnedLifetime.VarData, Lifetime.ForReturn()))
+				{
+					AddLifetimeError("LT013", "Возвращаемая ссылка не должна быть алисом на " +
+						"ссылки с недостаточным для инструкции return временем жизни!", returnedLifetime.Expr.Pos);
+					return null;
+				}
 			}
 
 			DestructLifetimes(returnedLifetime?.VarData);
@@ -659,7 +710,8 @@ namespace EvolZero.Core.Analysis.Semantic
 			target.VarData.Lifetime = value.VarData!.Lifetime;
 		}
 
-		private void PassToArgumentHandler(Argument arg, ValueMeta value, LifetimeDecl[] functionLifetimes, ValueMeta? objectGetting)
+		private void PassToArgumentHandler(Argument arg, ValueMeta value, LifetimeDecl[] functionLifetimes,
+			ValueMeta? objectGetting, Lifetime? returnValueLifetime)
 		{
 			var argument = arg.Declaring;
 			if (value.VarData?.IsDestructed == true)
@@ -676,11 +728,22 @@ namespace EvolZero.Core.Analysis.Semantic
 
 			bool linkWithObjectExists = CheckLinkWithThis(functionLifetimes, arg.Name);
 
-			if (value.VarData != null && linkWithObjectExists
-				&& objectGetting?.VarData != null && !CheckLifetimes(value.VarData, objectGetting.VarData))
+			if (value.VarData != null)
 			{
-				ErrorLT002(value.Expr.Pos);
-				return;
+				// проверяем связан ли аргумент с this
+				if (objectGetting?.VarData != null && linkWithObjectExists && !CheckLifetimes(value.VarData, objectGetting.VarData))
+				{
+					ErrorLT002(value.Expr.Pos);
+					return;
+				}
+
+				// проверяем связан ли аргумент с return
+				if (returnValueLifetime != null && CheckLinkWithReturn(functionLifetimes, arg.Name)
+					&& !CheckLifetimes(value.VarData.Lifetime, returnValueLifetime.Value))
+				{
+					ErrorLT002(value.Expr.Pos);
+					return;
+				}
 			}
 
 			var varIsOwner = argument.IsOwnerRef;
@@ -702,11 +765,12 @@ namespace EvolZero.Core.Analysis.Semantic
 				if (!value.IsAnonymous)
 					_lifetimesConsumer.GiveAwayOwnership(value.Expr);
 
-				Lifetime lifetimeToGiveAway = new Lifetime(_currentBlockNum + 1);
-				var variable = objectGetting?.VarData ?? _lifetimeForAssign?.VarData;
-				if (linkWithObjectExists && variable != null)
+				var lifetimeToGiveAway = new Lifetime(_currentBlockNum + 1);
+				var variableLifetime = objectGetting?.VarData?.Lifetime ?? returnValueLifetime;
+
+				if (linkWithObjectExists && variableLifetime != null)
 				{
-					lifetimeToGiveAway = variable.Lifetime;
+					lifetimeToGiveAway = variableLifetime.Value;
 				}
 
 				GiveAwayOwnership(value, lifetimeToGiveAway, true);
@@ -763,9 +827,27 @@ namespace EvolZero.Core.Analysis.Semantic
 			}
 		}
 
-		private bool CheckLifetimes(VarMeta value, VarMeta target)
+		private bool CheckLifetimes(Lifetime value, Lifetime target)
 		{
-			return value.Lifetime >= target.Lifetime;
+			return value >= target;
+		}
+
+		private bool CheckLifetimes(VarMeta value, VarMeta target) => CheckLifetimes(value.Lifetime, target.Lifetime);
+
+		private bool CheckByAliaseLifetimes(VarMeta varMeta, Lifetime toCompare, HashSet<VarMeta>? alreadyChecked = null!)
+		{
+			// TODO: а если тут каким то образом окажется varMeta, у которого Parent имеет другой Lifetime? Проверить че будет и возможно ли это
+			alreadyChecked ??= new();
+			alreadyChecked.Add(varMeta);
+
+			foreach (var alise in varMeta.IsAliaseTo)
+			{
+				if (alise.Lifetime < toCompare) return false;
+				if (!CheckByAliaseLifetimes(alise, toCompare, alreadyChecked))
+					return false;
+			}
+
+			return true;
 		}
 
 		private bool CheckLinkedVarsLifetimesError(Lifetime lifetime, VarMeta varMeta)
@@ -776,8 +858,30 @@ namespace EvolZero.Core.Analysis.Semantic
 
 		private bool CheckLinkWithThis(LifetimeDecl[] lifetimes, string argumentName)
 		{
+			return CheckLinkWith(lifetimes, argumentName, LifetimeDecl.KeyType.This);
+		}
+
+		private bool CheckLinkWithReturn(LifetimeDecl[] lifetimes, string argumentName)
+		{
+			return CheckLinkWith(lifetimes, argumentName, LifetimeDecl.KeyType.Return);
+		}
+
+		private bool CheckLinkWith(LifetimeDecl[] lifetimes, string argumentName, LifetimeDecl.KeyType key)
+		{
 			return lifetimes.Any(x => (x.LeftKey.VarName == argumentName || x.RightKey.VarName == argumentName) &&
-									(x.LeftKey.KeyType == LifetimeDecl.KeyType.This || x.RightKey.KeyType == LifetimeDecl.KeyType.This));
+									(x.LeftKey.KeyType == key || x.RightKey.KeyType == key));
+		}
+
+		private (Lifetime lifetime, bool linkWithThis, bool linkWithReturn) DefineArgumentLifetime(Argument arg, LifetimeDecl[] lifetimes,
+			Lifetime? instanceObjecteLifetime, Lifetime? returnValueLifetime)
+		{
+			if (instanceObjecteLifetime != null && CheckLinkWithThis(lifetimes, arg.Name))
+				return (instanceObjecteLifetime.Value, true, false);
+
+			if (returnValueLifetime != null && CheckLinkWithReturn(lifetimes, arg.Name))
+				return (returnValueLifetime.Value, false, true);
+
+			return (new Lifetime(_currentBlockNum + 1), false, false);
 		}
 
 		public void ErrorLT002(PositionInSources pos)
