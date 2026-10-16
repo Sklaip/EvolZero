@@ -27,7 +27,7 @@ class TestObj
 		// refb-параметр (как и this) считается живущим «бесконечно долго», значит
 		// его поля имеют лайфтайм внешнего мира. Локальный владелец s живёт короче.
 		ref Structure s = new Structure(7);
-		ref external.Data = s; // LT002
+		ref Structure data = external.Data <- s; // LT002
 	}
 }
 

@@ -136,7 +136,7 @@ namespace EvolZero.Core.Analysis.Semantic
 			{
 				foreach (var argument in fst.Arguments)
 				{
-					var liftime = Lifetime.ForArgument();
+					var liftime = argument.Declaring.IsBorrowRef ? Lifetime.ForRefbArgument() : Lifetime.ForArgument();
 					if (argument.Declaring.IsRef)
 					{
 						if (CheckLinkWithThis(fst.Lifetimes, argument.Name)) liftime.Connect(Lifetime.ForThis());
@@ -416,6 +416,7 @@ namespace EvolZero.Core.Analysis.Semantic
 			bool linkWithReturnExists = false;
 			Lifetime? minReturnLifetime = null;
 
+			// TODO: для функций с бесконечным количеством аргументов (printf например) не будут проверяться переданные аргументы, которые выъодят за acceptedArguments.Length
 			for (; i < acceptedArguments.Length; i++, j++)
 			{
 				// TODO: и DefineArgumentLifetime, и PassToArgumentHandler под капотом вызывают CheckLinkWithReturn и CheckLinkWithThis. Как-то это оптимизировать, чтобы вызовы не дублировались
@@ -509,6 +510,10 @@ namespace EvolZero.Core.Analysis.Semantic
 
 		protected override ValueMeta? Exchange(ExchangeExpression expr)
 		{
+			if(expr.Pos.Line == 76)
+			{
+
+			}
 			ValueMeta? target = HandleExpression(expr.Target);
 			ValueMeta? value = HandleExpression(expr.Value);
 
