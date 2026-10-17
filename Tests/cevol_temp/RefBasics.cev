@@ -11,7 +11,7 @@ class Cell
 		Value = value;
 	}
 
-	public ref int GetRef()
+	public refb int GetRef() lifetimes (return ~ this)
 	{
 		return loc Value;
 	}
@@ -57,7 +57,7 @@ int main()
 	printf(ref "%d\n", rhc);
 
 	// 7. Метод, возвращающий ref на поле.
-	ref int fromMethod = cell.GetRef();
+	refb int fromMethod = cell.GetRef();
 	printf(ref "%d\n", cell.Value);
 	fromMethod = 77;
 	printf(ref "%d\n", cell.Value);

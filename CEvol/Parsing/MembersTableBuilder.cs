@@ -78,8 +78,8 @@ namespace EvolZero.Parsing
 				{
 					lifetimes = arguments.Where(x => x.Declaring.IsOwnerRef).Select(x => 
 						new LifetimeDecl(
-							new LifetimeDecl.Key(LifetimeDecl.KeyType.This, null),
-							new LifetimeDecl.Key(LifetimeDecl.KeyType.Var, x.Name)
+							new LifetimeDecl.Key(LifetimeDecl.KeyType.Var, x.Name),
+							new LifetimeDecl.Key(LifetimeDecl.KeyType.This, null)							
 						)).ToArray();
 				}
 				else
