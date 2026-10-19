@@ -1,0 +1,34 @@
+namespace Program;
+
+class Structure
+{
+	public int Num;
+
+	public ctor(int num)
+	{
+		Num = num;
+	}
+}
+
+// Связь 'source ~ return' приравнивает лайфтайм owner-аргумента к лайфтайму того
+// выражения, куда запишется результат (механика та же, что для refb —
+// DefinePassedArgumentLifetime возвращает лайфтайм получателя результата).
+ref Structure ReturnOwner(ref Structure source) lifetimes (source ~ return)
+{
+	return ref source;
+}
+
+int main()
+{
+	// Граница правила: получатель результата объявлен во внешнем блоке и живёт
+	// дольше владельца из внутреннего блока. Результат нельзя сохранять в более
+	// долгоживущую ссылку => LT002 на стороне вызова.
+	ref Structure test;
+	if (1 == 1)
+	{
+		ref Structure structureOne = new Structure(2);
+		ref test = ReturnOwner(ref structureOne); // LT002
+	}
+
+	return 0;
+}

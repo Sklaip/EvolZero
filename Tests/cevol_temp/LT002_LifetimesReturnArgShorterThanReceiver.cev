@@ -1,0 +1,33 @@
+namespace Program;
+
+class Structure
+{
+	public int Num;
+
+	public ctor(int num)
+	{
+		Num = num;
+	}
+}
+
+// Связь 'source ~ return' приравнивает лайфтайм аргумента к лайфтайму того
+// выражения, куда запишется результат (правило 7.5).
+refb Structure ReturnRefb(refb Structure source) lifetimes (source ~ return)
+{
+	return ref source;
+}
+
+int main()
+{
+	// Граница правила для '~ return': получатель результата объявлен во внешнем
+	// блоке и живёт дольше источника из внутреннего блока. Результат нельзя
+	// сохранять в более долгоживущую ссылку => LT002 на стороне вызова.
+	refb Structure test;
+	if (1 == 1)
+	{
+		ref Structure structureOne = new Structure(2);
+		refb test = ReturnRefb(ref structureOne); // LT002
+	}
+
+	return 0;
+}

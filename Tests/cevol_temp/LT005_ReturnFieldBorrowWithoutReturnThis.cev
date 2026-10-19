@@ -1,0 +1,26 @@
+namespace Program;
+
+class Cell
+{
+	public int Value;
+
+	public ctor(int value)
+	{
+		Value = value;
+	}
+
+	// Правило 7.6: refb-поле живёт, пока жив this (ForThis). Возврат его как результата
+	// функции (ForReturn) без связи 'return ~ this' даёт LT005 — результат может
+	// пережить объект.
+	public refb int GetRef()
+	{
+		return loc Value; // LT005
+	}
+}
+
+int main()
+{
+	Cell cell(10);
+
+	return 0;
+}

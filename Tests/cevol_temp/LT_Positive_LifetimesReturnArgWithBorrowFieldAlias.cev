@@ -1,0 +1,58 @@
+namespace Program;
+
+extern infargs int printf(refb byte ptr);
+
+class Structure
+{
+	public int Num;
+
+	public ctor(int num)
+	{
+		Num = num;
+	}
+}
+
+class TestObj
+{
+	public int ObjectNum;
+	public ref Structure Data;
+	public refb Structure BorrowData;
+
+	public ctor(int objectNum)
+	{
+		ref Data = new Structure(300);
+		ObjectNum = objectNum;
+	}
+
+	public int Sum()
+	{
+		return Data.Num + BorrowData.Num;
+	}
+}
+
+// Связь 'structureOne ~ return' приравнивает лайфтайм refb-аргумента к return.
+// Этого достаточно, чтобы положить аргумент в refb-поле возвращаемого объекта:
+// алиас-цепочка поля не короче лайфтайма возвращаемого значения (правило LT013).
+ref TestObj ReturnObjWithBorrowField(refb Structure structureOne) lifetimes (structureOne ~ return)
+{
+	ref TestObj obj = new TestObj(2);
+	refb obj.BorrowData = structureOne;
+	return ref obj;
+}
+
+int main()
+{
+	// Источник и получатель результата в одном блоке — вызов допустим.
+	ref Structure structure = new Structure(11);
+	ref TestObj obj = ReturnObjWithBorrowField(ref structure);
+
+	// Возвращённый объект читает и своё поле, и заимствованный источник.
+	printf(ref "%d\n", obj.Sum());
+
+	// BorrowData — алиас structure: запись через поле видна источнику.
+	refb Structure alias = obj.BorrowData;
+	alias.Num = 12;
+	printf(ref "%d\n", structure.Num);
+
+	return 0;
+}

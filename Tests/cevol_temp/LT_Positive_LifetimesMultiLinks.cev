@@ -1,0 +1,48 @@
+namespace Program;
+
+extern infargs int printf(refb byte ptr);
+
+class Structure
+{
+	public int Num;
+
+	public ctor(int num)
+	{
+		Num = num;
+	}
+}
+
+class Box
+{
+	public refb Structure Pinned;
+
+	public ctor()
+	{
+	}
+
+	// Несколько связей в одной секции: 'b ~ this' разрешает класть b в поле,
+	// 'a ~ return' разрешает возвращать a как refb.
+	public refb Structure Pin(refb Structure b, refb Structure a) lifetimes (b ~ this, a ~ return)
+	{
+		refb Pinned = b;
+		return ref a;
+	}
+}
+
+int main()
+{
+	ref Box box = new Box();
+
+	// Оба источника живут не короче box: вызов с '~ this'/'~ return' допустим.
+	ref Structure one = new Structure(1);
+	ref Structure two = new Structure(2);
+
+	refb Structure returned = box.Pin(ref one, ref two);
+
+	// b ~ this: поле — алиас one.
+	printf(ref "%d\n", box.Pinned.Num);
+	// a ~ return: результат — алиас two.
+	printf(ref "%d\n", returned.Num);
+
+	return 0;
+}

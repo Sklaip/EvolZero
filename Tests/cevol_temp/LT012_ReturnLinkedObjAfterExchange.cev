@@ -1,0 +1,43 @@
+namespace Program;
+
+class Structure
+{
+	public int Num;
+
+	public ctor(int num)
+	{
+		Num = num;
+	}
+}
+
+class TestObj
+{
+	public int ObjectNum;
+	public ref Structure Data;
+
+	public ctor(int objectNum)
+	{
+		ref Data = new Structure(300);
+		ObjectNum = objectNum;
+	}
+}
+
+ref TestObj Make()
+{
+	// Обмен '<-' через поле связывает obj с получателем rec через LinkVars
+	// (AssingHandler: value.VarData.LinkVars(target.VarData)).
+	// Возвращать объект с такими связями нельзя — LT012.
+	ref TestObj obj = new TestObj(1);
+	ref Structure s = new Structure(2);
+	ref Structure rec;
+	ref rec = obj.Data <- s;
+
+	return ref obj; // LT012
+}
+
+int main()
+{
+	ref TestObj obj = Make();
+
+	return 0;
+}

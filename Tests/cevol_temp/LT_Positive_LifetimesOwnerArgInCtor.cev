@@ -1,0 +1,62 @@
+namespace Program;
+
+extern infargs int printf(refb byte ptr);
+
+class Structure
+{
+	public int Num;
+
+	public ctor(int num)
+	{
+		Num = num;
+	}
+}
+
+class Holder
+{
+	public ref Structure Data;
+
+	// Без секции lifetimes конструктор получает автогенерированную связь
+	// 'data ~ this' для каждого owner-ref аргумента (MembersTableBuilder):
+	// владелец, переданный в конструктор, может лечь в поле this.
+	public ctor(ref Structure data)
+	{
+		ref Data = data;
+	}
+}
+
+class BorrowHolder
+{
+	public refb Structure BorrowData;
+
+	// Явная секция дублирует автогенерируемую — поведение то же.
+	public ctor(refb Structure data) lifetimes (data ~ this)
+	{
+		refb BorrowData = data;
+	}
+
+	public int Num()
+	{
+		return BorrowData.Num;
+	}
+}
+
+int main()
+{
+	// Автогенерированная связь: владелец переезжает в поле, объект читает поле.
+	ref Structure outer = new Structure(11);
+	ref Holder holder = new Holder(ref outer);
+	printf(ref "%d\n", holder.Data.Num);
+
+	// Явная связь data ~ this: refb-поле ссылается на живой объект внешнего блока.
+	ref Structure source = new Structure(22);
+	ref BorrowHolder bh = new BorrowHolder(ref source);
+	printf(ref "%d\n", bh.Num());
+
+	// BorrowData — алиас source: запись через поле видна исходному объекту.
+	refb Structure alias = bh.BorrowData;
+	alias.Num = 33;
+	printf(ref "%d\n", source.Num);
+
+	return 0;
+}

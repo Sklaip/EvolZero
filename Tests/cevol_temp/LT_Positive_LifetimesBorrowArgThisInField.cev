@@ -1,0 +1,59 @@
+namespace Program;
+
+extern infargs int printf(refb byte ptr);
+
+class Structure
+{
+	public int Num;
+
+	public ctor(int num)
+	{
+		Num = num;
+	}
+
+	public dtor()
+	{
+		printf(ref "Structure dtor: ");
+		printf(ref "%d\n", Num);
+	}
+}
+
+class Box
+{
+	public refb Structure Data;
+
+	public ctor()
+	{
+	}
+
+	// Без связи 'b ~ this' refb-параметр живёт «бесконечно долго» и назначать
+	// его в поле нельзя (LT002). Связь приравнивает лайфтайм параметра к this,
+	// и присваивание в refb-поле проходит.
+	public void Put(refb Structure b) lifetimes (b ~ this)
+	{
+		refb Data = b;
+	}
+
+	public int Num()
+	{
+		return Data.Num;
+	}
+}
+
+int main()
+{
+	ref Box box = new Box();
+
+	// Значение того же внешнего блока, что и receiver: box и source живут
+	// одинаково долго, поэтому вызов с 'b ~ this' допустим.
+	ref Structure source = new Structure(7);
+	box.Put(ref source);
+	printf(ref "%d\n", box.Num());
+
+	// Поле — алиас исходного объекта: запись через него видна снаружи.
+	refb Structure alias = box.Data;
+	alias.Num = 8;
+	printf(ref "%d\n", source.Num);
+
+	return 0;
+}

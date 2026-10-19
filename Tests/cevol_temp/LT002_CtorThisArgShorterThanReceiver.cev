@@ -1,0 +1,35 @@
+namespace Program;
+
+class Structure
+{
+	public int Num;
+
+	public ctor(int num)
+	{
+		Num = num;
+	}
+}
+
+class Holder
+{
+	public ref Structure Data;
+
+	public ctor(ref Structure data) lifetimes (data ~ this)
+	{
+		ref Data = data;
+	}
+}
+
+int main()
+{
+	// Граница правила для '~ this' в конструкторе: receiver (this) принадлежит
+	// переменной во внешнем блоке, а передаваемое значение создаётся во внутреннем. Значение живёт короче объекта, в чьё поле оно попадёт, => LT002.
+	ref Holder holder;
+	if (1 == 1)
+	{
+		ref Structure source = new Structure(7);
+		ref holder = new Holder(ref source); // LT002
+	}
+
+	return 0;
+}

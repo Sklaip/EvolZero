@@ -193,6 +193,88 @@ public sealed class LifetimeAnalyzerNegativeTests : IDisposable
 			_compiler, "LT010_MoveAfterRefbFieldAlias.cev", "LT010");
 	}
 
+	[Fact]
+	public void LifetimesThisArgShorterThanReceiver_FailsWithLT002()
+	{
+		// Связь 'b ~ this': receiver живёт во внешнем блоке, значение — во внутреннем.
+		// Значение живёт короче объекта, в чьё поле оно попадёт => LT002 на стороне вызова.
+		TestAssertions.AssertCompilationFails(
+			_compiler, "LT002_LifetimesThisArgShorterThanReceiver.cev", "LT002");
+	}
+
+	[Fact]
+	public void LifetimesReturnArgShorterThanReceiver_FailsWithLT002()
+	{
+		// Связь 'source ~ return': получатель результата живёт дольше источника
+		// из внутреннего блока => LT002 на стороне вызова.
+		TestAssertions.AssertCompilationFails(
+			_compiler, "LT002_LifetimesReturnArgShorterThanReceiver.cev", "LT002");
+	}
+
+	[Fact]
+	public void LifetimesReturnOwnerArgShorterThanReceiver_FailsWithLT002()
+	{
+		// Та же проверка '~ return', но для owner-ref (ref) аргумента:
+		// результат нельзя сохранять в более долгоживущую ссылку => LT002.
+		TestAssertions.AssertCompilationFails(
+			_compiler, "LT002_LifetimesReturnOwnerArgShorterThanReceiver.cev", "LT002");
+	}
+
+	[Fact]
+	public void CtorEmptyLifetimesOwnerArgInField_FailsWithLT002()
+	{
+		// Пустая секция lifetimes () отключает автогенерацию 'data ~ this' для
+		// конструктора: без связи owner-аргумент нельзя положить в поле this (LT002).
+		TestAssertions.AssertCompilationFails(
+			_compiler, "LT002_CtorEmptyLifetimesOwnerArgInField.cev", "LT002");
+	}
+
+	[Fact]
+	public void CtorThisArgShorterThanReceiver_FailsWithLT002()
+	{
+		// Связь 'data ~ this' в конструкторе: this принадлежит переменной внешнего
+		// блока, значение создаётся во внутреннем и живёт короче => LT002.
+		TestAssertions.AssertCompilationFails(
+			_compiler, "LT002_CtorThisArgShorterThanReceiver.cev", "LT002");
+	}
+
+	[Fact]
+	public void ReturnFieldBorrowWithoutReturnThis_FailsWithLT005()
+	{
+		// Правило 7.6: возврат refb-поля (лайфтайм this) без связи 'return ~ this'
+		// дал бы результат, переживающий объект => LT005.
+		TestAssertions.AssertCompilationFails(
+			_compiler, "LT005_ReturnFieldBorrowWithoutReturnThis.cev", "LT005");
+	}
+
+	[Fact]
+	public void PassLinkedOwnerAfterExchange_FailsWithLT011()
+	{
+		// Обмен '<-' через поле связывает владельца с получателем через LinkVars;
+		// передавать такой владелец как владение в область с другим временем жизни
+		// нельзя (CheckLinkedVarsLifetimesError) => LT011.
+		TestAssertions.AssertCompilationFails(
+			_compiler, "LT011_PassLinkedOwnerAfterExchange.cev", "LT011");
+	}
+
+	[Fact]
+	public void ReturnLinkedObjAfterExchange_FailsWithLT012()
+	{
+		// Возвращаемый владелец связан через LinkVars с получателем '<-' => LT012.
+		TestAssertions.AssertCompilationFails(
+			_compiler, "LT012_ReturnLinkedObjAfterExchange.cev", "LT012");
+	}
+
+	[Fact]
+	public void ReturnObjWithUnlinkedBorrowFieldAlias_FailsWithLT013()
+	{
+		// refb-аргумент, записанный в refb-поле возвращаемого объекта, остаётся
+		// алиасом obj (цепочка SetAliase поднимается по Parent); лайфтайм параметра
+		// короче return => возвращать obj нельзя (LT013).
+		TestAssertions.AssertCompilationFails(
+			_compiler, "LT013_ReturnObjWithUnlinkedBorrowFieldAlias.cev", "LT013");
+	}
+
 	public void Dispose()
 	{
 		_compiler.Dispose();

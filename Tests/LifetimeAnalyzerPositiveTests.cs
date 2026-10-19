@@ -157,6 +157,95 @@ public sealed class LifetimeAnalyzerPositiveTests : IDisposable
 		Assert.Equal(expectedLines, actualLines);
 	}
 
+	[Fact]
+	public void LifetimesOwnerArgInCtor_AutoAndExplicitThisLink_PrintsValues()
+	{
+		// Автогенерация 'data ~ this' для конструктора без секции lifetimes (правило для
+		// ctor) и явная связь 'data ~ this': владелец/заимствование из внешнего блока
+		// может лечь в поле this; алиас-поле пишет обратно в исходный объект.
+		string exePath = _compiler.Compile(["LT_Positive_LifetimesOwnerArgInCtor.cev"]);
+
+		TestAssertions.AssertOutputLines(exePath, _compiler.WorkDir, new[]
+		{
+			"11", // holder.Data.Num после автогенерированной связи
+			"22", // bh.Num() после явной связи data ~ this
+			"33", // запись через алиас-поле BorrowData видна источнику
+		});
+	}
+
+	[Fact]
+	public void LifetimesBorrowArgThisInField_BorrowArgWithThisLink_PrintsValues()
+	{
+		// Связь 'b ~ this' приравнивает лайфтайм refb-параметра к this, иначе
+		// refb-аргумент жил бы «бесконечно долго» и поле его принять не могло (LT002).
+		// Поле — алиас источника, деструктор источника срабатывает в конце main.
+		string exePath = _compiler.Compile(["LT_Positive_LifetimesBorrowArgThisInField.cev"]);
+
+		TestAssertions.AssertOutputLines(exePath, _compiler.WorkDir, new[]
+		{
+			"7", // box.Num() после вызова Put с 'b ~ this'
+			"8", // запись через алиас-поле Data видна источнику
+			"Structure dtor: 8", // владелец source удалён в конце main с финальным значением
+		});
+	}
+
+	[Fact]
+	public void LifetimesReturnThisField_ReturnThisLink_PrintsValues()
+	{
+		// Связь 'return ~ this' приравнивает лайфтайм возвращаемого значения к this:
+		// refb-поле можно вернуть (правило 7.6), результат — алиас поля.
+		string exePath = _compiler.Compile(["LT_Positive_LifetimesReturnThisField.cev"]);
+
+		TestAssertions.AssertOutputLines(exePath, _compiler.WorkDir, new[]
+		{
+			"10", // чтение Value через GetRef до записи
+			"42", // запись через возвращённый refb видна полю Value
+		});
+	}
+
+	[Fact]
+	public void LifetimesReturnArgSameScope_ReturnLink_PrintsValues()
+	{
+		// Связь 'source ~ return' (правило 7.5) разрешает возвращать заимствованную
+		// ссылку: лайфтайм источника приравнен к лайфтайму возвращаемого значения.
+		string exePath = _compiler.Compile(["LT_Positive_LifetimesReturnArgSameScope.cev"]);
+
+		TestAssertions.AssertOutputLines(exePath, _compiler.WorkDir, new[]
+		{
+			"5", // result.Num — алиас structureOne
+			"6", // запись через result видна structureOne
+		});
+	}
+
+	[Fact]
+	public void LifetimesReturnArgWithBorrowFieldAlias_ReturnLink_PrintsValues()
+	{
+		// 'structureOne ~ return' приравнивает лайфтайм refb-аргумента к return:
+		// аргумент можно положить в refb-поле возвращаемого объекта (алиас-цепочка
+		// поля не короче лайфтайма возвращаемого значения, LT013 не срабатывает).
+		string exePath = _compiler.Compile(["LT_Positive_LifetimesReturnArgWithBorrowFieldAlias.cev"]);
+
+		TestAssertions.AssertOutputLines(exePath, _compiler.WorkDir, new[]
+		{
+			"311", // obj.Sum() = Data.Num (300) + BorrowData.Num (11)
+			"12", // запись через алиас BorrowData видна исходному объекту
+		});
+	}
+
+	[Fact]
+	public void LifetimesMultiLinks_MixedThisAndReturnLinks_PrintsValues()
+	{
+		// Несколько связей в одной секции: 'b ~ this' класть в поле, 'a ~ return'
+		// возвращать как refb — оба аргумента проходят свои проверки независимо.
+		string exePath = _compiler.Compile(["LT_Positive_LifetimesMultiLinks.cev"]);
+
+		TestAssertions.AssertOutputLines(exePath, _compiler.WorkDir, new[]
+		{
+			"1", // box.Pinned.Num — алиас one ('b ~ this')
+			"2", // returned.Num — алиас two ('a ~ return')
+		});
+	}
+
 	public void Dispose()
 	{
 		_compiler.Dispose();

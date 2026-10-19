@@ -1,0 +1,44 @@
+namespace Program;
+
+class Structure
+{
+	public int Num;
+
+	public ctor(int num)
+	{
+		Num = num;
+	}
+}
+
+class TestObj
+{
+	public int ObjectNum;
+	public ref Structure Data;
+
+	public ctor(int objectNum)
+	{
+		ref Data = new Structure(300);
+		ObjectNum = objectNum;
+	}
+}
+
+int Take(ref TestObj o)
+{
+	return o.ObjectNum;
+}
+
+int main()
+{
+	// '<-' снимает владение с поля и связывает поле (и его объект) с получателем
+	// через LinkVars (AssingHandler: value.VarData.LinkVars(target.VarData)).
+	// После этого владелец obj нельзя передавать как владение в область с другим
+	// временем жизни — связанные ссылки живут по-разному (CheckLinkedVarsLifetimesError).
+	ref TestObj obj = new TestObj(1);
+	ref Structure s = new Structure(2);
+	ref Structure rec;
+	ref rec = obj.Data <- s;
+
+	Take(ref obj); // LT011
+
+	return 0;
+}

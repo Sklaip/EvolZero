@@ -1,0 +1,40 @@
+namespace Program;
+
+class Structure
+{
+	public int Num;
+
+	public ctor(int num)
+	{
+		Num = num;
+	}
+}
+
+class Box
+{
+	public refb Structure Data;
+
+	public ctor()
+	{
+	}
+
+	public void Put(refb Structure b) lifetimes (b ~ this)
+	{
+		refb Data = b;
+	}
+}
+
+int main()
+{
+	// Граница правила для '~ this': receiver живёт во внешнем блоке,
+	// передаваемое значение — во внутреннем. Значение живёт короче объекта,
+	// в чьё поле оно попадёт, => LT002 на стороне вызова.
+	ref Box box = new Box();
+	if (1 == 1)
+	{
+		ref Structure source = new Structure(7);
+		box.Put(ref source); // LT002
+	}
+
+	return 0;
+}

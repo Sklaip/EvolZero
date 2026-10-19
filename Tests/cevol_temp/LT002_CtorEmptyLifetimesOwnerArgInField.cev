@@ -1,0 +1,32 @@
+namespace Program;
+
+class Structure
+{
+	public int Num;
+
+	public ctor(int num)
+	{
+		Num = num;
+	}
+}
+
+class Holder
+{
+	public ref Structure Data;
+
+	// Пустая секция lifetimes возвращает НЕ null, а пустой список (ParseLifetimesDecl),
+	// поэтому автогенерация 'data ~ this' для конструктора отключается (MembersTableBuilder).
+	// Без связи лайфтайм аргумента короче this, и поле его принять не может.
+	public ctor(ref Structure data) lifetimes ()
+	{
+		ref Data = data; // LT002
+	}
+}
+
+int main()
+{
+	ref Structure outer = new Structure(1);
+	ref Holder holder = new Holder(ref outer);
+
+	return 0;
+}

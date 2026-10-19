@@ -1,0 +1,43 @@
+namespace Program;
+
+class Structure
+{
+	public int Num;
+
+	public ctor(int num)
+	{
+		Num = num;
+	}
+}
+
+class TestObj
+{
+	public int ObjectNum;
+	public refb Structure BorrowData;
+
+	public ctor(int objectNum)
+	{
+		ObjectNum = objectNum;
+	}
+}
+
+ref TestObj ReturnObjWithUnlinkedBorrow(refb Structure structureOne)
+{
+	// Запись refb-аргумента в refb-поле создаёт алиас-цепочку:
+	// SetAliase поднимается по Parent, поэтому obj тоже считается алиасом
+	// аргумента (obj.IsAliaseTo = [structureOne]).
+	// Лайфтайм refb-параметра (ForRefbArgument) короче лайфтайма return,
+	// поэтому возвращать obj нельзя — LT013.
+	ref TestObj obj = new TestObj(1);
+	refb obj.BorrowData = structureOne;
+
+	return ref obj; // LT013
+}
+
+int main()
+{
+	ref Structure source = new Structure(10);
+	ref TestObj obj = ReturnObjWithUnlinkedBorrow(ref source);
+
+	return 0;
+}
