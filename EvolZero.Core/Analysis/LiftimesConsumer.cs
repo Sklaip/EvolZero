@@ -1,4 +1,5 @@
-﻿using EvolZero.Core.LogicModels;
+﻿using EvolZero.Core.Analysis.Semantic;
+using EvolZero.Core.LogicModels;
 using EvolZero.Core.LogicModels.Expressions;
 using EvolZero.Core.LogicModels.Statements;
 using EvolZero.Core.MemebersModels;
@@ -11,7 +12,7 @@ namespace EvolZero.Core.Analysis
 		class ConditionBlock(IfStatement statement)
 		{
 			public IfStatement Statement = statement;
-			public List<(Expression refExpr, Statement SubStatement)> GivenRefs = new();
+			public List<(Expression refExpr, VarMeta? Var, Statement SubStatement)> GivenRefs = new();
 			public Statement CurrentSubStatement;
 		}
 
@@ -26,49 +27,34 @@ namespace EvolZero.Core.Analysis
 		{
 			var condBlock = _blocks.Pop();
 
-			foreach (var givenRef in condBlock.GivenRefs)
+			if (condBlock.GivenRefs.Count == 0) return;
+
+			// Ветки конструкции if/else-if/else: тело if лежит в самом statement,
+			// у else-if — отдельные IfStatement из ElseIfStatements, у else — свой блок.
+			var branches = new List<Statement> { statement };
+			branches.AddRange(statement.ElseIfStatements);
+			if (statement.ElseStatement == null)
+				statement.ElseStatement = new BlockStatement(new List<ILogicModel>(), statement.Pos);
+			branches.Add(statement.ElseStatement);
+
+			// Группируем отдачи владения по переменной: выражения из разных веток —
+			// разные узлы AST, а VarMeta для одной переменной всегда один и тот же инстанс.
+			// Для записей без VarMeta идентичностью служит само выражение.
+			var groups = condBlock.GivenRefs.GroupBy(g => (object?)g.Var ?? g.refExpr);
+
+			foreach (var group in groups)
 			{
-				if (givenRef.SubStatement == statement)
-				{
-					if (statement.ElseStatement == null)
-						statement.ElseStatement = new BlockStatement(new List<ILogicModel>(), statement.Pos);
+				// Ветки, которые сами отдали владение этой переменной, очистку не получают:
+				// объект уже переехал в другое место (или его удалит получатель владения).
+				var gaveAwayIn = group.Select(g => g.SubStatement).ToHashSet();
+				var destructExpr = group.First().refExpr;
 
-					AddPointerDestruct(givenRef.refExpr, statement.ElseStatement, statement.ElseIfStatements);
-				}
-				else if (givenRef.SubStatement == statement.ElseStatement && statement.ElseStatement != null)
+				foreach (var branch in branches)
 				{
-					AddPointerDestruct(givenRef.refExpr, statement, statement.ElseIfStatements);
-				}
-				else if (statement.ElseIfStatements?.Any(x => x == givenRef.SubStatement) != null)
-				{
-					var elseIfs = statement.ElseIfStatements?.Where(x => x != givenRef.SubStatement);
-					AddPointerDestruct(givenRef.refExpr, statement, elseIfs);
-
-					if (statement.ElseStatement == null)
-					{
-						statement.ElseStatement = new BlockStatement(new List<ILogicModel>(), statement.Pos);
-					}
-					  
-					statement.ElseStatement.AddLogicModel(GetDestructor(givenRef.refExpr));
-				}
-				else
-				{
-					throw new NotImplementedException();
+					if (gaveAwayIn.Contains(branch)) continue;
+					branch.AddLogicModel(GetDestructor(destructExpr));
 				}
 			}
-		}
-
-		private void AddPointerDestruct(Expression pointer, Statement statement, IEnumerable<Statement>? otherStatements)
-		{
-			if (otherStatements != null)
-			{
-				foreach (var st in otherStatements)
-				{
-					st.AddLogicModel(GetDestructor(pointer));
-				}
-			}
-
-			statement.AddLogicModel(GetDestructor(pointer));
 		}
 
 		public void HandleConditionSubStatement(Statement statement)
@@ -77,10 +63,10 @@ namespace EvolZero.Core.Analysis
 			currentIf.CurrentSubStatement = statement;
 		}
 
-		public void GiveAwayOwnership(Expression expr)
+		public void GiveAwayOwnership(Expression expr, VarMeta? var)
 		{
 			if (!_blocks.TryPeek(out var currentIf)) return;
-			currentIf.GivenRefs.Add((expr, currentIf.CurrentSubStatement));
+			currentIf.GivenRefs.Add((expr, var, currentIf.CurrentSubStatement));
 		}
 
 		public Expression? PointerLifetimeEnd(Expression pointerExpr)

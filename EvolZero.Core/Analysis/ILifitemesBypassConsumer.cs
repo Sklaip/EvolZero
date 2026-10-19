@@ -1,4 +1,5 @@
-﻿using EvolZero.Core.LogicModels.Expressions;
+﻿using EvolZero.Core.Analysis.Semantic;
+using EvolZero.Core.LogicModels.Expressions;
 using EvolZero.Core.LogicModels.Statements;
 using EvolZero.Core.MemebersModels;
 
@@ -9,7 +10,7 @@ namespace EvolZero.Core.Analysis
 		void EnterToIfStatement(IfStatement statement);
 		void ExitFromIfStatement(IfStatement statement);
 		void HandleConditionSubStatement(Statement statement);
-		void GiveAwayOwnership(Expression expr);
+		void GiveAwayOwnership(Expression expr, VarMeta? var);
 		Expression? PointerLifetimeEnd(Expression pointerExpr);
 		List<Expression> HandleDestructor(TypeDesc typeDesc, DestructorStatement destructorStatement);
 	}

@@ -560,7 +560,7 @@ namespace EvolZero.Core.Analysis.Semantic
 				}
 
 				if (!value.IsAnonymous)
-					_lifetimesConsumer.GiveAwayOwnership(value.Expr);
+					_lifetimesConsumer.GiveAwayOwnership(value.Expr, value.VarData);
 
 				GiveAwayOwnership(value, target.VarData.Lifetime, true);
 			}
@@ -680,7 +680,7 @@ namespace EvolZero.Core.Analysis.Semantic
 				}
 
 				if (!value.IsAnonymous && !value.IsStrippedViaExchange)
-					_lifetimesConsumer.GiveAwayOwnership(value.Expr);
+					_lifetimesConsumer.GiveAwayOwnership(value.Expr, value.VarData);
 
 				if (value.IsStrippedViaExchange)
 				{
@@ -754,7 +754,7 @@ namespace EvolZero.Core.Analysis.Semantic
 				}
 
 				if (!value.IsAnonymous)
-					_lifetimesConsumer.GiveAwayOwnership(value.Expr);
+					_lifetimesConsumer.GiveAwayOwnership(value.Expr, value.VarData);
 
 				GiveAwayOwnership(value, argumentLifetime, true);
 			}
