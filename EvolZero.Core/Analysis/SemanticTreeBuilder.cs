@@ -934,10 +934,19 @@ namespace EvolZero.Core.Analysis
 			{
 				if (assignQualifier == null)
 				{
-					if (!UnsafeMode)
+					if (varExpr.ResultTypeSpec.Type.IsBaseType && expr.ResultTypeSpec.Type.IsBaseType)
+					{
+						if (!_typeAnalyzer.CheckTypeMatching(varExpr.ResultTypeSpec.RemoveFirtsQualifier(), 
+							expr.ResultTypeSpec.RemoveFirtsQualifier(), out needCast))
+						{
+							_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Cannot assign a value of the specified type", CurrentPosition);
+							return new StubForErrorExpression(CurrentPosition);
+						}
+					}
+					else if (!UnsafeMode)
 					{
 						// TODO: эта поебота отъбывает если в поле класса присвоить переменную (поле было refb, перменная ref с типом кастомного класса)
-						_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Reassignment of a reference without a 'ref' qualifier requires an unsafe context", CurrentPosition);
+						_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Reassignment of a reference for composite type without a 'ref' qualifier requires an unsafe context", CurrentPosition);
 						return new StubForErrorExpression(CurrentPosition);
 					}
 

@@ -19,13 +19,13 @@ class Inner
 
 class Middle
 {
-	public ref Inner Child;
+	public refb Inner Child;
 
 	public ctor()
 	{
 	}
 
-	public ref Inner GetChild()
+	public refb Inner GetChild() lifetimes (return ~ this)
 	{
 		return ref Child;
 	}
@@ -33,7 +33,7 @@ class Middle
 
 class Outer
 {
-	public ref Middle Mid;
+	public refb Middle Mid;
 
 	public ctor()
 	{
@@ -67,7 +67,7 @@ int main()
 	printf(ref "%d\n", outer.Mid.Child.Num);
 
 	// 5. Метод, возвращающий ref-поле -> дальнейшая мутация.
-	ref Inner viaMethod = outer.Mid.GetChild();
+	refb Inner viaMethod = outer.Mid.GetChild();
 	viaMethod.Num = 40;
 	printf(ref "%d\n", inner.Num);
 

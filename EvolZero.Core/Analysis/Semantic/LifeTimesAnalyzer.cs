@@ -271,6 +271,15 @@ namespace EvolZero.Core.Analysis.Semantic
 			};
 		}
 
+		protected override ValueMeta? PointerDereference(PointerDereferenceExpression expr)
+		{
+			var res = base.PointerDereference(expr);
+			if (res == null) return null;
+
+			res.Expr = expr;
+			return res;
+		}
+
 		protected override ValueMeta CallConstructor(CallConstructorExpression expr)
 		{
 			base.CallConstructor(expr);
