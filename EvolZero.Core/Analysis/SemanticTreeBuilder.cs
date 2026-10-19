@@ -1,13 +1,10 @@
-﻿using EvolZero.Core;
-using EvolZero.Core.Analysis.Semantic;
+﻿using EvolZero.Core.Analysis.Semantic;
 using EvolZero.Core.LogicModels;
 using EvolZero.Core.LogicModels.Expressions;
 using EvolZero.Core.LogicModels.Statements;
 using EvolZero.Core.MemebersModels;
 using EvolZero.Core.Tools;
-using Microsoft.VisualBasic.FileIO;
 using System.Numerics;
-using System.Reflection.Metadata;
 using System.Text;
 
 namespace EvolZero.Core.Analysis
@@ -877,7 +874,7 @@ namespace EvolZero.Core.Analysis
 			}
 
 			var varExpr = new VariableCreatingExpression(name, declaring, CurrentPosition);
-			block.Variables[name] = new(declaring, false);
+			block.Variables[name] = new(declaring, !declaring.IsRef);
 
 			if (!declaring.QualifiersExists)
 			{
