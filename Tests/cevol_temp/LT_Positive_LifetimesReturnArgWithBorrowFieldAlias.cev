@@ -18,9 +18,10 @@ class TestObj
 	public ref Structure Data;
 	public refb Structure BorrowData;
 
-	public ctor(int objectNum)
+	public ctor(int objectNum, refb Structure borrowData) lifetimes (borrowData ~ this)
 	{
 		ref Data = new Structure(300);
+		refb BorrowData = borrowData;
 		ObjectNum = objectNum;
 	}
 
@@ -35,8 +36,7 @@ class TestObj
 // алиас-цепочка поля не короче лайфтайма возвращаемого значения (правило LT013).
 ref TestObj ReturnObjWithBorrowField(refb Structure structureOne) lifetimes (structureOne ~ return)
 {
-	ref TestObj obj = new TestObj(2);
-	refb obj.BorrowData = structureOne;
+	ref TestObj obj = new TestObj(2, ref structureOne);
 	return ref obj;
 }
 

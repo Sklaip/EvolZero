@@ -25,15 +25,17 @@ class TestObj
 	public ref Structure Data;
 	public refb Structure BorrowData;
 
-	public ctor(ref Structure data, int objectNum)
+	public ctor(ref Structure data, int objectNum) lifetimes (data ~ this)
 	{
 		ref Data = data;
+		refb BorrowData = Data;
 		ObjectNum = objectNum;
 	}
 
 	public ctor(int objectNum)
 	{
 		ref Data = new Structure(300);
+		refb BorrowData = Data;
 		ObjectNum = objectNum;
 	}
 

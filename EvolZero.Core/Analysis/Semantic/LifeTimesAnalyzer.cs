@@ -475,7 +475,7 @@ namespace EvolZero.Core.Analysis.Semantic
 
 		protected override ValueMeta? SimpleBinaryOperationHandle(SimpleBinaryOperationExpression expr)
 		{
-			if(expr.Pos.Line == 33)
+			if (expr.Pos.Line == 33)
 			{
 
 			}
@@ -595,7 +595,7 @@ namespace EvolZero.Core.Analysis.Semantic
 					return null;
 				}
 
-				if (returnedLifetime.VarData.IsAliaseToSomething 
+				if (returnedLifetime.VarData.IsAliaseToSomething
 					&& !CheckByAliaseLifetimes(returnedLifetime.VarData, _currentFuncReturnValueLifetime!.Value))
 				{
 					AddLifetimeError("LT013", "Возвращаемая ссылка не должна быть алисом на " +
@@ -729,6 +729,13 @@ namespace EvolZero.Core.Analysis.Semantic
 			if (argument.IsRef && !value.Expr.ResultTypeSpec.IsRef)
 				throw new NotImplementedException(); // рассмотреть эти ситуации. Вроде на уровне семантического древа такого быть не может
 
+			if (argument.IsBorrowRef &&
+				value.IsAnonymous || (value.IsStrippedViaExchange && value.Expr.ResultTypeSpec.IsOwnerRef))
+			{
+				AddLifetimeError("LT009", "Анонимные ссылки (например, результат 'new') можно присваивать только во владеющие (ref) ссылки", value.Expr.Pos);
+				return;
+			}
+
 			(var argumentLifetime, _, _) = DefinePassedArgumentLifetime(arg, functionLifetimes, objectGettingLifetime, returnValueLifetime);
 
 			if (value.VarData != null && !CheckLifetimes(value.VarData.Lifetime, argumentLifetime))
@@ -838,22 +845,6 @@ namespace EvolZero.Core.Analysis.Semantic
 			if (!varMeta.LinkedVarsExists) return false;
 			return varMeta.Lifetime != lifetime;
 		}
-
-		//private bool CheckLinkWithThis(LifetimeDecl[] lifetimes, string argumentName)
-		//{
-		//	return CheckLinkWith(lifetimes, argumentName, LifetimeDecl.KeyType.This);
-		//}
-
-		//private bool CheckLinkWithReturn(LifetimeDecl[] lifetimes, string argumentName)
-		//{
-		//	return CheckLinkWith(lifetimes, argumentName, LifetimeDecl.KeyType.Return);
-		//}
-
-		//private bool CheckLinkWith(LifetimeDecl[] lifetimes, string argumentName, LifetimeDecl.KeyType key)
-		//{
-		//	return lifetimes.Any(x => (x.LeftKey.VarName == argumentName || x.RightKey.VarName == argumentName) &&
-		//							(x.LeftKey.KeyType == key || x.RightKey.KeyType == key));
-		//}
 
 		/// <summary>
 		/// Определяет какой должен быть лайфтайм выражения, переданного в аргумент функции. Не самого аргумента, а именно выражения.

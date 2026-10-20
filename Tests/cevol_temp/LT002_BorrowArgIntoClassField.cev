@@ -12,10 +12,11 @@ class Box
 
 class Holder
 {
-	public refb Box F;
+	public refb Box F = f;
 
-	public ctor()
+	public ctor(refb Box f) lifetimes(f ~ this)
 	{
+		ref F = f;
 	}
 
 	public void Put(refb Box b)
@@ -28,7 +29,8 @@ class Holder
 
 int main()
 {
-	ref Holder h = new Holder();
+	ref Box baseBox = new Box(0);
+	ref Holder h = new Holder(ref baseBox);
 	ref Box o = new Box(1);
 	h.Put(ref o);
 

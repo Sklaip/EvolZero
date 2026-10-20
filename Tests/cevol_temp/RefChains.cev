@@ -21,8 +21,9 @@ class Middle
 {
 	public refb Inner Child;
 
-	public ctor()
+	public ctor(refb Inner child) lifetimes (child ~ this)
 	{
+		refb Child = child;
 	}
 
 	public refb Inner GetChild() lifetimes (return ~ this)
@@ -35,8 +36,9 @@ class Outer
 {
 	public refb Middle Mid;
 
-	public ctor()
+	public ctor(refb Middle mid) lifetimes (mid ~ this)
 	{
+		refb Mid = mid;
 	}
 }
 
@@ -44,10 +46,8 @@ int main()
 {
 	// 1. Цепочка ref-полей: чтение вглубь.
 	ref Inner inner = new Inner(5);
-	ref Middle mid = new Middle();
-	ref mid.Child = inner;
-	ref Outer outer = new Outer();
-	ref outer.Mid = mid;
+	ref Middle mid = new Middle(ref inner);
+	ref Outer outer = new Outer(ref mid);
 
 	printf(ref "%d\n", outer.Mid.Child.Num);
 

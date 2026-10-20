@@ -185,6 +185,7 @@ public sealed class LifetimeAnalyzerPositiveTests : IDisposable
 		{
 			"7", // box.Num() после вызова Put с 'b ~ this'
 			"8", // запись через алиас-поле Data видна источнику
+			"Structure dtor: 1", // удаление первого установленного через конструктор значения
 			"Structure dtor: 8", // владелец source удалён в конце main с финальным значением
 		});
 	}

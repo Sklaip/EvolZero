@@ -16,8 +16,9 @@ class Holder
 {
 	public refb Box F;
 
-	public ctor()
+	public ctor(refb Box f) lifetimes (f ~ this)
 	{
+		refb F = f;
 	}
 }
 
@@ -30,8 +31,9 @@ int Take(ref Box b)
 int main()
 {
 	// Правило 7: владеющую ссылку с алиасами (refb-поле класса) нельзя передавать как владение.
-	ref Holder h = new Holder();
+	ref Box dummy = new Box(0);
 	ref Box o = new Box(5);
+	ref Holder h = new Holder(ref dummy);
 	ref h.F = o;          // o теперь имеет алиас в refb-поле
 	Take(ref o);          // LT010: нельзя передавать владение o — алиас поля F ещё жив
 

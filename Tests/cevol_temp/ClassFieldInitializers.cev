@@ -1,0 +1,66 @@
+namespace Program;
+
+extern infargs int printf(refb byte ptr);
+
+class Config
+{
+	public int A = 10;
+	public int B = 25 + 5;
+	public int C = 7;
+	public int D = A + B;
+
+	public ctor()
+	{
+	}
+
+	public int Sum()
+	{
+		return A + B + C + D;
+	}
+}
+
+class Point
+{
+	public int X = 1;
+	public int Y = 2;
+
+	public ctor(int x)
+	{
+		X = x;
+	}
+}
+
+class Holder
+{
+	public ref Config Cfg = new Config();
+
+	public ctor()
+	{
+	}
+}
+
+class Implicit
+{
+	public int V = 42;
+}
+
+int main()
+{
+	ref Config c = new Config();
+	printf(ref "%d\n", c.A);
+	printf(ref "%d\n", c.B);
+	printf(ref "%d\n", c.D);
+	printf(ref "%d\n", c.Sum());
+
+	Point p(100);
+	printf(ref "%d\n", p.X);
+	printf(ref "%d\n", p.Y);
+
+	ref Holder h = new Holder();
+	printf(ref "%d\n", h.Cfg.A);
+
+	ref Implicit imp = new Implicit();
+	printf(ref "%d\n", imp.V);
+
+	return 0;
+}

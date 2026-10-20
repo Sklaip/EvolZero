@@ -15,8 +15,9 @@ class TestObj
 	public int ObjectNum;
 	public refb Structure BorrowData;
 
-	public ctor(int objectNum)
+	public ctor(int objectNum, refb Structure borrowData) lifetimes (borrowData ~ this)
 	{
+		refb BorrowData = borrowData;
 		ObjectNum = objectNum;
 	}
 }
@@ -28,7 +29,8 @@ ref TestObj ReturnObjWithUnlinkedBorrow(refb Structure structureOne)
 	// аргумента (obj.IsAliaseTo = [structureOne]).
 	// Лайфтайм refb-параметра (ForRefbArgument) короче лайфтайма return,
 	// поэтому возвращать obj нельзя — LT013.
-	ref TestObj obj = new TestObj(1);
+	ref Structure structureToBorrow = new Structure(20);
+	ref TestObj obj = new TestObj(1, ref structureToBorrow);
 	refb obj.BorrowData = structureOne;
 
 	return ref obj; // LT013

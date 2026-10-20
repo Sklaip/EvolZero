@@ -25,8 +25,10 @@ class Holder
 	public refb Conn Second;
 	public int Count;
 
-	public ctor()
+	public ctor(refb Conn first, refb Conn second) lifetimes(first ~ this, second ~ this)
 	{
+		refb First = first;
+		refb Second = second;
 		Count = 0;
 	}
 }
@@ -56,7 +58,8 @@ int main()
 	printf(ref "%d\n", a.Type);
 
 	// 6. Запись ref-полей ссылками на heap-объекты.
-	ref Holder holder = new Holder();
+	ref Conn baseConn = new Conn(0);
+	ref Holder holder = new Holder(ref baseConn, ref baseConn);
 	ref holder.First = b;
 	ref Conn second = new Conn(15);
 	ref holder.Second = second;

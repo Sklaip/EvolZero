@@ -28,7 +28,7 @@ class Item
 
 class OtherClass
 {
-	public ref Item PublicItem;
+	public ref Item PublicItem = new Item(-1);
 
 	public ctor()
 	{

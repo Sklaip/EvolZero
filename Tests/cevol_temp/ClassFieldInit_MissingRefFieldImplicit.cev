@@ -1,0 +1,23 @@
+namespace Program;
+
+class Item
+{
+	public int X;
+
+	public ctor(int x)
+	{
+		X = x;
+	}
+}
+
+class Holder
+{
+	public ref Item F;
+}
+
+int main()
+{
+	ref Holder h = new Holder();
+
+	return 0;
+}

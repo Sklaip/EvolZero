@@ -16,8 +16,9 @@ class Box
 {
 	public refb Structure Pinned;
 
-	public ctor()
+	public ctor(refb Structure pinned) lifetimes (pinned ~ this)
 	{
+		refb Pinned = pinned;
 	}
 
 	// Несколько связей в одной секции: 'b ~ this' разрешает класть b в поле,
@@ -31,11 +32,12 @@ class Box
 
 int main()
 {
-	ref Box box = new Box();
-
 	// Оба источника живут не короче box: вызов с '~ this'/'~ return' допустим.
+	ref Structure zero = new Structure(0);
 	ref Structure one = new Structure(1);
 	ref Structure two = new Structure(2);
+
+	ref Box box = new Box(ref zero);
 
 	refb Structure returned = box.Pin(ref one, ref two);
 

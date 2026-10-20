@@ -33,9 +33,9 @@ class Provider
 	public bool Available;
 	public int Count;
 
-	public ctor()
+	public ctor(ref Connect serviceConnect)
 	{
-		
+		ref ServiveConnect = serviceConnect;
 	}
 
 	public ref int SetServiveConnect(int type)
@@ -62,7 +62,7 @@ int Tests()
 	connect.SetConnectType(10);
 	connect.PrintConnectType();
 
-	ref Provider provider = new Provider();
+	ref Provider provider = new Provider(ref new Connect(0));
 	ref provider.ServiveConnect = connect;
 
 	ref int serviceConnet = provider.SetServiveConnect(412);

@@ -23,6 +23,8 @@ namespace EvolZero.Parsing
 		public Statement ResultStatement { get; private set; }
 
 		private bool _currentClassDestructorHandled = false; // TODO: эту логику от сюда куда-нибудь вынести, здесь ее быть не должно
+		private bool _currentClassConstructorHandled = false;
+		private List<(string Name, ExpressionContext Init)> _currentClassFieldInitializers = new();
 
 		public LogicVisitor(MembersFinder membersFinder, ErrorsBag errorsBag, string currentFile)
 		{
@@ -79,7 +81,21 @@ namespace EvolZero.Parsing
 			SetCurrentPosition(context);
 
 			_semanticAnalyzer.EnterToClass(context.IDENTIFIER().GetText());
+
+			_currentClassConstructorHandled = false;
+			_currentClassFieldInitializers = context.fieldDecl()
+				.Where(f => f.ASSIGN() != null)
+				.Select(f => (f.IDENTIFIER().GetText(), f.expression()))
+				.ToList();
+
 			base.VisitClassDecl(context);
+
+			if (!_currentClassConstructorHandled && (_currentClassFieldInitializers.Count > 0 || _semanticAnalyzer.CurrentClassHasRefFields()))
+			{
+				_semanticAnalyzer.EnterToConstructor([]);
+				InjectFieldInitializers();
+				_semanticAnalyzer.ExitFromBlock();
+			}
 
 			if (!_currentClassDestructorHandled)
 			{
@@ -91,7 +107,27 @@ namespace EvolZero.Parsing
 			_semanticAnalyzer.ExitFromBlock();
 			_semanticAnalyzer.CurrentPosition = lastPos;
 			_currentClassDestructorHandled = false;
+			_currentClassConstructorHandled = false;
+			_currentClassFieldInitializers = new();
 
+			return null;
+		}
+
+		private void InjectFieldInitializers()
+		{
+			foreach (var (name, initExpr) in _currentClassFieldInitializers)
+			{
+				SetCurrentPosition(initExpr);
+				var value = Visit(initExpr);
+				if (value == null) continue;
+
+				var assign = _semanticAnalyzer.FieldAssing(name, value);
+				_semanticAnalyzer.InserToCurrentBlock(assign);
+			}
+		}
+
+		public override Expression? VisitFieldDecl([NotNull] CEvolParser.FieldDeclContext context)
+		{
 			return null;
 		}
 
@@ -140,7 +176,11 @@ namespace EvolZero.Parsing
 
 			if (parameters == null) parameters = [];
 
+			_currentClassConstructorHandled = true;
+
 			_semanticAnalyzer.EnterToConstructor(parameters);
+
+			InjectFieldInitializers();
 
 			Visit(context.block());
 

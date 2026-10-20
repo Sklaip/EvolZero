@@ -22,8 +22,9 @@ class Box
 {
 	public refb Structure Data;
 
-	public ctor()
+	public ctor(refb Structure data) lifetimes (data ~ this)
 	{
+		refb Data = data;
 	}
 
 	// Без связи 'b ~ this' refb-параметр живёт «бесконечно долго» и назначать
@@ -42,11 +43,11 @@ class Box
 
 int main()
 {
-	ref Box box = new Box();
-
 	// Значение того же внешнего блока, что и receiver: box и source живут
 	// одинаково долго, поэтому вызов с 'b ~ this' допустим.
+	ref Structure sourceBase = new Structure(1);
 	ref Structure source = new Structure(7);
+	ref Box box = new Box(ref sourceBase);
 	box.Put(ref source);
 	printf(ref "%d\n", box.Num());
 

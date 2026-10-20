@@ -335,6 +335,19 @@ namespace EvolZero.Core.Analysis
 			var block = _blocks.Pop();
 			Statement statement = block.CurentStatement;
 
+			if (statement is ConstructorStatement && block.CurrentClassFields != null)
+			{
+				foreach (var (fieldName, field) in block.CurrentClassFields)
+				{
+					if (field.Type.Declaring.IsRef && !field.IsInit)
+					{
+						string kind = field.Type.Declaring.IsBorrowRef ? "refb" : "ref";
+						_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB",
+							$"Поле '{fieldName}' ({kind}) должно быть инициализировано к выходу из конструктора", CurrentPosition);
+					}
+				}
+			}
+
 			if (statement is IFunctionalBlockStatement fnStatement)
 			{
 				var voidType = _membersFinder.FindType("void");
@@ -1016,6 +1029,36 @@ namespace EvolZero.Core.Analysis
 			}
 
 			return new VariableAccessExpression(name, value.Type, value.IsInit, CurrentPosition);
+		}
+
+		public bool CurrentClassHasRefFields()
+		{
+			var currentClass = _blocks.Peek().CurrentClass?.TypeDesc;
+			if (currentClass == null) return false;
+
+			return currentClass.Variables.Values.Any(v => v.Declaring.IsRef);
+		}
+
+		public Expression FieldAssing(string fieldName, Expression value)
+		{
+			CheckInitializable(value);
+
+			CodeBlock block = _blocks.Peek();
+			var currentClass = block.CurrentClass?.TypeDesc;
+			if (currentClass == null || block.CurrentClassFields == null || !block.CurrentClassFields.TryGetValue(fieldName, out var field))
+			{
+				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "No field with that name was found", CurrentPosition);
+				return new StubForErrorExpression(CurrentPosition);
+			}
+
+			TypeSpec fieldDeclaring = field.Type.Declaring;
+			Qualifier? qualifier = fieldDeclaring.QualifiersExists ? fieldDeclaring.Qualifiers[0] : null;
+
+			Expression thisGetting = new AppealToThisExpression(currentClass, CurrentPosition);
+			thisGetting = new PointerDereferenceExpression(thisGetting, CurrentPosition);
+			var fieldAccess = new StructureFieldAccessExpression(field.Type, thisGetting, fieldDeclaring, field.IsInit, CurrentPosition);
+
+			return VariableAssing(fieldAccess, value, qualifier);
 		}
 
 		public Expression SetRefQualifier(Expression expr)
