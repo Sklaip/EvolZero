@@ -38,9 +38,10 @@ void Test(ref TestObj outsideObj)
 	int num = 0;
 
 	ref Structure structureOne = new Structure(21);
-	ref Structure strcRec = new Structure(57);
+	ref Structure strcRec;
+	ref Structure strcRecToBorrow = new Structure(57);
 
-	ref TestObj obj = new TestObj(ref new Structure(2), 2, ref strcRec);
+	ref TestObj obj = new TestObj(ref new Structure(2), 2, ref strcRecToBorrow);
 
 	if (num == 1)
 	{
