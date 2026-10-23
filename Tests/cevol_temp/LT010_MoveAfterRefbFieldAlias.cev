@@ -46,7 +46,7 @@ void Test(ref TestObj outsideObj)
 int main()
 {
 	ref Structure borrow = new Structure(0);
-	Test(ref new TestObj(1, ref borrow));
+	Test(new TestObj(1, ref borrow));
 
 	return 0;
 }

@@ -58,7 +58,7 @@ int main()
 	connect.SetConnectType(10);
 	connect.PrintConnectType();
 
-	ref Provider provider = new Provider(ref new Connect(0));
+	ref Provider provider = new Provider(new Connect(0));
 	ref provider.ServiveConnect = connect;
 
 	ref int serviceConnet = provider.SetServiveConnect(412);

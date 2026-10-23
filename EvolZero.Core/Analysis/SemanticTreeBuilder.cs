@@ -376,7 +376,7 @@ namespace EvolZero.Core.Analysis
 			if (currentFunction == null) throw new NotImplementedException();
 
 			CheckInitializable(returnResult);
-			returnResult = AutoDereferenceIfPointer(returnResult);
+			returnResult = AutoDereferenceIfPointer(returnResult, true);
 
 			if (!_typeAnalyzer.CheckTypeMatching(currentFunction.ReturnType, returnResult.ResultTypeSpec, out bool needCast))
 			{
@@ -397,7 +397,7 @@ namespace EvolZero.Core.Analysis
 			if (CheckStubForError(args)) return new StubForErrorExpression(CurrentPosition);
 
 			CheckInitializable(args);
-			var arguments = args.Select(AutoDereferenceIfPointer).ToArray();
+			var arguments = args.Select(x => AutoDereferenceIfPointer(x, true)).ToArray();
 
 			// TODO: внутри класса при вызове метода выдавать ошибку если сигнатура вызываемого метода пересекается с сигнатурой какой-то внешней функции
 			var functions = _membersFinder.FindFunction(name);
@@ -441,7 +441,7 @@ namespace EvolZero.Core.Analysis
 			CheckInitializable(instanceGetting);
 			CheckInitializable(args);
 
-			var arguments = args.Select(AutoDereferenceIfPointer).ToArray();
+			var arguments = args.Select(x => AutoDereferenceIfPointer(x, true)).ToArray();
 
 			// TODO: проверить instanceGetting на валидность
 			var func = _membersFinder.FindFunction(instanceGetting.ResultTypeSpec.Type, name);
@@ -513,7 +513,7 @@ namespace EvolZero.Core.Analysis
 			if (CheckStubForError(args)) return new StubForErrorExpression(CurrentPosition);
 
 			CheckInitializable(args);
-			var arguments = args.Select(AutoDereferenceIfPointer).ToArray();
+			var arguments = args.Select(x => AutoDereferenceIfPointer(x, true)).ToArray();
 
 			ConstructorDesc? ctorDesc = null;
 			var constructors = _membersFinder.FindConstructors(typeSpec.Type);
@@ -552,7 +552,7 @@ namespace EvolZero.Core.Analysis
 			{
 				if (args == null) args = [];
 
-				var arguments = args.Select(AutoDereferenceIfPointer).ToArray();
+				var arguments = args.Select(x => AutoDereferenceIfPointer(x, true)).ToArray();
 				ctorDesc = _typeAnalyzer.FindSuitableConstructor(constructors, arguments.Select(x => x.ResultTypeSpec), out TypeSpec?[] casts);
 
 				if (ctorDesc == null)
@@ -946,7 +946,7 @@ namespace EvolZero.Core.Analysis
 				{
 					if (varExpr.ResultTypeSpec.Type.IsBaseType && expr.ResultTypeSpec.Type.IsBaseType)
 					{
-						if (!_typeAnalyzer.CheckTypeMatching(varExpr.ResultTypeSpec.RemoveFirtsQualifier(), 
+						if (!_typeAnalyzer.CheckTypeMatching(varExpr.ResultTypeSpec.RemoveFirtsQualifier(),
 							expr.ResultTypeSpec.RemoveFirtsQualifier(), out needCast))
 						{
 							_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Cannot assign a value of the specified type", CurrentPosition);
@@ -993,11 +993,15 @@ namespace EvolZero.Core.Analysis
 			return new SimpleBinaryOperationExpression(BinaryOperation.Assing, varExpr, expr, varExpr.ResultTypeSpec, CurrentPosition);
 		}
 
-		public Expression AutoDereferenceIfPointer(Expression expr)
+		public Expression AutoDereferenceIfPointer(Expression expr) => AutoDereferenceIfPointer(expr, false);
+
+		public Expression AutoDereferenceIfPointer(Expression expr, bool excludeNewRefs)
 		{
 			if (CheckStubForError(expr)) return new StubForErrorExpression(CurrentPosition);
 
-			if (!expr.ResultTypeSpec.IsRef || expr is GetPointerToVarExpression || expr is DoNotAutoDereferenceIfPointerExpression) return expr;
+			if (!expr.ResultTypeSpec.IsRef || expr is DoNotAutoDereferenceIfPointerExpression) return expr;
+
+			if (excludeNewRefs && (expr is GetPointerToVarExpression || expr is CallConstructorExpression)) return expr;
 
 			return new PointerDereferenceExpression(expr, CurrentPosition);
 		}

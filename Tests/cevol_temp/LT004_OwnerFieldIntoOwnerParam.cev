@@ -46,7 +46,7 @@ void Test(ref TestObj obj)
 
 int main()
 {
-	Test(ref new TestObj(1));
+	Test(new TestObj(1));
 
 	return 0;
 }
