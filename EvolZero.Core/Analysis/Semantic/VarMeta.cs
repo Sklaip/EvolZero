@@ -20,6 +20,11 @@
 			Parent = parent;
 		}
 
+		public void RemoveParent()
+		{
+			Parent = null;
+		}
+
 		public void SetAliase(VarMeta aliase)
 		{
 			if (Aliases == null)

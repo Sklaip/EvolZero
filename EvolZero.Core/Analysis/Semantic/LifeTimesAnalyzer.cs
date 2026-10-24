@@ -148,13 +148,13 @@ namespace EvolZero.Core.Analysis.Semantic
 					variable.Name = argument.Name;
 					_vars.Add(argument.Name, variable);
 
-					var lifetime = new ValueMeta()
+					var value = new ValueMeta()
 					{
 						Expr = new VariableAccessExpression(argument.Name, argument.Declaring, true, statement.Pos),
 						VarData = variable
 					};
 
-					_currentBlocks.Peek().Vars.Add(lifetime);
+					_currentBlocks.Peek().Vars.Add(value);
 				}
 			}
 
@@ -171,6 +171,26 @@ namespace EvolZero.Core.Analysis.Semantic
 
 			_currentBlockNum--;
 			_currentBlocks.Pop();
+		}
+
+		protected override void HandleWhileStatement(WhileStatement statement)
+		{
+			//все текущие недеинициализированные переменные
+			var sourceVars = _vars.Values.Where(x => !x.IsDestructed).ToList();
+
+			base.HandleWhileStatement(statement);
+
+			//недеинициализированные перменные после выполнения while
+			var afterExecuteVars = _vars.Values.Where(x => !x.IsDestructed).ToHashSet();
+
+			//переменные которые были деинициализированы внутри while
+			var destructedInWhileVars = sourceVars.Where(x => !afterExecuteVars.Contains(x)).ToList();
+
+			if (destructedInWhileVars.Count > 0)
+			{
+				AddLifetimeError("LT014", "Переменные созданные за блоком while не должны быть " +
+					"деинициализированны внутри тела цикла.", statement.Pos);
+			}
 		}
 
 		protected override void HandleIfStatement(IfStatement statement)
@@ -577,15 +597,7 @@ namespace EvolZero.Core.Analysis.Semantic
 					return null;
 				}
 
-				if (target.Expr is StructureFieldAccessExpression fieldAccess)
-				{
-					target.IsStrippedViaExchange = true;
-				}
-
-				if (!value.IsAnonymous)
-					_lifetimesConsumer.GiveAwayOwnership(value.Expr, value.VarData);
-
-				GiveAwayOwnership(value, target.VarData.Lifetime, true);
+				GiveAwayOwnership(target, value);
 			}
 			else
 			{
@@ -593,7 +605,9 @@ namespace EvolZero.Core.Analysis.Semantic
 			}
 
 			value.FillRefs(target.VarData);
+
 			target.VarData.IsInitialized = true;
+			target.IsStrippedViaExchange = true;
 
 			return target;
 		}
@@ -684,12 +698,6 @@ namespace EvolZero.Core.Analysis.Semantic
 						AddLifetimeError("LT006", "Снять владеющую ссылку с поля класса можно только через оператор '<-'", value.Expr.Pos);
 						return;
 					}
-
-					if (value.VarData != null && !CheckLifetimes(target.VarData, value.VarData))
-					{
-						AddLifetimeError("LT007", "Время жизни ссылки-получателя меньше времени жизни объекта, с которого снимается ссылка", target.Expr.Pos);
-						return;
-					}
 				}
 
 				if (target.VarData.IsInitialized)
@@ -703,16 +711,7 @@ namespace EvolZero.Core.Analysis.Semantic
 					ToDestructPointer(target, true); // удалям старую ссылку
 				}
 
-				if (!value.IsAnonymous && !value.IsStrippedViaExchange)
-					_lifetimesConsumer.GiveAwayOwnership(value.Expr, value.VarData);
-
-				if (value.IsStrippedViaExchange)
-				{
-					value.VarData!.IsDestructed = true; // содержимое поля переехало в приемник (GiveAwayOwnership кинул бы throw на алиасы поля)
-					value.VarData.LinkVars(target.VarData);
-				}
-				else
-					GiveAwayOwnership(value, target.VarData.Lifetime, true);
+				GiveAwayOwnership(target, value);
 			}
 			else
 			{
@@ -786,10 +785,13 @@ namespace EvolZero.Core.Analysis.Semantic
 					return new ArgHandlerRes(new Lifetime(_currentBlockNum + 1), false, false);
 				}
 
+				if (value.IsStrippedViaExchange)
+					throw new NotImplementedException(); // TODO: реализовать это
+
 				if (!value.IsAnonymous)
 					_lifetimesConsumer.GiveAwayOwnership(value.Expr, value.VarData);
 
-				GiveAwayOwnership(value, argumentLifetime, true);
+				DeinitializeGivenAwayPointer(value, argumentLifetime, true);
 			}
 
 			return res;
@@ -815,7 +817,28 @@ namespace EvolZero.Core.Analysis.Semantic
 			}
 		}
 
-		private void GiveAwayOwnership(ValueMeta pointer, Lifetime lifetimeToGiveAway, bool checkAliases)
+		private void GiveAwayOwnership(ValueMeta target, ValueMeta value)
+		{
+			if (!value.IsAnonymous && !value.IsStrippedViaExchange)
+				_lifetimesConsumer.GiveAwayOwnership(value.Expr, value.VarData);
+
+			if (value.IsStrippedViaExchange)
+			{
+				if (value.VarData == null || target.VarData == null) throw new NotImplementedException(); //такой хуйни быть не должно
+				if (!CheckLifetimes(target.VarData, value.VarData))
+				{
+					AddLifetimeError("LT007", "Время жизни ссылки-получателя меньше времени жизни объекта, с которого снимается ссылка", target.Expr.Pos);
+					return;
+				}
+
+				value.VarData.LinkVars(target.VarData);
+				value.VarData.RemoveParent();
+			}
+
+			DeinitializeGivenAwayPointer(value, target.VarData!.Lifetime, true);
+		}
+
+		private void DeinitializeGivenAwayPointer(ValueMeta pointer, Lifetime lifetimeToGiveAway, bool checkAliases)
 		{
 			if (pointer.VarData == null) return;
 
@@ -831,7 +854,7 @@ namespace EvolZero.Core.Analysis.Semantic
 				return;
 			}
 
-			pointer.VarData.IsDestructed = true;
+			if (!pointer.IsStrippedViaExchange) pointer.VarData.IsDestructed = true;
 		}
 
 		private void DestructLifetimes(VarMeta? excludedVar = null)
