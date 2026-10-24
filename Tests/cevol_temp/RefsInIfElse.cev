@@ -14,7 +14,7 @@ class TestObj
 
 int PassRef(ref TestObj b)
 {
-	printf(ref "%d\n", b.Value);
+	printf(refb "%d\n", b.Value);
 	return 0;
 }
 
@@ -35,8 +35,8 @@ int main()
 		PassRef(ref b);
 	}
 
-	printf(ref "%d\n", a.Value);
-	printf(ref "%d\n", c.Value);
+	printf(refb "%d\n", a.Value);
+	printf(refb "%d\n", c.Value);
 
 	return 0;
 }

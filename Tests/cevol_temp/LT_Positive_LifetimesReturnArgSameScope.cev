@@ -16,19 +16,19 @@ class Structure
 // лайфтайм источника приравнен к лайфтайму возвращаемого значения (правило 7.5).
 refb Structure ReturnRefb(refb Structure source) lifetimes (source ~ return)
 {
-	return ref source;
+	return refb source;
 }
 
 int main()
 {
 	// Источник и получатель результата в одном блоке: вызов допустим (нет LT002).
 	ref Structure structureOne = new Structure(5);
-	refb Structure result = ReturnRefb(ref structureOne);
+	refb Structure result = ReturnRefb(refb structureOne);
 
 	// result — алиас structureOne: запись через результат видна источнику.
-	printf(ref "%d\n", result.Num);
+	printf(refb "%d\n", result.Num);
 	result.Num = 6;
-	printf(ref "%d\n", structureOne.Num);
+	printf(refb "%d\n", structureOne.Num);
 
 	return 0;
 }

@@ -50,7 +50,7 @@ void Test(ref TestObj outsideObj)
 	// даже несмотря на переназначение в else.
 	TakeOwner(ref obj); // LT001
 
-	printf(ref "%d\n", outsideObj.ObjectNum);
+	printf(refb "%d\n", outsideObj.ObjectNum);
 }
 
 int main()

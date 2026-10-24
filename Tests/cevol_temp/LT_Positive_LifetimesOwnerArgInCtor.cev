@@ -46,17 +46,17 @@ int main()
 	// Автогенерированная связь: владелец переезжает в поле, объект читает поле.
 	ref Structure outer = new Structure(11);
 	ref Holder holder = new Holder(ref outer);
-	printf(ref "%d\n", holder.Data.Num);
+	printf(refb "%d\n", holder.Data.Num);
 
 	// Явная связь data ~ this: refb-поле ссылается на живой объект внешнего блока.
 	ref Structure source = new Structure(22);
-	ref BorrowHolder bh = new BorrowHolder(ref source);
-	printf(ref "%d\n", bh.Num());
+	ref BorrowHolder bh = new BorrowHolder(refb source);
+	printf(refb "%d\n", bh.Num());
 
 	// BorrowData — алиас source: запись через поле видна исходному объекту.
 	refb Structure alias = bh.BorrowData;
 	alias.Num = 33;
-	printf(ref "%d\n", source.Num);
+	printf(refb "%d\n", source.Num);
 
 	return 0;
 }

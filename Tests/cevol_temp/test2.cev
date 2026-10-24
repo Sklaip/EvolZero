@@ -23,7 +23,7 @@ class Connect
 	public void PrintConnectType()
 	{
 		ref String str = new String();
-		printf(ref str.ToBytes(), ConnType);
+		printf(refb str.ToBytes(), ConnType);
 	}
 }
 
@@ -68,23 +68,23 @@ int Tests()
 	ref int serviceConnet = provider.SetServiveConnect(412);
 	connect.PrintConnectType();
 	provider.ServiveConnect.PrintConnectType();
-	printf(ref serviceStr.ToBytes(), provider.Count);
-	printf(ref serviceStr.ToBytes(), serviceConnet);
+	printf(refb serviceStr.ToBytes(), provider.Count);
+	printf(refb serviceStr.ToBytes(), serviceConnet);
 	serviceConnet = 2341;
-	printf(ref serviceStr.ToBytes(), serviceConnet);
+	printf(refb serviceStr.ToBytes(), serviceConnet);
 
 	int aboba = 5;
 	provider.WriteConnType(loc aboba);
-	printf(ref serviceStr.ToBytes(), aboba);
+	printf(refb serviceStr.ToBytes(), aboba);
 	
 	aboba = -15;
-	printf(ref serviceStr.ToBytes(), aboba + 10);
+	printf(refb serviceStr.ToBytes(), aboba + 10);
 
 	bool valera = 1 == 1;
 
 	if(aboba == -150)
 	{
-		printf(ref serviceStr.ToBytes(), 777);
+		printf(refb serviceStr.ToBytes(), 777);
 	}
 
 	int val1 = 1;
@@ -92,13 +92,13 @@ int Tests()
 	ref int val3 = loc val1;
 
 	val3 = 4;
-	printf(ref serviceStr.ToBytes(), val1);
-	printf(ref serviceStr.ToBytes(), val2);
+	printf(refb serviceStr.ToBytes(), val1);
+	printf(refb serviceStr.ToBytes(), val2);
 
 	ref val3 = loc val2;
 	val3 = 5;
-	printf(ref serviceStr.ToBytes(), val1);
-	printf(ref serviceStr.ToBytes(), val2);
+	printf(refb serviceStr.ToBytes(), val1);
+	printf(refb serviceStr.ToBytes(), val2);
 
 	Connect connTest(500);
 	connTest.ConnType = 500;
@@ -107,14 +107,14 @@ int Tests()
 
 	ref byte[6] globalStrTets = "aboba";
 
-	printf(ref globalStrTets);
+	printf(refb globalStrTets);
 
-	ref File file = new File(ref "popa.txt", ref "w");
-	file.Write(ref globalStrTets, 4);
+	ref File file = new File(refb "popa.txt", refb "w");
+	file.Write(refb globalStrTets, 4);
 
 	byte test = 1;
 	int test2 = test + 10;
-	printf(ref serviceStr.ToBytes(), test2);
+	printf(refb serviceStr.ToBytes(), test2);
 
 	return 0;
 }

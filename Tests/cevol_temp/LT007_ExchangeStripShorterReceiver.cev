@@ -47,13 +47,13 @@ void Test(ref TestObj obj)
 		ref Structure stripped = obj.Data <- structureOuter; // LT007
 	}
 
-	printf(ref "%d\n", obj.ObjectNum);
+	printf(refb "%d\n", obj.ObjectNum);
 }
 
 int main()
 {
 	ref Structure borrow = new Structure(0);
-	Test(new TestObj(1, ref borrow));
+	Test(new TestObj(1, refb borrow));
 
 	return 0;
 }

@@ -36,6 +36,6 @@ int main()
 
 	ref TestObj x = b;
 
-	printf(ref "%d\n", x.Value);
+	printf(refb "%d\n", x.Value);
 	return 0;
 }

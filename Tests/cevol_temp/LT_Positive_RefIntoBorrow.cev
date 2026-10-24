@@ -14,7 +14,7 @@ class Box
 
 int TakeBorrow(refb Box b)
 {
-	printf(ref "%d\n", b.V);
+	printf(refb "%d\n", b.V);
 	return 0;
 }
 
@@ -29,10 +29,10 @@ int main()
 	// Правило 5: передача ссылки как заимствованной НЕ передаёт владение —
 	// объект жив, и к s можно продолжать обращаться после вызова.
 	TakeBorrow(loc s);
-	printf(ref "%d\n", s.V);  // объект не был освобождён заимствованием
+	printf(refb "%d\n", s.V);  // объект не был освобождён заимствованием
 
 	refb int r = loc s.V;
-	printf(ref "%d\n", r);
+	printf(refb "%d\n", r);
 
 	return 0;
 }

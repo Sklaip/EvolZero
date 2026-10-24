@@ -13,8 +13,8 @@ class Structure
 
 	public dtor()
 	{
-		printf(ref "Structure dtor: ");
-		printf(ref "%d\n", Num);
+		printf(refb "Structure dtor: ");
+		printf(refb "%d\n", Num);
 	}
 }
 
@@ -35,7 +35,7 @@ class Box
 
 void Take(ref Structure s)
 {
-	printf(ref "%d\n", s.Num);
+	printf(refb "%d\n", s.Num);
 }
 
 int main()
@@ -44,8 +44,8 @@ int main()
 	// делает получателя своим алиасом (поле класса хранит заимствование).
 	// Пока алиас жив, владение этим владельцем передавать нельзя.
 	ref Structure test = new Structure(1);
-	ref Box box = new Box(ref test); // box — алиас test
-	box.Put(ref test);               // тот же алиас, вторая запись в поле
+	ref Box box = new Box(refb test); // box — алиас test
+	box.Put(refb test);               // тот же алиас, вторая запись в поле
 
 	Take(ref test);                  // LT010
 

@@ -7,7 +7,7 @@ int main()
 {
 	int n = 0;
 	// далее читаем n из консоли:
-	scanf(ref "%d", loc n);
+	scanf(refb "%d", loc n);
 
 	// r1: вложенный if внутри if, плюс else у внешнего if
 	int r1 = 0;
@@ -26,7 +26,7 @@ int main()
 	{
 		r1 = 102;
 	}
-	printf(ref "%d\n", r1);
+	printf(refb "%d\n", r1);
 
 	// r2: вложенный if внутри else
 	int r2 = 0;
@@ -45,7 +45,7 @@ int main()
 			r2 = 202;
 		}
 	}
-	printf(ref "%d\n", r2);
+	printf(refb "%d\n", r2);
 
 	// r3: три уровня вложенности, без else на нижнем уровне
 	int r3 = 0;
@@ -63,7 +63,7 @@ int main()
 			}
 		}
 	}
-	printf(ref "%d\n", r3);
+	printf(refb "%d\n", r3);
 
 	// r4: else if с вложенным if внутри
 	int r4 = 0;
@@ -86,7 +86,7 @@ int main()
 	{
 		r4 = 403;
 	}
-	printf(ref "%d\n", r4);
+	printf(refb "%d\n", r4);
 
 	// r5: логическое И (&&)
 	int r5 = 0;
@@ -98,7 +98,7 @@ int main()
 	{
 		r5 = 501;
 	}
-	printf(ref "%d\n", r5);
+	printf(refb "%d\n", r5);
 
 	// r6: цепочка else if, ни одно условие не совпало -> else
 	int r6 = 0;
@@ -118,7 +118,7 @@ int main()
 	{
 		r6 = 603;
 	}
-	printf(ref "%d\n", r6);
+	printf(refb "%d\n", r6);
 
 	return 0;
 }

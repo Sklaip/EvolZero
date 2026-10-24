@@ -13,8 +13,8 @@ class Structure
 
 	public dtor()
 	{
-		printf(ref "Structure dtor: ");
-		printf(ref "%d\n", Num);
+		printf(refb "Structure dtor: ");
+		printf(refb "%d\n", Num);
 	}
 }
 
@@ -22,12 +22,12 @@ class Structure
 // результат становится алиасом переданного источника (правило 5.2).
 refb Structure ReturnRefb(refb Structure source) lifetimes (source ~ return)
 {
-	return ref source;
+	return refb source;
 }
 
 void Take(ref Structure s)
 {
-	printf(ref "%d\n", s.Num);
+	printf(refb "%d\n", s.Num);
 }
 
 int main()
@@ -36,7 +36,7 @@ int main()
 	// делает возвращаемое значение своим алиасом. Пока оно живо, владение
 	// этим владельцем передавать нельзя.
 	ref Structure source = new Structure(1);
-	refb Structure result = ReturnRefb(ref source); // result — алиас source
+	refb Structure result = ReturnRefb(refb source); // result — алиас source
 
 	Take(ref source); // LT010
 

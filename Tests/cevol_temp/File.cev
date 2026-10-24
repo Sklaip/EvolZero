@@ -9,11 +9,11 @@ class File
 
     public ctor(refb byte fileName, refb byte mode)
     {
-        ref _filePointer = fopen(ref fileName, ref mode);
+        ref _filePointer = fopen(refb fileName, refb mode);
     }
 
     public void Write(refb byte buffer, long count)
     {
-        fwrite(ref buffer, 1, count, ref _filePointer);
+        fwrite(refb buffer, 1, count, refb _filePointer);
     }
 }

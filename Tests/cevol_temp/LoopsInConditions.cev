@@ -7,7 +7,7 @@ int main()
 {
 	int n = 0;
 	// далее читаем n из консоли:
-	scanf(ref "%d", loc n);
+	scanf(refb "%d", loc n);
 
 	// 1. while внутри if: выполняется только когда n > 0
 	int acc1 = 0;
@@ -20,7 +20,7 @@ int main()
 			i = i + 1;
 		}
 	}
-	printf(ref "%d\n", acc1);
+	printf(refb "%d\n", acc1);
 
 	// 2. while внутри else
 	int acc2 = 100;
@@ -42,7 +42,7 @@ int main()
 			j = j + 1;
 		}
 	}
-	printf(ref "%d\n", acc2);
+	printf(refb "%d\n", acc2);
 
 	// 3. while внутри ветки else if
 	int v = 0;
@@ -63,7 +63,7 @@ int main()
 	{
 		v = 30;
 	}
-	printf(ref "%d\n", v);
+	printf(refb "%d\n", v);
 
 	// 4. локальный счётчик цикла накапливает значение для внешней переменной
 	int base = 7;
@@ -78,7 +78,7 @@ int main()
 		}
 		base = base + inner;
 	}
-	printf(ref "%d\n", base);
+	printf(refb "%d\n", base);
 
 	return 0;
 }

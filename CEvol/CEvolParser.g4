@@ -80,7 +80,7 @@ expression
     | LPAREN typeSpec RPAREN expression # CastExpr
 
     | LOC expression                             # LocExpr
-    | REF expression                             # RefExpr
+    | qualifier expression                       # RefExpr
 
     | expression (MUL | DIV) expression          # MulDivExpr
     | expression (PLUS | MINUS) expression       # AddSubExpr

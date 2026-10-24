@@ -20,7 +20,7 @@ class Secret
 int main()
 {
 	Secret s(5);
-	printf(ref "%d\n", s.GetHidden());
+	printf(refb "%d\n", s.GetHidden());
 
 	return 0;
 }

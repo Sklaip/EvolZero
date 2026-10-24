@@ -26,7 +26,7 @@ class Box
 	public refb Structure Pin(refb Structure b, refb Structure a) lifetimes (b ~ this, a ~ return)
 	{
 		refb Pinned = b;
-		return ref a;
+		return refb a;
 	}
 }
 
@@ -37,14 +37,14 @@ int main()
 	ref Structure one = new Structure(1);
 	ref Structure two = new Structure(2);
 
-	ref Box box = new Box(ref zero);
+	ref Box box = new Box(refb zero);
 
-	refb Structure returned = box.Pin(ref one, ref two);
+	refb Structure returned = box.Pin(refb one, refb two);
 
 	// b ~ this: поле — алиас one.
-	printf(ref "%d\n", box.Pinned.Num);
+	printf(refb "%d\n", box.Pinned.Num);
 	// a ~ return: результат — алиас two.
-	printf(ref "%d\n", returned.Num);
+	printf(refb "%d\n", returned.Num);
 
 	return 0;
 }

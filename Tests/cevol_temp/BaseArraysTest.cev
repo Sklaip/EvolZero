@@ -6,10 +6,10 @@ extern infargs int scanf(refb byte ptr);
 int main()
 {
 	int num = 0;
-    scanf(ref "%d", loc num);
+    scanf(refb "%d", loc num);
 
 	num = num + 1;
-	printf(ref "%d\n", num);
+	printf(refb "%d\n", num);
 
 	int[10][5] arr;
 
@@ -26,23 +26,23 @@ int main()
 	}
 
 	ref int cell = loc arr[5][4];
-	printf(ref "%d\n", cell);
+	printf(refb "%d\n", cell);
 
 	ref int cell2 = loc arr[5];
-	printf(ref "%d\n", cell2);
+	printf(refb "%d\n", cell2);
 
 	ref int[5] innerArrayRef = loc arr[7];
 
 	i = 0;
 	while (i < 5) 
 	{
-		printf(ref "%d\n", innerArrayRef[i]);
+		printf(refb "%d\n", innerArrayRef[i]);
 		i = i + 1;
 	}
 
 	cell = cell + cell;
 
-	printf(ref "%d\n", arr[5][4]);
+	printf(refb "%d\n", arr[5][4]);
 	
 	return 0;
 }

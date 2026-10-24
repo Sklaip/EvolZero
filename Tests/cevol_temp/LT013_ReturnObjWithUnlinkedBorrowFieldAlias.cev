@@ -30,7 +30,7 @@ ref TestObj ReturnObjWithUnlinkedBorrow(refb Structure structureOne)
 	// Лайфтайм refb-параметра (ForRefbArgument) короче лайфтайма return,
 	// поэтому возвращать obj нельзя — LT013.
 	ref Structure structureToBorrow = new Structure(20);
-	ref TestObj obj = new TestObj(1, ref structureToBorrow);
+	ref TestObj obj = new TestObj(1, refb structureToBorrow);
 	refb obj.BorrowData = structureOne;
 
 	return ref obj; // LT013
@@ -39,7 +39,7 @@ ref TestObj ReturnObjWithUnlinkedBorrow(refb Structure structureOne)
 int main()
 {
 	ref Structure source = new Structure(10);
-	ref TestObj obj = ReturnObjWithUnlinkedBorrow(ref source);
+	ref TestObj obj = ReturnObjWithUnlinkedBorrow(refb source);
 
 	return 0;
 }

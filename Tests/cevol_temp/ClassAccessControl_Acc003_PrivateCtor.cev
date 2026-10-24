@@ -15,7 +15,7 @@ class Hidden
 int main()
 {
 	Hidden h(5);
-	printf(ref "%d\n", h.Value);
+	printf(refb "%d\n", h.Value);
 
 	return 0;
 }

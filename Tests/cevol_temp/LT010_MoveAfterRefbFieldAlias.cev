@@ -28,7 +28,7 @@ class TestObj
 
 void TakeStruct(ref Structure s)
 {
-	printf(ref "%d\n", s.Num);
+	printf(refb "%d\n", s.Num);
 }
 
 void Test(ref TestObj outsideObj)
@@ -40,13 +40,13 @@ void Test(ref TestObj outsideObj)
 	// Владение нельзя переносить, пока жив алиас.
 	TakeStruct(ref structureStub); // LT010
 
-	printf(ref "%d\n", outsideObj.ObjectNum);
+	printf(refb "%d\n", outsideObj.ObjectNum);
 }
 
 int main()
 {
 	ref Structure borrow = new Structure(0);
-	Test(new TestObj(1, ref borrow));
+	Test(new TestObj(1, refb borrow));
 
 	return 0;
 }

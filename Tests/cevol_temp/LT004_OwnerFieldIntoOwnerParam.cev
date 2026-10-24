@@ -32,7 +32,7 @@ class TestObj
 
 void TakeStruct(ref Structure s)
 {
-	printf(ref "%d\n", s.Num);
+	printf(refb "%d\n", s.Num);
 }
 
 void Test(ref TestObj obj)
@@ -41,7 +41,7 @@ void Test(ref TestObj obj)
 	// Прямая передача поля во владеющий параметр оставила бы поле без владельца.
 	TakeStruct(ref obj.Data); // LT004
 
-	printf(ref "%d\n", obj.ObjectNum);
+	printf(refb "%d\n", obj.ObjectNum);
 }
 
 int main()

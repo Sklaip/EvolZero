@@ -19,16 +19,16 @@ int main()
 	int y = 2;
 	int z;
 	z = x <- y;
-	printf(ref "%d\n", z);   // 1 = старое x
-	printf(ref "%d\n", x);   // 2 = y
-	printf(ref "%d\n", y);   // 2
+	printf(refb "%d\n", z);   // 1 = старое x
+	printf(refb "%d\n", x);   // 2 = y
+	printf(refb "%d\n", y);   // 2
 
 	// 2. Владеющие ссылки: ref c = a <- b => a = b, c = старое a.
 	ref Conn a = new Conn(10);
 	ref Conn b = new Conn(20);
 	ref Conn c;
 	ref c = a <- b;
-	printf(ref "%d\n", c.Type); // 10 = старое a
+	printf(refb "%d\n", c.Type); // 10 = старое a
 
 	return 0;
 }

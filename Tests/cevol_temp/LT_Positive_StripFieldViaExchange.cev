@@ -35,8 +35,8 @@ int main()
 	// быть удалён раньше времени: printf(r.V) прочитал бы мусор, если бы o1 освободили.
 	ref Box r;
 	ref r = holder.F <- o2;
-	printf(ref "%d\n", r.V);          // 1
-	printf(ref "%d\n", holder.F.V);   // 2
+	printf(refb "%d\n", r.V);          // 1
+	printf(refb "%d\n", holder.F.V);   // 2
 
 	return 0;
 }

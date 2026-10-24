@@ -32,13 +32,13 @@ void Test(ref TestObj outsideObj)
 	// Сохранить её можно только во владеющую (ref) ссылку, а не в заимствованную (refb).
 	refb outsideObj.BorrowData = new Structure(5); // LT009
 
-	printf(ref "%d\n", outsideObj.ObjectNum);
+	printf(refb "%d\n", outsideObj.ObjectNum);
 }
 
 int main()
 {
 	ref Structure borrow = new Structure(0);
-	Test(new TestObj(1, ref borrow));
+	Test(new TestObj(1, refb borrow));
 
 	return 0;
 }

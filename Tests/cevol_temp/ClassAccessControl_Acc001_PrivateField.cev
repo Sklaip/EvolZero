@@ -15,7 +15,7 @@ class Secret
 int main()
 {
 	Secret s(5);
-	printf(ref "%d\n", s.Hidden);
+	printf(refb "%d\n", s.Hidden);
 
 	return 0;
 }

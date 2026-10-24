@@ -21,10 +21,10 @@ ref TestObj CreateTestObj()
 int main()
 {
 	ref TestObj r = CreateTestObj();
-	printf(ref "%d\n", r.X);
+	printf(refb "%d\n", r.X);
 
 	r.X = r.X + 1;
-	printf(ref "%d\n", r.X);
+	printf(refb "%d\n", r.X);
 
 	return 0;
 }

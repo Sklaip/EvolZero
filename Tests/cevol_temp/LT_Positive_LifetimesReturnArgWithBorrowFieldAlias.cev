@@ -36,7 +36,7 @@ class TestObj
 // алиас-цепочка поля не короче лайфтайма возвращаемого значения (правило LT013).
 ref TestObj ReturnObjWithBorrowField(refb Structure structureOne) lifetimes (structureOne ~ return)
 {
-	ref TestObj obj = new TestObj(2, ref structureOne);
+	ref TestObj obj = new TestObj(2, refb structureOne);
 	return ref obj;
 }
 
@@ -44,15 +44,15 @@ int main()
 {
 	// Источник и получатель результата в одном блоке — вызов допустим.
 	ref Structure structure = new Structure(11);
-	ref TestObj obj = ReturnObjWithBorrowField(ref structure);
+	ref TestObj obj = ReturnObjWithBorrowField(refb structure);
 
 	// Возвращённый объект читает и своё поле, и заимствованный источник.
-	printf(ref "%d\n", obj.Sum());
+	printf(refb "%d\n", obj.Sum());
 
 	// BorrowData — алиас structure: запись через поле видна источнику.
 	refb Structure alias = obj.BorrowData;
 	alias.Num = 12;
-	printf(ref "%d\n", structure.Num);
+	printf(refb "%d\n", structure.Num);
 
 	return 0;
 }

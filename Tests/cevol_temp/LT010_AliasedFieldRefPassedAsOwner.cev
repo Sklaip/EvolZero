@@ -24,7 +24,7 @@ class Holder
 
 int Take(ref Box b)
 {
-	printf(ref "%d\n", b.V);
+	printf(refb "%d\n", b.V);
 	return 0;
 }
 
@@ -33,8 +33,8 @@ int main()
 	// Правило 7: владеющую ссылку с алиасами (refb-поле класса) нельзя передавать как владение.
 	ref Box dummy = new Box(0);
 	ref Box o = new Box(5);
-	ref Holder h = new Holder(ref dummy);
-	ref h.F = o;          // o теперь имеет алиас в refb-поле
+	ref Holder h = new Holder(refb dummy);
+	refb h.F = o;          // o теперь имеет алиас в refb-поле
 	Take(ref o);          // LT010: нельзя передавать владение o — алиас поля F ещё жив
 
 	return 0;

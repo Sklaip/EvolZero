@@ -41,20 +41,20 @@ void Test(ref TestObj outsideObj)
 	ref Structure strcRec;
 	ref Structure strcRecToBorrow = new Structure(57);
 
-	ref TestObj obj = new TestObj(new Structure(2), 2, ref strcRecToBorrow);
+	ref TestObj obj = new TestObj(new Structure(2), 2, refb strcRecToBorrow);
 
 	if (num == 1)
 	{
 		// '<-' перевёл владение structureOne в obj.Data и деинициализировал источник.
 		ref strcRec = obj.Data <- structureOne;
-		printf(ref "num is 1\n");
+		printf(refb "num is 1\n");
 	}
 	else
 	{
-		printf(ref "num is not 1\n");
+		printf(refb "num is not 1\n");
 	}
 
-	printf(ref "%d\n", outsideObj.ObjectNum);
+	printf(refb "%d\n", outsideObj.ObjectNum);
 
 	// Деинициализация в if-ветке распространяется на всё условие:
 	// structureOne недоступна и после if/else.
@@ -64,7 +64,7 @@ void Test(ref TestObj outsideObj)
 int main()
 {
 	ref Structure seed = new Structure(0);
-	Test(new TestObj(1, ref seed));
+	Test(new TestObj(1, refb seed));
 
 	return 0;
 }

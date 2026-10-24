@@ -24,7 +24,7 @@ void Use(refb Structure s)
 int main()
 {
 	ref Structure structure = new Structure(5);
-	Use(ref structure);
+	Use(refb structure);
 
 	return 0;
 }

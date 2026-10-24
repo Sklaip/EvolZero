@@ -31,11 +31,11 @@ int main()
 	// передаваемое значение — во внутреннем. Значение живёт короче объекта,
 	// в чьё поле оно попадёт, => LT002 на стороне вызова.
 	ref Structure seed = new Structure(0);
-	ref Box box = new Box(ref seed);
+	ref Box box = new Box(refb seed);
 	if (1 == 1)
 	{
 		ref Structure source = new Structure(7);
-		box.Put(ref source); // LT002
+		box.Put(refb source); // LT002
 	}
 
 	return 0;

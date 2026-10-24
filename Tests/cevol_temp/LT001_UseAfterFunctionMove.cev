@@ -14,7 +14,7 @@ class Box
 
 int Take(ref Box b)
 {
-	printf(ref "%d\n", b.V);
+	printf(refb "%d\n", b.V);
 	return 0;
 }
 

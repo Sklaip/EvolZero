@@ -376,6 +376,10 @@ namespace EvolZero.Core.Analysis
 			if (currentFunction == null) throw new NotImplementedException();
 
 			CheckInitializable(returnResult);
+
+			if (!ValidateReferenceQualifier(returnResult, currentFunction.ReturnType))
+				return;
+
 			returnResult = AutoDereferenceIfPointer(returnResult, true);
 
 			if (!_typeAnalyzer.CheckTypeMatching(currentFunction.ReturnType, returnResult.ResultTypeSpec, out bool needCast))
@@ -424,6 +428,9 @@ namespace EvolZero.Core.Analysis
 				return new StubForErrorExpression(CurrentPosition);
 			}
 
+			if (!ValidateReferenceQualifiers(arguments, funcDesc.Arguments))
+				return new StubForErrorExpression(CurrentPosition);
+
 			for (int i = 0; i < casts.Length; i++)
 			{
 				TypeSpec? cast = casts[i];
@@ -458,6 +465,9 @@ namespace EvolZero.Core.Analysis
 				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Function overload with specified arguments could not be found", CurrentPosition);
 				return new StubForErrorExpression(CurrentPosition);
 			}
+
+			if (!ValidateReferenceQualifiers(arguments, funcDesc.Arguments))
+				return new StubForErrorExpression(CurrentPosition);
 
 			Expression[] realArgs = new Expression[arguments.Length + 1];
 			realArgs[0] = instanceGetting.ResultTypeSpec.IsRef ? instanceGetting : new GetPointerToVarExpression(instanceGetting, false, CurrentPosition);
@@ -526,6 +536,9 @@ namespace EvolZero.Core.Analysis
 				return new StubForErrorExpression(CurrentPosition);
 			}
 
+			if (!ValidateReferenceQualifiers(arguments, ctorDesc.Arguments))
+				return new StubForErrorExpression(CurrentPosition);
+
 			for (int i = 0; i < casts.Length; i++)
 			{
 				TypeSpec? cast = casts[i];
@@ -560,6 +573,9 @@ namespace EvolZero.Core.Analysis
 					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Constructor with specified arguments could not be found", CurrentPosition);
 					return new StubForErrorExpression(CurrentPosition);
 				}
+
+				if (!ValidateReferenceQualifiers(arguments, ctorDesc.Arguments))
+					return new StubForErrorExpression(CurrentPosition);
 
 				for (int i = 0; i < casts.Length; i++)
 				{
@@ -916,10 +932,86 @@ namespace EvolZero.Core.Analysis
 			}
 		}
 
+		private bool ValidateReferenceQualifier(Expression expression, TypeSpec targetType)
+		{
+			if (expression is not DoNotAutoDereferenceIfPointerExpression referenceExpression)
+				return true;
+
+			if (!targetType.IsRef)
+			{
+				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB",
+					"Квалификатор 'ref'/'refb' можно применять только к ссылкам", expression.Pos);
+				return false;
+			}
+
+			if (targetType.IsBorrowRef && !referenceExpression.IsBorrow)
+			{
+				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB",
+					"Для заимствованной (refb) ссылки требуется квалификатор 'refb'", expression.Pos);
+				return false;
+			}
+
+			if (targetType.IsOwnerRef && referenceExpression.IsBorrow)
+			{
+				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB",
+					"Для владеющей (ref) ссылки требуется квалификатор 'ref'", expression.Pos);
+				return false;
+			}
+
+			return true;
+		}
+
+		private bool ValidateReferenceQualifiers(Expression[] arguments, Argument[] parameters)
+		{
+			int count = Math.Min(arguments.Length, parameters.Length);
+
+			for (int i = 0; i < count; i++)
+			{
+				if (!ValidateReferenceQualifier(arguments[i], parameters[i].Declaring))
+					return false;
+			}
+
+			return true;
+		}
+
+		private bool ValidateAssignmentReferenceQualifier(TypeSpec targetType, Expression value, Qualifier? assignQualifier)
+		{
+			bool isBorrowQualifier = assignQualifier is BorrowReferenceQualifier;
+
+			if (assignQualifier != null)
+			{
+				if (!targetType.IsRef)
+				{
+					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB",
+						"Квалификатор 'ref'/'refb' можно применять только к ссылкам", CurrentPosition);
+					return false;
+				}
+
+				if (targetType.IsBorrowRef && !isBorrowQualifier)
+				{
+					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB",
+						"Для заимствованной (refb) ссылки требуется квалификатор 'refb'", CurrentPosition);
+					return false;
+				}
+
+				if (targetType.IsOwnerRef && isBorrowQualifier)
+				{
+					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB",
+						"Для владеющей (ref) ссылки требуется квалификатор 'ref'", CurrentPosition);
+					return false;
+				}
+			}
+
+			return ValidateReferenceQualifier(value, targetType);
+		}
+
 		public Expression VariableAssing(Expression varExpr, Expression expr, Qualifier? assignQualifier)
 		{
 			CheckInitializable(expr);
 			if (CheckStubForError(varExpr, expr)) return new StubForErrorExpression(CurrentPosition);
+
+			if (!ValidateAssignmentReferenceQualifier(varExpr.ResultTypeSpec, expr, assignQualifier))
+				return new StubForErrorExpression(CurrentPosition);
 
 			InitializeVariable(varExpr);
 
@@ -1065,10 +1157,18 @@ namespace EvolZero.Core.Analysis
 			return VariableAssing(fieldAccess, value, qualifier);
 		}
 
-		public Expression SetRefQualifier(Expression expr)
+		public Expression SetRefQualifier(Expression expr, bool isBorrow)
 		{
 			if (CheckStubForError(expr)) return new StubForErrorExpression(CurrentPosition);
-			return new DoNotAutoDereferenceIfPointerExpression(expr, CurrentPosition);
+
+			if (!expr.ResultTypeSpec.IsRef)
+			{
+				_errorsBag.AddError(COMPILATION_LAYER, "REF005",
+					"Квалификатор 'ref'/'refb' можно применять только к ссылкам", CurrentPosition);
+				return new StubForErrorExpression(CurrentPosition);
+			}
+
+			return new DoNotAutoDereferenceIfPointerExpression(expr, isBorrow, CurrentPosition);
 		}
 
 		public Expression TypeCast(Expression expr, TypeSpec toType)

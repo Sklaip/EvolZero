@@ -31,7 +31,7 @@ int main()
 	// конструкторе и жив, пока жив holder; раннее удаление дало бы мусор или падение.
 	ref Holder holder = new Holder(5);
 
-	printf(ref "%d\n", holder.F.V);
+	printf(refb "%d\n", holder.F.V);
 
 	return 0;
 }

@@ -34,7 +34,7 @@ int main()
 {
 	ref TestObj obj = new TestObj(1);
 	ref TestObj inner = new TestObj(2);
-	obj.Pin(ref inner);
+	obj.Pin(refb inner);
 
 	return 0;
 }

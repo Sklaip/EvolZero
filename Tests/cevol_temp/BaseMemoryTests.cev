@@ -20,7 +20,7 @@ class Connect
 
 	public void PrintConnectType()
 	{
-		printf(ref "%d\n", ConnType);
+		printf(refb "%d\n", ConnType);
 	}
 }
 
@@ -67,10 +67,10 @@ int main()
 
 	connect.PrintConnectType();
 	provider.ServiveConnect.PrintConnectType();
-	printf(ref "%d\n", provider.Count);
-	printf(ref "%d\n", serviceConnet);
+	printf(refb "%d\n", provider.Count);
+	printf(refb "%d\n", serviceConnet);
 	serviceConnet = 2341;
-	printf(ref "%d\n", serviceConnet);
+	printf(refb "%d\n", serviceConnet);
 
 	return 0;
 }

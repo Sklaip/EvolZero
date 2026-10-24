@@ -13,8 +13,8 @@ class Structure
 
 	public dtor()
 	{
-		printf(ref "Structure dtor: ");
-		printf(ref "%d\n", Num);
+		printf(refb "Structure dtor: ");
+		printf(refb "%d\n", Num);
 	}
 }
 
@@ -47,14 +47,14 @@ int main()
 	// одинаково долго, поэтому вызов с 'b ~ this' допустим.
 	ref Structure sourceBase = new Structure(1);
 	ref Structure source = new Structure(7);
-	ref Box box = new Box(ref sourceBase);
-	box.Put(ref source);
-	printf(ref "%d\n", box.Num());
+	ref Box box = new Box(refb sourceBase);
+	box.Put(refb source);
+	printf(refb "%d\n", box.Num());
 
 	// Поле — алиас исходного объекта: запись через него видна снаружи.
 	refb Structure alias = box.Data;
 	alias.Num = 8;
-	printf(ref "%d\n", source.Num);
+	printf(refb "%d\n", source.Num);
 
 	return 0;
 }

@@ -376,7 +376,8 @@ namespace EvolZero.Parsing
 			var value = Visit(context.expression());
 			if (value == null) throw new NotImplementedException();
 
-			var res = _semanticAnalyzer.SetRefQualifier(value);
+			bool isBorrow = context.qualifier().GetText() == "refb";
+			var res = _semanticAnalyzer.SetRefQualifier(value, isBorrow);
 
 			_semanticAnalyzer.CurrentPosition = lastPos;
 			return res;

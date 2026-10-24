@@ -47,20 +47,20 @@ class Implicit
 int main()
 {
 	ref Config c = new Config();
-	printf(ref "%d\n", c.A);
-	printf(ref "%d\n", c.B);
-	printf(ref "%d\n", c.D);
-	printf(ref "%d\n", c.Sum());
+	printf(refb "%d\n", c.A);
+	printf(refb "%d\n", c.B);
+	printf(refb "%d\n", c.D);
+	printf(refb "%d\n", c.Sum());
 
 	Point p(100);
-	printf(ref "%d\n", p.X);
-	printf(ref "%d\n", p.Y);
+	printf(refb "%d\n", p.X);
+	printf(refb "%d\n", p.Y);
 
 	ref Holder h = new Holder();
-	printf(ref "%d\n", h.Cfg.A);
+	printf(refb "%d\n", h.Cfg.A);
 
 	ref Implicit imp = new Implicit();
-	printf(ref "%d\n", imp.V);
+	printf(refb "%d\n", imp.V);
 
 	return 0;
 }

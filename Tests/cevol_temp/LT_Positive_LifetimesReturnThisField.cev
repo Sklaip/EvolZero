@@ -25,10 +25,10 @@ int main()
 
 	// Возвращённая refb — алиас поля: запись через неё видна объекту.
 	refb int r = cell.GetRef();
-	printf(ref "%d\n", cell.Value);
+	printf(refb "%d\n", cell.Value);
 
 	r = 42;
-	printf(ref "%d\n", cell.Value);
+	printf(refb "%d\n", cell.Value);
 
 	return 0;
 }
