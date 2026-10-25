@@ -26,17 +26,17 @@ class Connect
 
 class Provider
 {
-	public ref Connect ServiveConnect;
+	public refb Connect ServiveConnect;
 	public bool Available;
 	public int Count;
 
-	public ctor(ref Connect serviceConnect)
+	public ctor(refb Connect serviceConnect) lifetimes (serviceConnect ~ this)
 	{
-		ref ServiveConnect = serviceConnect;
+		refb ServiveConnect = serviceConnect;
 		Count = 0;
 	}
 
-	public ref int SetServiveConnect(int type)
+	public refb int SetServiveConnect(int type) lifetimes (return ~ this)
 	{
 		ServiveConnect.ConnType = type;
 		Count = type + 11;
@@ -58,10 +58,11 @@ int main()
 	connect.SetConnectType(10);
 	connect.PrintConnectType();
 
-	ref Provider provider = new Provider(new Connect(0));
-	ref provider.ServiveConnect = connect;
+	ref Connect defaultConnect = new Connect(0);
+	ref Provider provider = new Provider(refb defaultConnect);
+	refb provider.ServiveConnect = connect;
 
-	ref int serviceConnet = provider.SetServiveConnect(412);
+	refb int serviceConnet = provider.SetServiveConnect(412);
 	connect.PrintConnectType();
 	provider.ServiveConnect.PrintConnectType();
 

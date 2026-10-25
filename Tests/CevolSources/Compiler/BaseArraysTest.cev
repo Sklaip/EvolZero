@@ -25,13 +25,13 @@ int main()
 		i = i + 1;
 	}
 
-	ref int cell = loc arr[5][4];
+	refb int cell = loc arr[5][4];
 	printf(refb "%d\n", cell);
 
-	ref int cell2 = loc arr[5];
+	refb int cell2 = loc arr[5];
 	printf(refb "%d\n", cell2);
 
-	ref int[5] innerArrayRef = loc arr[7];
+	refb int[5] innerArrayRef = loc arr[7];
 
 	i = 0;
 	while (i < 5) 

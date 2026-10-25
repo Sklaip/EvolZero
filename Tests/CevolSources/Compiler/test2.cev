@@ -29,23 +29,23 @@ class Connect
 
 class Provider
 {
-	public ref Connect ServiveConnect;
+	public refb Connect ServiveConnect;
 	public bool Available;
 	public int Count;
 
-	public ctor(ref Connect serviceConnect)
+	public ctor(refb Connect serviceConnect) lifetimes (serviceConnect ~ this)
 	{
-		ref ServiveConnect = serviceConnect;
+		refb ServiveConnect = serviceConnect;
 	}
 
-	public ref int SetServiveConnect(int type)
+	public refb int SetServiveConnect(int type) lifetimes (return ~ this)
 	{
 		ServiveConnect.ConnType = type;
 		Count = type + 11;
 		return loc Count;
 	}
 
-	public int WriteConnType(ref int toWrite)
+	public int WriteConnType(refb int toWrite)
 	{
 		toWrite = ServiveConnect.ConnType;
 		toWrite = toWrite - 5;
@@ -62,10 +62,11 @@ int Tests()
 	connect.SetConnectType(10);
 	connect.PrintConnectType();
 
-	ref Provider provider = new Provider(new Connect(0));
-	ref provider.ServiveConnect = connect;
+	ref Connect baseConnect = new Connect(0);
+	ref Provider provider = new Provider(refb baseConnect);
+	refb provider.ServiveConnect = connect;
 
-	ref int serviceConnet = provider.SetServiveConnect(412);
+	refb int serviceConnet = provider.SetServiveConnect(412);
 	connect.PrintConnectType();
 	provider.ServiveConnect.PrintConnectType();
 	printf(refb serviceStr.ToBytes(), provider.Count);
@@ -89,13 +90,13 @@ int Tests()
 
 	int val1 = 1;
 	int val2 = 2;
-	ref int val3 = loc val1;
+	refb int val3 = loc val1;
 
 	val3 = 4;
 	printf(refb serviceStr.ToBytes(), val1);
 	printf(refb serviceStr.ToBytes(), val2);
 
-	ref val3 = loc val2;
+	refb val3 = loc val2;
 	val3 = 5;
 	printf(refb serviceStr.ToBytes(), val1);
 	printf(refb serviceStr.ToBytes(), val2);
@@ -105,7 +106,7 @@ int Tests()
 	connTest.SetConnectType(10);
 	connTest.PrintConnectType();
 
-	ref byte[6] globalStrTets = "aboba";
+	refb byte[6] globalStrTets = "aboba";
 
 	printf(refb globalStrTets);
 

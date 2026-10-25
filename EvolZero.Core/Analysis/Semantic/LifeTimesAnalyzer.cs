@@ -366,15 +366,6 @@ namespace EvolZero.Core.Analysis.Semantic
 			};
 		}
 
-		protected override ValueMeta AppealToThis(AppealToThisExpression expr)
-		{
-			return new ValueMeta()
-			{
-				Expr = expr,
-				VarData = _currentClass
-			};
-		}
-
 		protected override ValueMeta CreateGlobalArray(GlobalArrayExpression expr)
 		{
 			// TODO: вроде array называется global, а вроде мы его потом удалять будем. Хуета какая-то
@@ -384,6 +375,35 @@ namespace EvolZero.Core.Analysis.Semantic
 				VarData = new VarMeta(Lifetime.ForGlobal(), false, true)
 			};
 		}
+
+		protected override ValueMeta AppealToThis(AppealToThisExpression expr)
+		{
+			return new ValueMeta()
+			{
+				Expr = expr,
+				VarData = _currentClass
+			};
+		}
+
+		protected override ValueMeta? ArrayCellAccess(ArrayCellAccessExpression expr)
+		{
+			var arrayGetting = HandleExpression(expr.ArrayGetting);
+
+			if (arrayGetting == null)
+				return null;
+
+			if (arrayGetting.VarData == null)
+				throw new NotImplementedException(); // такой хуйни быть не должно
+
+			var meta = new VarMeta(arrayGetting.VarData.Lifetime, false, true, arrayGetting.VarData);
+
+			return new ValueMeta()
+			{
+				Expr = expr,
+				VarData = meta
+			};
+		}
+		
 
 		protected override ValueMeta? StructureFiledAccess(StructureFieldAccessExpression expr)
 		{
