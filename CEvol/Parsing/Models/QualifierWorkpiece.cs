@@ -10,6 +10,17 @@ namespace EvolZero.Parsing.Models
 		public string Kind { get; set; }
 		public ulong ArraySize { get; set; }
 
+		public QualifierWorkpiece(string kind, ulong arraySize)
+		{
+			Kind = kind;
+			ArraySize = arraySize;
+		}
+
+		public QualifierWorkpiece(string kind)
+		{
+			Kind = kind;
+		}
+
 		public Qualifier ToQualifier()
 		{
 			switch (Kind)

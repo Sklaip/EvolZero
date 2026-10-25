@@ -15,7 +15,7 @@ accessModifier : PUBLIC | PRIVATE ;
 // Дополнительные модификаторы: static, readonly (в любом количестве и порядке)
 extraModifier : STATIC | READONLY | EXTERN | INFARGS;
 
-qualifier : REF | REFB;
+qualifier : REF | REFB | arraySpec;
 
 // --- Типы данных ---
 
@@ -63,8 +63,6 @@ elseStatement : ELSE block ;
 whileStatement : WHILE LPAREN expression RPAREN block ;
 
 // --- Выражения ---
-// TODO: сделать чтобы синтаксически как к функции можно было обратиться к любому выражению. Сейчас () можно сделать четко после IDENTIFIER
-// TODO: так же сейчас у NEW и REF разные приоритеты. Хз, но мнеп кажется так быть не должно
 expression 
     : MINUS? NUMBER                              # NumberExpr
     | STRING                                     # StringExpr
@@ -77,21 +75,21 @@ expression
     | expression LBRACK args RBRACK              # IndexExpr
     | expression DOT IDENTIFIER ( LPAREN args? RPAREN )? # MemberAccess
 
-    | LPAREN typeSpec RPAREN expression # CastExpr
+    | LPAREN typeSpec RPAREN expression          # CastExpr
 
     | LOC expression                             # LocExpr
     | qualifier expression                       # RefExpr
 
     | expression (MUL | DIV) expression          # MulDivExpr
     | expression (PLUS | MINUS) expression       # AddSubExpr
-    | expression (LT | GT) expression # LtGtExpr
-    | expression (EQ | NEQ) expression # EqNeqExpr
-    | expression BIT_AND expression # BitAndExpr
-    | expression BIT_XOR expression # BitXorExpr
-    | expression BIT_OR expression # BitOrExpr
-    | expression AND expression # LogicalAndExpr
-    | expression OR expression # LogicalOrExpr
-    | expression EXCHANGE expression # ExchangeExpr
+    | expression (LT | GT) expression            # LtGtExpr
+    | expression (EQ | NEQ) expression           # EqNeqExpr
+    | expression BIT_AND expression              # BitAndExpr
+    | expression BIT_XOR expression              # BitXorExpr
+    | expression BIT_OR expression               # BitOrExpr
+    | expression AND expression                  # LogicalAndExpr
+    | expression OR expression                   # LogicalOrExpr
+    | expression EXCHANGE expression             # ExchangeExpr
     ;
 
 args : expression (COMMA expression)* ;

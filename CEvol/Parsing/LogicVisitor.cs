@@ -9,6 +9,7 @@ using EvolZero.Core.MemebersModels;
 using EvolZero.Parsing.Models;
 using System.Numerics;
 using static CEvolParser;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 
 namespace EvolZero.Parsing
@@ -280,7 +281,7 @@ namespace EvolZero.Parsing
 			var leftExpression = Visit(expressions[0]);
 			var rightExpression = Visit(expressions[1]);
 
-			var qualiffer = context.qualifier()?.GetText();
+			var qualiffer = ParseQualifier(context.qualifier());
 
 			if (leftExpression == null || rightExpression == null) throw new NotImplementedException();
 
@@ -288,10 +289,7 @@ namespace EvolZero.Parsing
 			Qualifier? qul = null;
 			if (qualiffer != null)
 			{
-				qul = QualifierWorkpiece.ToQualifier(new QualifierWorkpiece()
-				{
-					Kind = qualiffer
-				});
+				qul = QualifierWorkpiece.ToQualifier(qualiffer);
 			}
 
 			var res = _semanticAnalyzer.VariableAssing(leftExpression, rightExpression, qul);
@@ -474,9 +472,20 @@ namespace EvolZero.Parsing
 				throw new NotImplementedException();
 
 			var qualifiers = new List<QualifierWorkpiece>();
+			int i = 0;
 			foreach (var qualifier in context.qualifier())
 			{
-				qualifiers.Add(new QualifierWorkpiece() { Kind = qualifier.GetText() });
+				qualifiers.Add(ParseQualifier(qualifier)!);
+				if (qualifiers[i].Kind == "array")
+				{
+					if (i == 0) throw new NotImplementedException(); // TODO: тут формировать ошибку что кваллификатор массива не может быть самостоятельным
+
+					var temp = qualifiers[i - 1];
+					qualifiers[i - 1] = qualifiers[i];
+					qualifiers[i] = temp;
+				}
+
+				i++;
 			}
 
 			foreach (var arr in context.arraySpec())
@@ -487,11 +496,22 @@ namespace EvolZero.Parsing
 			var typeDesc = _membersFinder.TryFindType(typeName);
 			if (typeDesc == null)
 			{
-				_semanticAnalyzer.ReportError($"The type '{typeName}' was not found");
+				_semanticAnalyzer.ReportError($"The type '{typeName}' was not found"); // TODO: че-то хуета какая-то, тут ошибки не должны генериться
 				return null;
 			}
 
 			return new TypeSpec(typeDesc, QualifierWorkpiece.ToQualifiers(qualifiers));
+		}
+
+		public QualifierWorkpiece? ParseQualifier(QualifierContext? context)
+		{
+			if (context == null) return null;
+
+			var arr = context.arraySpec();
+			if (arr == null)
+				return new QualifierWorkpiece(context.GetText());
+
+			return ParseArraySpec(arr);
 		}
 
 		public QualifierWorkpiece ParseArraySpec([NotNull] CEvolParser.ArraySpecContext context)
@@ -504,11 +524,7 @@ namespace EvolZero.Parsing
 			var value = numExpr.NUMBER().GetText();
 			var num = ulong.Parse(value);
 
-			return new QualifierWorkpiece()
-			{
-				Kind = "array",
-				ArraySize = num
-			};
+			return new QualifierWorkpiece("array", num);
 		}
 
 		public override Expression? VisitNumberExpr([NotNull] CEvolParser.NumberExprContext context)
