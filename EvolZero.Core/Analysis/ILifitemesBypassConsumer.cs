@@ -10,7 +10,7 @@ namespace EvolZero.Core.Analysis
 		void EnterToIfStatement(IfStatement statement);
 		void ExitFromIfStatement(IfStatement statement);
 		void HandleConditionSubStatement(Statement statement);
-		void GiveAwayOwnership(Expression expr, VarMeta? var);
+		void GiveAwayOwnership(Expression expr, VarMeta? var, bool refersToCurrentBlock);
 		Expression? PointerLifetimeEnd(Expression pointerExpr);
 		List<Expression> HandleDestructor(TypeDesc typeDesc, DestructorStatement destructorStatement);
 	}

@@ -63,9 +63,9 @@ namespace EvolZero.Core.Analysis
 			currentIf.CurrentSubStatement = statement;
 		}
 
-		public void GiveAwayOwnership(Expression expr, VarMeta? var)
+		public void GiveAwayOwnership(Expression expr, VarMeta? var, bool refersToCurrentBlock)
 		{
-			if (!_blocks.TryPeek(out var currentIf)) return;
+			if (!_blocks.TryPeek(out var currentIf) || refersToCurrentBlock) return;
 			currentIf.GivenRefs.Add((expr, var, currentIf.CurrentSubStatement));
 		}
 

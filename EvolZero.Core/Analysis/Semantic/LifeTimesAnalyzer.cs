@@ -91,6 +91,7 @@ namespace EvolZero.Core.Analysis.Semantic
 		{
 			public Statement CodeBlock { get; } = codeBlock;
 			public List<ValueMeta> Vars { get; } = new();
+			public bool IsDestructed { get; set; }
 		}
 
 		public LifeTimesAnalyzer(ErrorsBag errorsBag)
@@ -107,12 +108,12 @@ namespace EvolZero.Core.Analysis.Semantic
 		{
 			_currentDesc = statement.TypeDesc;
 			_currentClass = new VarMeta(Lifetime.ForThis(), false, true);
-			_currentClass.Name = "this";
+			_currentClass.DebugName = "this";
 
 			_currentClassFields = statement.TypeDesc.Variables.Values
 				.Select(x => (x.Name, new VarMeta(Lifetime.ForThis(), false, false, _currentClass)
 				{
-					Name = x.Name
+					DebugName = x.Name
 				}
 				)).ToDictionary();
 
@@ -144,8 +145,12 @@ namespace EvolZero.Core.Analysis.Semantic
 				{
 					var liftime = DefineArgumentLifetime(argument, fst.Lifetimes);
 
-					var variable = new VarMeta(liftime, false, true);
-					variable.Name = argument.Name;
+					var variable = new VarMeta(liftime, false, true)
+					{
+						DebugName = argument.Name,
+						Name = argument.Name
+					};
+
 					_vars.Add(argument.Name, variable);
 
 					var value = new ValueMeta()
@@ -170,6 +175,8 @@ namespace EvolZero.Core.Analysis.Semantic
 			}
 
 			_currentBlockNum--;
+
+			DestructLifetimes();
 			_currentBlocks.Pop();
 		}
 
@@ -399,7 +406,7 @@ namespace EvolZero.Core.Analysis.Semantic
 			else
 			{
 				meta = new VarMeta(structureGetting.VarData.Lifetime, false, expr.IsInitialized);
-				meta.Name = expr.Field.Name;
+				meta.DebugName = expr.Field.Name;
 			}
 
 			meta.SetParent(structureGetting.VarData);
@@ -504,8 +511,11 @@ namespace EvolZero.Core.Analysis.Semantic
 
 		protected override ValueMeta? CreateVar(VariableCreatingExpression expr)
 		{
-			var currentVar = new VarMeta(new Lifetime(_currentBlockNum), false, false);
-			currentVar.Name = expr.Name;
+			var currentVar = new VarMeta(new Lifetime(_currentBlockNum), false, false)
+			{
+				Name = expr.Name,
+				DebugName = expr.Name
+			};
 
 			_vars[expr.Name] = currentVar;
 
@@ -535,7 +545,7 @@ namespace EvolZero.Core.Analysis.Semantic
 
 						if (right == null || left == null) return null;
 
-						AssingHandler(left, right);
+						AssignHandler(left, right);
 
 						return left;
 					}
@@ -655,7 +665,7 @@ namespace EvolZero.Core.Analysis.Semantic
 			return returnedLifetime;
 		}
 
-		private void AssingHandler(ValueMeta target, ValueMeta value)
+		private void AssignHandler(ValueMeta target, ValueMeta value)
 		{
 			if (!target.Expr.ResultTypeSpec.IsRef || !value.Expr.ResultTypeSpec.IsRef) return;
 
@@ -789,7 +799,7 @@ namespace EvolZero.Core.Analysis.Semantic
 					throw new NotImplementedException(); // TODO: реализовать это
 
 				if (!value.IsAnonymous)
-					_lifetimesConsumer.GiveAwayOwnership(value.Expr, value.VarData);
+					_lifetimesConsumer.GiveAwayOwnership(value.Expr, value.VarData, value.VarData?.Lifetime == new Lifetime(_currentBlockNum));
 
 				DeinitializeGivenAwayPointer(value, argumentLifetime, true);
 			}
@@ -820,7 +830,7 @@ namespace EvolZero.Core.Analysis.Semantic
 		private void GiveAwayOwnership(ValueMeta target, ValueMeta value)
 		{
 			if (!value.IsAnonymous && !value.IsStrippedViaExchange)
-				_lifetimesConsumer.GiveAwayOwnership(value.Expr, value.VarData);
+				_lifetimesConsumer.GiveAwayOwnership(value.Expr, value.VarData, value.VarData?.Lifetime == new Lifetime(_currentBlockNum));
 
 			if (value.IsStrippedViaExchange)
 			{
@@ -861,10 +871,18 @@ namespace EvolZero.Core.Analysis.Semantic
 		{
 			var block = _currentBlocks.Peek();
 
-			foreach (var lifetime in block.Vars)
+			if (block.IsDestructed) return;
+			block.IsDestructed = true;
+
+			foreach (var variable in block.Vars)
 			{
-				if (excludedVar != null && lifetime.VarData == excludedVar) continue;
-				ToDestructPointer(lifetime, false);
+				if (excludedVar != null && variable.VarData == excludedVar) continue;
+				ToDestructPointer(variable, false);
+
+				if (variable.VarData?.Name != null)
+				{
+					_vars.Remove(variable.VarData.Name);
+				}
 			}
 		}
 

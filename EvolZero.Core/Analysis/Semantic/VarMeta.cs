@@ -2,7 +2,11 @@
 {
 	public class VarMeta(Lifetime lifetime, bool isDestructed, bool isInitialized, VarMeta? parent = null)
 	{
-		public string? Name { get; set; } // TODO: для дебага
+		/// <summary>
+		/// Если это локлаьна переменная то тут будет имя, если поле класса, this или какая-то другая хуйня то null
+		/// </summary>
+		public string? Name { get; set; }
+		public string? DebugName { get; set; } // TODO: для дебага
 		public Lifetime Lifetime { get; set; } = lifetime;
 		public bool IsDestructed { get; set; } = isDestructed;
 		public bool IsInitialized { get; set; } = isInitialized;
