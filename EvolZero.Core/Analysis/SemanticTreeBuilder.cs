@@ -510,8 +510,7 @@ namespace EvolZero.Core.Analysis
 
 			if (args == null)
 			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB",
-						$"Схуяли аргументы null?", CurrentPosition);
+				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", $"Схуяли аргументы null?", CurrentPosition);
 				return new StubForErrorExpression(CurrentPosition);
 			}
 

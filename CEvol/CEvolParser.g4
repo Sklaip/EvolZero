@@ -64,32 +64,32 @@ whileStatement : WHILE LPAREN expression RPAREN block ;
 
 // --- Выражения ---
 expression 
-    : MINUS? NUMBER                              # NumberExpr
-    | STRING                                     # StringExpr
-    | IDENTIFIER                                 # IdExpr
-    | LPAREN expression RPAREN                   # ParenExpr
+    : MINUS? NUMBER                                        # NumberExpr
+    | STRING                                               # StringExpr
+    | IDENTIFIER                                           # IdExpr
+    | LPAREN expression RPAREN                             # ParenExpr
 
-    | NEW typeSpec ( LPAREN args? RPAREN )?    # NewExpr
+    | NEW typeSpec ( LPAREN args? RPAREN )?                # NewExpr
 
-    | IDENTIFIER LPAREN args? RPAREN             # CallExpr
-    | expression LBRACK args RBRACK              # IndexExpr
-    | expression DOT IDENTIFIER ( LPAREN args? RPAREN )? # MemberAccess
+    | IDENTIFIER LPAREN args? RPAREN                       # CallExpr
+    | expression LBRACK args RBRACK                        # IndexExpr
+    | expression DOT IDENTIFIER ( LPAREN args? RPAREN )?   # MemberAccess
 
-    | LPAREN typeSpec RPAREN expression          # CastExpr
+    | LPAREN typeSpec RPAREN expression                    # CastExpr
 
-    | LOC expression                             # LocExpr
-    | qualifier expression                       # RefExpr
+    | LOC expression                                       # LocExpr
+    | qualifier expression                                 # RefExpr
 
-    | expression (MUL | DIV) expression          # MulDivExpr
-    | expression (PLUS | MINUS) expression       # AddSubExpr
-    | expression (LT | GT) expression            # LtGtExpr
-    | expression (EQ | NEQ) expression           # EqNeqExpr
-    | expression BIT_AND expression              # BitAndExpr
-    | expression BIT_XOR expression              # BitXorExpr
-    | expression BIT_OR expression               # BitOrExpr
-    | expression AND expression                  # LogicalAndExpr
-    | expression OR expression                   # LogicalOrExpr
-    | expression EXCHANGE expression             # ExchangeExpr
+    | expression (MUL | DIV) expression                    # MulDivExpr
+    | expression (PLUS | MINUS) expression                 # AddSubExpr
+    | expression (LT | GT) expression                      # LtGtExpr
+    | expression (EQ | NEQ) expression                     # EqNeqExpr
+    | expression BIT_AND expression                        # BitAndExpr
+    | expression BIT_XOR expression                        # BitXorExpr
+    | expression BIT_OR expression                         # BitOrExpr
+    | expression AND expression                            # LogicalAndExpr
+    | expression OR expression                             # LogicalOrExpr
+    | expression EXCHANGE expression                       # ExchangeExpr
     ;
 
 args : expression (COMMA expression)* ;
