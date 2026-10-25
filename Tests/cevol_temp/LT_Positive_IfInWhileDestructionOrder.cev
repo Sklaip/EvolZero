@@ -1,0 +1,111 @@
+namespace Program;
+
+extern infargs int printf(refb byte ptr);
+extern infargs int scanf(refb byte ptr);
+
+class CounterCore
+{
+	public int Seed;
+	public int Id;
+
+	public ctor(int seed, int id)
+	{
+		Seed = seed;
+		Id = id;
+	}
+
+	public void Next()
+	{
+		Seed = Seed + 1;
+	}
+
+	public dtor()
+	{
+		printf(refb "\n");
+		printf(refb "CounterCore destructor. Id: ");
+		printf(refb "%d\n", Id);
+		printf(refb "CounterCore destructor. Seed: ");
+		printf(refb "%d\n", Seed);
+		printf(refb "\n");
+	}
+}
+
+class Counter
+{
+	public int Count = 5;
+	public refb CounterCore Core;
+	public int Id;
+
+	public ctor(refb CounterCore core, int id) lifetimes(core ~ this)
+	{
+		refb Core = core;
+		Id = id;
+	}
+
+	public void Increase(int num)
+	{
+		Core.Next();
+		Count = Count + num * Core.Seed;
+	}
+
+	public dtor()
+	{
+		printf(refb "\n");
+		printf(refb "Counter destructor. Id: ");
+		printf(refb "%d\n", Id);
+		printf(refb "Counter destructor. Count: ");
+		printf(refb "%d\n", Count);
+		printf(refb "\n");
+	}
+}
+
+void Took(ref Counter obj)
+{
+
+}
+
+int main()
+{
+	int inputNum = 0;
+    scanf(refb "%d", loc inputNum);
+
+	ref CounterCore baseCounterCore = new CounterCore(inputNum + 5, 1);
+	ref Counter counter = new Counter(refb baseCounterCore, 1);
+	
+	int i = 0;
+	while (i < inputNum)
+	{
+		if (i > 3)
+		{
+			ref counter = new Counter(refb baseCounterCore, i);
+		} 
+		
+		if (i > 5)
+		{
+			baseCounterCore.Next();
+
+			ref CounterCore tempCounterCore = new CounterCore(0, i * 20);
+			ref Counter tempCounter = new Counter(refb tempCounterCore, i * 20);
+
+			Took(ref tempCounter);
+
+			baseCounterCore.Next();
+
+			printf(refb "tempCounter Seed: ");
+			printf(refb "%d\n", tempCounterCore.Seed);
+		}
+
+		counter.Increase(i);
+
+		printf(refb "Count: ");
+		printf(refb "%d\n", counter.Count);
+
+		i = i + 1;
+	}
+
+	printf(refb "EXIT Count: ");
+	printf(refb "%d\n", counter.Count);
+
+
+	return 0;
+}
