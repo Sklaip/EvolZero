@@ -50,11 +50,12 @@ public static class TestAssertions
 	/// </summary>
 	public static CompilationFailedException AssertCompilationFails(
 		CompilerRunner compiler,
+		string groupFolder,
 		string sourceFile,
 		params string[] expectedErrorCodes)
 	{
 		var ex = Assert.Throws<CompilationFailedException>(
-			() => compiler.Compile(new[] { sourceFile }));
+			() => compiler.Compile(groupFolder, new[] { sourceFile }));
 
 		Assert.False(File.Exists(ex.OutputPath), "При ошибке компиляции не должен создаваться exe.");
 

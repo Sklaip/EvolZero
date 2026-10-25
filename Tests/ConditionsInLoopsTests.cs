@@ -22,7 +22,7 @@ public sealed class ConditionsInLoopsTests : IDisposable
 	[InlineData(5, "10\n3\n2\n1\n2")]
 	public void ConditionsInLoops_EachInputCoversBranches(int input, string expectedOutput)
 	{
-		string exePath = _compiler.Compile(["ConditionsInLoops.cev"]);
+		string exePath = _compiler.Compile("ConditionsInLoops", ["ConditionsInLoops.cev"]);
 
 		string[] expectedLines = expectedOutput.Split('\n');
 

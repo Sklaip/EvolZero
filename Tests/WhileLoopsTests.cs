@@ -19,7 +19,7 @@ public sealed class WhileLoopsTests : IDisposable
 	[InlineData(4, "4\n10\n0\n4\n2")]
 	public void WhileLoops_EachInputCoversBranches(int input, string expectedOutput)
 	{
-		string exePath = _compiler.Compile(["WhileLoops.cev"]);
+		string exePath = _compiler.Compile("WhileLoops", ["WhileLoops.cev"]);
 
 		string[] expectedLines = expectedOutput.Split('\n');
 

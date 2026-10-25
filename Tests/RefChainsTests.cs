@@ -14,7 +14,7 @@ public sealed class RefChainsTests : IDisposable
 	[Fact]
 	public void RefChains_CompilesRunsAndPrintsExpectedOutput()
 	{
-		string exePath = _compiler.Compile(["RefChains.cev"]);
+		string exePath = _compiler.Compile("RefChains", ["RefChains.cev"]);
 
 		string[] expectedLines =
 		{

@@ -19,7 +19,7 @@ public sealed class ClassFieldInitializerTests : IDisposable
 	[Fact]
 	public void FieldInitializers_CompileRunsAndPrintExpectedOutput()
 	{
-		string exePath = _compiler.Compile(["ClassFieldInitializers.cev"]);
+		string exePath = _compiler.Compile("ClassFieldInitializer", ["ClassFieldInitializers.cev"]);
 
 		string[] expectedLines =
 		{
@@ -41,7 +41,7 @@ public sealed class ClassFieldInitializerTests : IDisposable
 	{
 		// ref-поле (владеющая ссылка) обязано быть инициализировано в конструкторе.
 		TestAssertions.AssertCompilationFails(
-			_compiler, "ClassFieldInit_MissingRefField.cev", "DOLBAEB");
+			_compiler, "ClassFieldInitializer", "ClassFieldInit_MissingRefField.cev", "DOLBAEB");
 	}
 
 	[Fact]
@@ -49,7 +49,7 @@ public sealed class ClassFieldInitializerTests : IDisposable
 	{
 		// refb-поле (заимствованная ссылка) тоже обязано быть инициализировано.
 		TestAssertions.AssertCompilationFails(
-			_compiler, "ClassFieldInit_MissingRefbField.cev", "DOLBAEB");
+			_compiler, "ClassFieldInitializer", "ClassFieldInit_MissingRefbField.cev", "DOLBAEB");
 	}
 
 	[Fact]
@@ -57,7 +57,7 @@ public sealed class ClassFieldInitializerTests : IDisposable
 	{
 		// Класс без явного конструктора: проверка идёт по синтезированному конструктору.
 		TestAssertions.AssertCompilationFails(
-			_compiler, "ClassFieldInit_MissingRefFieldImplicit.cev", "DOLBAEB");
+			_compiler, "ClassFieldInitializer", "ClassFieldInit_MissingRefFieldImplicit.cev", "DOLBAEB");
 	}
 
 	public void Dispose()

@@ -14,7 +14,7 @@ public sealed class RefReturnTests : IDisposable
 	[Fact]
 	public void ReturnedRef_IsNotDestructedBeforeReturn()
 	{
-		string exePath = _compiler.Compile(["ReturnRef.cev"]);
+		string exePath = _compiler.Compile("RefReturn", ["ReturnRef.cev"]);
 
 		string[] expectedLines =
 		{

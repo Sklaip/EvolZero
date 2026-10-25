@@ -27,7 +27,7 @@ public sealed class LoopsInConditionsTests : IDisposable
 	[InlineData(99, "990\n102\n10\n205")]
 	public void LoopsInConditions_EachInputCoversBranches(int input, string expectedOutput)
 	{
-		string exePath = _compiler.Compile(["LoopsInConditions.cev"]);
+		string exePath = _compiler.Compile("LoopsInConditions", ["LoopsInConditions.cev"]);
 
 		string[] expectedLines = expectedOutput.Split('\n');
 

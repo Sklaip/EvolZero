@@ -14,7 +14,7 @@ public sealed class RefEdgeCasesTests : IDisposable
 	[Fact]
 	public void RefEdgeCases_CompilesRunsAndPrintsExpectedOutput()
 	{
-		string exePath = _compiler.Compile(["RefEdgeCases.cev"]);
+		string exePath = _compiler.Compile("RefEdgeCases", ["RefEdgeCases.cev"]);
 
 		string[] expectedLines =
 		{

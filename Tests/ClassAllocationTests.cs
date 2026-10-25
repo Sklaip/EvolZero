@@ -14,7 +14,7 @@ public sealed class ClassAllocationTests : IDisposable
 	[Fact]
 	public void ClassAllocation_CompilesRunsAndPrintsExpectedOutput()
 	{
-		string exePath = _compiler.Compile(["ClassAllocation.cev"]);
+		string exePath = _compiler.Compile("ClassAllocation", ["ClassAllocation.cev"]);
 
 		string[] expectedLines =
 		{

@@ -14,7 +14,7 @@ public sealed class ExchangeTests : IDisposable
 	[Fact]
 	public void Exchange_CompilesRunsAndPrintsExpectedOutput()
 	{
-		string exePath = _compiler.Compile(["Exchange.cev"]);
+		string exePath = _compiler.Compile("Exchange", ["Exchange.cev"]);
 
 		string[] expectedLines =
 		{

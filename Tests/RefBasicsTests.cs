@@ -15,7 +15,7 @@ public sealed class RefBasicsTests : IDisposable
 	[Fact]
 	public void RefBasics_CompilesRunsAndPrintsExpectedOutput()
 	{
-		string exePath = _compiler.Compile(["RefBasics.cev"]);
+		string exePath = _compiler.Compile("RefBasics", ["RefBasics.cev"]);
 
 		string[] expectedLines =
 		{

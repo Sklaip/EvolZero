@@ -31,7 +31,7 @@ public sealed class NestedConditionsTests : IDisposable
 	[InlineData(7, "100\n202\n300\n402\n501\n603")]
 	public void NestedConditions_EachInputCoversBranches(int input, string expectedOutput)
 	{
-		string exePath = _compiler.Compile(["NestedConditions.cev"]);
+		string exePath = _compiler.Compile("NestedConditions", ["NestedConditions.cev"]);
 
 		string[] expectedLines = expectedOutput.Split('\n');
 

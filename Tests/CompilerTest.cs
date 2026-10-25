@@ -23,7 +23,7 @@ public sealed class CompilerTest : IDisposable
 	[Fact]
 	public void Program_CompilesRunsWritesFile_AndPrintsExpectedOutput()
 	{
-		string exePath = _compiler.Compile(["Program.cev", "File.cev", "String.cev"]);
+		string exePath = _compiler.Compile("Compiler", ["Program.cev", "File.cev", "String.cev"]);
 
 		// Программа читает строку со стандартного ввода (scanf), выводит её в консоль
 		// и пишет её в файл popa.txt (относительный путь -> нужна рабочая папка).
@@ -58,7 +58,7 @@ public sealed class CompilerTest : IDisposable
 	[Fact]
 	public void Test2_CompilesRuns_AndWritesExpectedFile()
 	{
-		string exePath = _compiler.Compile(["test2.cev", "String.cev", "File.cev"]);
+		string exePath = _compiler.Compile("Compiler", ["test2.cev", "String.cev", "File.cev"]);
 
 		var result = ExecutableRunner.Run(exePath, workingDirectory: _compiler.WorkDir);
 
@@ -77,7 +77,7 @@ public sealed class CompilerTest : IDisposable
 	[Fact]
 	public void Arithmetic_IntegerOperations_ReturnZero_Runs()
 	{
-		string exePath = _compiler.Compile(["Arithmetic.cev"]);
+		string exePath = _compiler.Compile("Compiler", ["Arithmetic.cev"]);
 
 		var result = ExecutableRunner.Run(exePath, workingDirectory: _compiler.WorkDir);
 
@@ -88,7 +88,7 @@ public sealed class CompilerTest : IDisposable
 	[Fact]
 	public void ReturnValue_TreatedAsProcessExitCode()
 	{
-		string exePath = _compiler.Compile(["ReturnValue.cev"]);
+		string exePath = _compiler.Compile("Compiler", ["ReturnValue.cev"]);
 
 		var result = ExecutableRunner.Run(exePath, workingDirectory: _compiler.WorkDir);
 
@@ -102,7 +102,7 @@ public sealed class CompilerTest : IDisposable
 	{
 		// Broken.cev ссылается на неопределённую переменную -> ошибка компиляции,
 		// исполняемый файл не должен создаваться.
-		var ex = Assert.Throws<CompilationFailedException>(() => _compiler.Compile(["Broken.cev"]));
+		var ex = Assert.Throws<CompilationFailedException>(() => _compiler.Compile("Compiler", ["Broken.cev"]));
 
 		Assert.False(File.Exists(ex.OutputPath), "При ошибке компиляции не должен создаваться exe.");
 	}
@@ -110,7 +110,7 @@ public sealed class CompilerTest : IDisposable
 	[Fact]
 	public void BaseMemoryTests_CompilesRunsAndPrintsExpectedOutput()
 	{
-		string exePath = _compiler.Compile(["BaseMemoryTests.cev"]);
+		string exePath = _compiler.Compile("Compiler", ["BaseMemoryTests.cev"]);
 
 		var result = ExecutableRunner.Run(exePath, workingDirectory: _compiler.WorkDir);
 
@@ -147,7 +147,7 @@ public sealed class CompilerTest : IDisposable
 	[InlineData(20, "21\n30\n26\n28\n29\n30\n31\n32\n60")]
 	public void BaseArraysTest_PrintsExpectedOutput(int input, string expectedOutput)
 	{
-		string exePath = _compiler.Compile(["BaseArraysTest.cev"]);
+		string exePath = _compiler.Compile("Compiler", ["BaseArraysTest.cev"]);
 
 		// Программа читает одно целое число со стандартного ввода (scanf "%d"),
 		// заполняет двумерный массив arr[i][j] = num + i + j и выводит выбранные ячейки.
@@ -169,115 +169,6 @@ public sealed class CompilerTest : IDisposable
 		Assert.Equal(expectedLines, actualLines);
 	}
 
-	[Theory]
-	[InlineData(-1,
-		"EXIT Count: 5\n" +
-		"CounterCore destructor. Id: 1\n" +
-		"CounterCore destructor. Seed: 4\n" +
-		"Counter destructor. Id: 1\n" +
-		"Counter destructor. Count: 5")]
-	[InlineData(3,
-		"Count: 5\n" +
-		"Count: 15\n" +
-		"Count: 37\n" +
-		"EXIT Count: 37\n" +
-		"CounterCore destructor. Id: 1\n" +
-		"CounterCore destructor. Seed: 11\n" +
-		"Counter destructor. Id: 1\n" +
-		"Counter destructor. Count: 37")]
-	[InlineData(7,
-		"Count: 5\n" +
-		"Count: 19\n" +
-		"Count: 49\n" +
-		"Count: 97\n" +
-		"Counter destructor. Id: 1\n" +
-		"Counter destructor. Count: 97\n" +
-		"Count: 73\n" +
-		"Counter destructor. Id: 4\n" +
-		"Counter destructor. Count: 73\n" +
-		"Count: 95\n" +
-		"Counter destructor. Id: 5\n" +
-		"Counter destructor. Count: 95\n" +
-		"Counter destructor. Id: 120\n" +
-		"Counter destructor. Count: 5\n" +
-		"tempCounter Seed: 0\n" +
-		"CounterCore destructor. Id: 120\n" +
-		"CounterCore destructor. Seed: 0\n" +
-		"Count: 131\n" +
-		"EXIT Count: 131\n" +
-		"CounterCore destructor. Id: 1\n" +
-		"CounterCore destructor. Seed: 21\n" +
-		"Counter destructor. Id: 6\n" +
-		"Counter destructor. Count: 131")]
-	[InlineData(10,
-		"Count: 5\n" +
-		"Count: 22\n" +
-		"Count: 58\n" +
-		"Count: 115\n" +
-		"Counter destructor. Id: 1\n" +
-		"Counter destructor. Count: 115\n" +
-		"Count: 85\n" +
-		"Counter destructor. Id: 4\n" +
-		"Counter destructor. Count: 85\n" +
-		"Count: 110\n" +
-		"Counter destructor. Id: 5\n" +
-		"Counter destructor. Count: 110\n" +
-		"Counter destructor. Id: 120\n" +
-		"Counter destructor. Count: 5\n" +
-		"tempCounter Seed: 0\n" +
-		"CounterCore destructor. Id: 120\n" +
-		"CounterCore destructor. Seed: 0\n" +
-		"Count: 149\n" +
-		"Counter destructor. Id: 6\n" +
-		"Counter destructor. Count: 149\n" +
-		"Counter destructor. Id: 140\n" +
-		"Counter destructor. Count: 5\n" +
-		"tempCounter Seed: 0\n" +
-		"CounterCore destructor. Id: 140\n" +
-		"CounterCore destructor. Seed: 0\n" +
-		"Count: 194\n" +
-		"Counter destructor. Id: 7\n" +
-		"Counter destructor. Count: 194\n" +
-		"Counter destructor. Id: 160\n" +
-		"Counter destructor. Count: 5\n" +
-		"tempCounter Seed: 0\n" +
-		"CounterCore destructor. Id: 160\n" +
-		"CounterCore destructor. Seed: 0\n" +
-		"Count: 245\n" +
-		"Counter destructor. Id: 8\n" +
-		"Counter destructor. Count: 245\n" +
-		"Counter destructor. Id: 180\n" +
-		"Counter destructor. Count: 5\n" +
-		"tempCounter Seed: 0\n" +
-		"CounterCore destructor. Id: 180\n" +
-		"CounterCore destructor. Seed: 0\n" +
-		"Count: 302\n" +
-		"EXIT Count: 302\n" +
-		"CounterCore destructor. Id: 1\n" +
-		"CounterCore destructor. Seed: 33\n" +
-		"Counter destructor. Id: 9\n" +
-		"Counter destructor. Count: 302")]
-	public void LT_Positive_IfInWhileDestructionOrder(int input, string expectedOutput)
-	{
-		string exePath = _compiler.Compile(["LT_Positive_IfInWhileDestructionOrder.cev"]);
-
-		var result = ExecutableRunner.Run(
-			exePath,
-			workingDirectory: _compiler.WorkDir,
-			standardInput: input + "\n");
-
-		Assert.False(result.TimedOut, "Программа превысила таймаут.");
-		Assert.Equal(0, result.ExitCode);
-
-		var actualLines = result.StandardOutput
-			.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries)
-			.ToArray();
-		var expectedLines = expectedOutput
-			.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries)
-			.ToArray();
-
-		Assert.Equal(expectedLines, actualLines);
-	}
 
 	public void Dispose()
 	{

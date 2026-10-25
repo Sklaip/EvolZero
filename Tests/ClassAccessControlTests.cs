@@ -17,7 +17,7 @@ public sealed class ClassAccessControlTests : IDisposable
 	{
 		// ACC001: private-поле доступно только внутри своего класса.
 		var ex = Assert.Throws<CompilationFailedException>(
-			() => _compiler.Compile(["ClassAccessControl_Acc001_PrivateField.cev"]));
+			() => _compiler.Compile("ClassAccessControl", ["ClassAccessControl_Acc001_PrivateField.cev"]));
 
 		Assert.False(File.Exists(ex.OutputPath), "При ошибке компиляции не должен создаваться exe.");
 	}
@@ -27,7 +27,7 @@ public sealed class ClassAccessControlTests : IDisposable
 	{
 		// ACC002: private-метод доступен только внутри своего класса.
 		var ex = Assert.Throws<CompilationFailedException>(
-			() => _compiler.Compile(["ClassAccessControl_Acc002_PrivateMethod.cev"]));
+			() => _compiler.Compile("ClassAccessControl", ["ClassAccessControl_Acc002_PrivateMethod.cev"]));
 
 		Assert.False(File.Exists(ex.OutputPath), "При ошибке компиляции не должен создаваться exe.");
 	}
@@ -37,7 +37,7 @@ public sealed class ClassAccessControlTests : IDisposable
 	{
 		// ACC003: private-конструктор нельзя вызывать извне класса.
 		var ex = Assert.Throws<CompilationFailedException>(
-			() => _compiler.Compile(["ClassAccessControl_Acc003_PrivateCtor.cev"]));
+			() => _compiler.Compile("ClassAccessControl", ["ClassAccessControl_Acc003_PrivateCtor.cev"]));
 
 		Assert.False(File.Exists(ex.OutputPath), "При ошибке компиляции не должен создаваться exe.");
 	}
@@ -47,7 +47,7 @@ public sealed class ClassAccessControlTests : IDisposable
 	{
 		// Контрольный тест: public-поле/метод доступны извне, private-члены
 		// доступны внутри класса. Программа должна компилироваться и работать.
-		string exePath = _compiler.Compile(["ClassAccess.cev"]);
+		string exePath = _compiler.Compile("ClassAccessControl", ["ClassAccess.cev"]);
 
 		string[] expectedLines =
 		{

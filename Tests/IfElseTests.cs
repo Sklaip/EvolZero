@@ -22,7 +22,7 @@ public sealed class IfElseTests : IDisposable
 	[InlineData(3, "0\n2\n40")]
 	public void IfElse_EachInputCoversBranches(int input, string expectedOutput)
 	{
-		string exePath = _compiler.Compile(["IfElse.cev"]);
+		string exePath = _compiler.Compile("IfElse", ["IfElse.cev"]);
 
 		string[] expectedLines = expectedOutput.Split('\n');
 

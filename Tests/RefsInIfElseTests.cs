@@ -16,7 +16,7 @@ public sealed class RefsInIfElseTests : IDisposable
 	public void RefDestructedInIf_IsUsableInElseBranch()
 	{
 		// cond==true: берётся ветка if, a забирает объект b; c не тронут.
-		string exePath = _compiler.Compile(["RefsInIfElse.cev"]);
+		string exePath = _compiler.Compile("RefsInIfElse", ["RefsInIfElse.cev"]);
 
 		string[] expectedLines =
 		{
@@ -32,7 +32,7 @@ public sealed class RefsInIfElseTests : IDisposable
 	{
 		// Использование b после if/else невозможна в любой ветке -> ошибка компиляции.
 		var ex = Assert.Throws<CompilationFailedException>(
-			() => _compiler.Compile(["RefsInIfElse_UseAfterIf.cev"]));
+			() => _compiler.Compile("RefsInIfElse", ["RefsInIfElse_UseAfterIf.cev"]));
 
 		Assert.False(File.Exists(ex.OutputPath), "При ошибке компиляции не должен создаваться exe.");
 	}

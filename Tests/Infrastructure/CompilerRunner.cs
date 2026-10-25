@@ -16,7 +16,7 @@ public sealed class CompilerRunner : IDisposable
 	/// <summary>Рабочая папка, в которую кладутся объектный файл и исполняемый файл.</summary>
 	public string WorkDir => _workDir;
 
-	/// <summary>Папка с исходными .cev файлами (копия cvol_temp из вывода сборки).</summary>
+	/// <summary>Папка с исходными .cev файлами (копия CevolSources из вывода сборки).</summary>
 	public string SourceDir => _sourceDir;
 
 	public CompilerRunner(string? workDir = null)
@@ -24,7 +24,7 @@ public sealed class CompilerRunner : IDisposable
 		_workDir = workDir ?? Path.Combine(Path.GetTempPath(), "cevol_tests", Guid.NewGuid().ToString("N"));
 		Directory.CreateDirectory(_workDir);
 
-		_sourceDir = Path.Combine(AppContext.BaseDirectory, "cevol_temp");
+		_sourceDir = Path.Combine(AppContext.BaseDirectory, "CevolSources");
 		if (!Directory.Exists(_sourceDir))
 		{
 			_sourceDir = FindProjectSourceDir();
@@ -33,10 +33,10 @@ public sealed class CompilerRunner : IDisposable
 		_originalWorkingDirectory = Directory.GetCurrentDirectory();
 	}
 
-	/// <summary>Полный путь к исходному файлу по имени (например "Program.cev").</summary>
-	public string PathToSource(string sourceFileName)
+	/// <summary>Полный путь к исходному файлу по имени в указанной группе (например "Program.cev").</summary>
+	public string PathToSource(string sourceFileName, string groupFolder)
 	{
-		var path = Path.Combine(_sourceDir, sourceFileName);
+		var path = Path.Combine(_sourceDir, groupFolder, sourceFileName);
 		if (!File.Exists(path))
 		{
 			throw new FileNotFoundException($"Исходный файл CEvol не найден: {path}", path);
@@ -46,13 +46,11 @@ public sealed class CompilerRunner : IDisposable
 	}
 
 	/// <summary>
-	/// Компилирует переданные исходные файлы в исполняемый файл внутри рабочей папки.
-	/// Возвращает полный путь к собранному исполняемому файлу.
-	/// Бросает <see cref="CompilationFailedException"/>, если компиляция не дала исполняемый файл.
+	/// Компилирует переданные исходные файлы из указанной группы в исполняемый файл внутри рабочей папки.
 	/// </summary>
-	public string Compile(IEnumerable<string> sourceFileNames, string exeName = "program")
+	public string Compile(string groupFolder, IEnumerable<string> sourceFileNames, string exeName = "program")
 	{
-		var sourcePaths = sourceFileNames.Select(PathToSource).ToList();
+		var sourcePaths = sourceFileNames.Select(f => PathToSource(f, groupFolder)).ToList();
 		var exePath = Path.Combine(_workDir, exeName + TestEnvironment.ExecutableExtension);
 
 		string compileOutput = RunCompiler(sourcePaths, exePath);
@@ -100,7 +98,7 @@ public sealed class CompilerRunner : IDisposable
 		var dir = new DirectoryInfo(AppContext.BaseDirectory);
 		while (dir != null)
 		{
-			var candidate = Path.Combine(dir.FullName, "cevol_temp");
+			var candidate = Path.Combine(dir.FullName, "CevolSources");
 			if (Directory.Exists(candidate))
 			{
 				return candidate;
@@ -110,7 +108,7 @@ public sealed class CompilerRunner : IDisposable
 		}
 
 		throw new DirectoryNotFoundException(
-			"Не удалось найти папку cevol_temp с исходными файлами для тестов.");
+			"Не удалось найти папку CevolSources с исходными файлами для тестов.");
 	}
 
 	public void Dispose()

@@ -14,7 +14,7 @@ public sealed class ClassFieldsTests : IDisposable
 	[Fact]
 	public void ClassFields_CompilesRunsAndPrintsExpectedOutput()
 	{
-		string exePath = _compiler.Compile(["ClassFields.cev"]);
+		string exePath = _compiler.Compile("ClassFields", ["ClassFields.cev"]);
 
 		string[] expectedLines =
 		{

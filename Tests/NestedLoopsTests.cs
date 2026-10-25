@@ -20,7 +20,7 @@ public sealed class NestedLoopsTests : IDisposable
 	[InlineData(3, "36\n9\n27\n10\n6")]
 	public void NestedLoops_EachInputCoversBranches(int input, string expectedOutput)
 	{
-		string exePath = _compiler.Compile(["NestedLoops.cev"]);
+		string exePath = _compiler.Compile("NestedLoops", ["NestedLoops.cev"]);
 
 		string[] expectedLines = expectedOutput.Split('\n');
 

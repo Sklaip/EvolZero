@@ -20,7 +20,7 @@ public sealed class LifetimeAnalyzerPositiveTests : IDisposable
 		// Правила 3, 5: владеющая ref отдаётся как refb через loc (промоушен ref -> refb
 		// в компиляторе не реализован) без деинициализации; loc возвращает refb
 		// с временем жизни объекта.
-		string exePath = _compiler.Compile(["LT_Positive_RefIntoBorrow.cev"]);
+		string exePath = _compiler.Compile("LifetimeAnalyzerPositive", ["LT_Positive_RefIntoBorrow.cev"]);
 
 		TestAssertions.AssertOutputLines(exePath, _compiler.WorkDir, new[]
 		{
@@ -34,7 +34,7 @@ public sealed class LifetimeAnalyzerPositiveTests : IDisposable
 	public void OwnershipTransferNoReuse_PrintsValueInsideFunction()
 	{
 		// Правило 5: владение передано функции, исходная переменная больше не используется.
-		string exePath = _compiler.Compile(["LT_Positive_OwnershipTransferNoReuse.cev"]);
+		string exePath = _compiler.Compile("LifetimeAnalyzerPositive", ["LT_Positive_OwnershipTransferNoReuse.cev"]);
 
 		TestAssertions.AssertOutputLines(exePath, _compiler.WorkDir, new[] { "7" });
 	}
@@ -45,7 +45,7 @@ public sealed class LifetimeAnalyzerPositiveTests : IDisposable
 		// Правило 4: лайфтайм поля равен лайфтайму объекта. Поле инициализируется в
 		// конструкторе (внешнее присваивание полю трактуется как переназначение — LT008);
 		// объект переживает перенос владения и доступен через поле.
-		string exePath = _compiler.Compile(["LT_Positive_FieldSameLifetime.cev"]);
+		string exePath = _compiler.Compile("LifetimeAnalyzerPositive", ["LT_Positive_FieldSameLifetime.cev"]);
 
 		TestAssertions.AssertOutputLines(exePath, _compiler.WorkDir, new[] { "5" });
 	}
@@ -57,7 +57,7 @@ public sealed class LifetimeAnalyzerPositiveTests : IDisposable
 		// refb на долгоживущую переменную переживает блок (x == 11 после блока);
 		// освобождённый в блоке объект не должен затирать последующие аллокации
 		// (heap-reuse проверяет, что tmp удалён вовремя).
-		string exePath = _compiler.Compile(["LT_Positive_LifetimeScopes.cev"]);
+		string exePath = _compiler.Compile("LifetimeAnalyzerPositive", ["LT_Positive_LifetimeScopes.cev"]);
 
 		TestAssertions.AssertOutputLines(exePath, _compiler.WorkDir, new[]
 		{
@@ -72,7 +72,7 @@ public sealed class LifetimeAnalyzerPositiveTests : IDisposable
 	{
 		// Снятие владеющей ссылки с поля только через '<-': старый объект переезжает
 		// в r, поле получает новый. Ни один объект не должен быть удалён раньше времени.
-		string exePath = _compiler.Compile(["LT_Positive_StripFieldViaExchange.cev"]);
+		string exePath = _compiler.Compile("LifetimeAnalyzerPositive", ["LT_Positive_StripFieldViaExchange.cev"]);
 
 		TestAssertions.AssertOutputLines(exePath, _compiler.WorkDir, new[]
 		{
@@ -142,7 +142,7 @@ public sealed class LifetimeAnalyzerPositiveTests : IDisposable
 		// приводит к вставке деинициализации в остальные ветки. Тест проверяет точный порядок
 		// вызова деструкторов по каждой ветке.
 		// Пустые строки (printf("\n") в начале/в конце dtor) NormalizeLines отбрасывает.
-		string exePath = _compiler.Compile(["LT_Positive_IfElseDestructionOrder.cev"]);
+		string exePath = _compiler.Compile("LifetimeAnalyzerPositive", ["LT_Positive_IfElseDestructionOrder.cev"]);
 
 		var result = ExecutableRunner.Run(
 			exePath,
@@ -163,7 +163,7 @@ public sealed class LifetimeAnalyzerPositiveTests : IDisposable
 		// Автогенерация 'data ~ this' для конструктора без секции lifetimes (правило для
 		// ctor) и явная связь 'data ~ this': владелец/заимствование из внешнего блока
 		// может лечь в поле this; алиас-поле пишет обратно в исходный объект.
-		string exePath = _compiler.Compile(["LT_Positive_LifetimesOwnerArgInCtor.cev"]);
+		string exePath = _compiler.Compile("LifetimeAnalyzerPositive", ["LT_Positive_LifetimesOwnerArgInCtor.cev"]);
 
 		TestAssertions.AssertOutputLines(exePath, _compiler.WorkDir, new[]
 		{
@@ -179,7 +179,7 @@ public sealed class LifetimeAnalyzerPositiveTests : IDisposable
 		// Связь 'b ~ this' приравнивает лайфтайм refb-параметра к this, иначе
 		// refb-аргумент жил бы «бесконечно долго» и поле его принять не могло (LT002).
 		// Поле — алиас источника, деструктор источника срабатывает в конце main.
-		string exePath = _compiler.Compile(["LT_Positive_LifetimesBorrowArgThisInField.cev"]);
+		string exePath = _compiler.Compile("LifetimeAnalyzerPositive", ["LT_Positive_LifetimesBorrowArgThisInField.cev"]);
 
 		TestAssertions.AssertOutputLines(exePath, _compiler.WorkDir, new[]
 		{
@@ -195,7 +195,7 @@ public sealed class LifetimeAnalyzerPositiveTests : IDisposable
 	{
 		// Связь 'return ~ this' приравнивает лайфтайм возвращаемого значения к this:
 		// refb-поле можно вернуть (правило 7.6), результат — алиас поля.
-		string exePath = _compiler.Compile(["LT_Positive_LifetimesReturnThisField.cev"]);
+		string exePath = _compiler.Compile("LifetimeAnalyzerPositive", ["LT_Positive_LifetimesReturnThisField.cev"]);
 
 		TestAssertions.AssertOutputLines(exePath, _compiler.WorkDir, new[]
 		{
@@ -209,7 +209,7 @@ public sealed class LifetimeAnalyzerPositiveTests : IDisposable
 	{
 		// Связь 'source ~ return' (правило 7.5) разрешает возвращать заимствованную
 		// ссылку: лайфтайм источника приравнен к лайфтайму возвращаемого значения.
-		string exePath = _compiler.Compile(["LT_Positive_LifetimesReturnArgSameScope.cev"]);
+		string exePath = _compiler.Compile("LifetimeAnalyzerPositive", ["LT_Positive_LifetimesReturnArgSameScope.cev"]);
 
 		TestAssertions.AssertOutputLines(exePath, _compiler.WorkDir, new[]
 		{
@@ -224,7 +224,7 @@ public sealed class LifetimeAnalyzerPositiveTests : IDisposable
 		// 'structureOne ~ return' приравнивает лайфтайм refb-аргумента к return:
 		// аргумент можно положить в refb-поле возвращаемого объекта (алиас-цепочка
 		// поля не короче лайфтайма возвращаемого значения, LT013 не срабатывает).
-		string exePath = _compiler.Compile(["LT_Positive_LifetimesReturnArgWithBorrowFieldAlias.cev"]);
+		string exePath = _compiler.Compile("LifetimeAnalyzerPositive", ["LT_Positive_LifetimesReturnArgWithBorrowFieldAlias.cev"]);
 
 		TestAssertions.AssertOutputLines(exePath, _compiler.WorkDir, new[]
 		{
@@ -238,13 +238,123 @@ public sealed class LifetimeAnalyzerPositiveTests : IDisposable
 	{
 		// Несколько связей в одной секции: 'b ~ this' класть в поле, 'a ~ return'
 		// возвращать как refb — оба аргумента проходят свои проверки независимо.
-		string exePath = _compiler.Compile(["LT_Positive_LifetimesMultiLinks.cev"]);
+		string exePath = _compiler.Compile("LifetimeAnalyzerPositive", ["LT_Positive_LifetimesMultiLinks.cev"]);
 
 		TestAssertions.AssertOutputLines(exePath, _compiler.WorkDir, new[]
 		{
 			"1", // box.Pinned.Num — алиас one ('b ~ this')
 			"2", // returned.Num — алиас two ('a ~ return')
 		});
+	}
+
+	[Theory]
+	[InlineData(-1,
+		"EXIT Count: 5\n" +
+		"CounterCore destructor. Id: 1\n" +
+		"CounterCore destructor. Seed: 4\n" +
+		"Counter destructor. Id: 1\n" +
+		"Counter destructor. Count: 5")]
+	[InlineData(3,
+		"Count: 5\n" +
+		"Count: 15\n" +
+		"Count: 37\n" +
+		"EXIT Count: 37\n" +
+		"CounterCore destructor. Id: 1\n" +
+		"CounterCore destructor. Seed: 11\n" +
+		"Counter destructor. Id: 1\n" +
+		"Counter destructor. Count: 37")]
+	[InlineData(7,
+		"Count: 5\n" +
+		"Count: 19\n" +
+		"Count: 49\n" +
+		"Count: 97\n" +
+		"Counter destructor. Id: 1\n" +
+		"Counter destructor. Count: 97\n" +
+		"Count: 73\n" +
+		"Counter destructor. Id: 4\n" +
+		"Counter destructor. Count: 73\n" +
+		"Count: 95\n" +
+		"Counter destructor. Id: 5\n" +
+		"Counter destructor. Count: 95\n" +
+		"Counter destructor. Id: 120\n" +
+		"Counter destructor. Count: 5\n" +
+		"tempCounter Seed: 0\n" +
+		"CounterCore destructor. Id: 120\n" +
+		"CounterCore destructor. Seed: 0\n" +
+		"Count: 131\n" +
+		"EXIT Count: 131\n" +
+		"CounterCore destructor. Id: 1\n" +
+		"CounterCore destructor. Seed: 21\n" +
+		"Counter destructor. Id: 6\n" +
+		"Counter destructor. Count: 131")]
+	[InlineData(10,
+		"Count: 5\n" +
+		"Count: 22\n" +
+		"Count: 58\n" +
+		"Count: 115\n" +
+		"Counter destructor. Id: 1\n" +
+		"Counter destructor. Count: 115\n" +
+		"Count: 85\n" +
+		"Counter destructor. Id: 4\n" +
+		"Counter destructor. Count: 85\n" +
+		"Count: 110\n" +
+		"Counter destructor. Id: 5\n" +
+		"Counter destructor. Count: 110\n" +
+		"Counter destructor. Id: 120\n" +
+		"Counter destructor. Count: 5\n" +
+		"tempCounter Seed: 0\n" +
+		"CounterCore destructor. Id: 120\n" +
+		"CounterCore destructor. Seed: 0\n" +
+		"Count: 149\n" +
+		"Counter destructor. Id: 6\n" +
+		"Counter destructor. Count: 149\n" +
+		"Counter destructor. Id: 140\n" +
+		"Counter destructor. Count: 5\n" +
+		"tempCounter Seed: 0\n" +
+		"CounterCore destructor. Id: 140\n" +
+		"CounterCore destructor. Seed: 0\n" +
+		"Count: 194\n" +
+		"Counter destructor. Id: 7\n" +
+		"Counter destructor. Count: 194\n" +
+		"Counter destructor. Id: 160\n" +
+		"Counter destructor. Count: 5\n" +
+		"tempCounter Seed: 0\n" +
+		"CounterCore destructor. Id: 160\n" +
+		"CounterCore destructor. Seed: 0\n" +
+		"Count: 245\n" +
+		"Counter destructor. Id: 8\n" +
+		"Counter destructor. Count: 245\n" +
+		"Counter destructor. Id: 180\n" +
+		"Counter destructor. Count: 5\n" +
+		"tempCounter Seed: 0\n" +
+		"CounterCore destructor. Id: 180\n" +
+		"CounterCore destructor. Seed: 0\n" +
+		"Count: 302\n" +
+		"EXIT Count: 302\n" +
+		"CounterCore destructor. Id: 1\n" +
+		"CounterCore destructor. Seed: 33\n" +
+		"Counter destructor. Id: 9\n" +
+		"Counter destructor. Count: 302")]
+	public void LT_Positive_IfInWhileDestructionOrder(int input, string expectedOutput)
+	{
+		string exePath = _compiler.Compile("LifetimeAnalyzerPositive", ["LT_Positive_IfInWhileDestructionOrder.cev"]);
+
+		var result = ExecutableRunner.Run(
+			exePath,
+			workingDirectory: _compiler.WorkDir,
+			standardInput: input + "\n");
+
+		Assert.False(result.TimedOut, "Программа превысила таймаут.");
+		Assert.Equal(0, result.ExitCode);
+
+		var actualLines = result.StandardOutput
+			.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries)
+			.ToArray();
+		var expectedLines = expectedOutput
+			.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries)
+			.ToArray();
+
+		Assert.Equal(expectedLines, actualLines);
 	}
 
 	public void Dispose()
