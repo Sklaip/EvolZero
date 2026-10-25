@@ -281,7 +281,7 @@ namespace EvolZero.Parsing
 			var leftExpression = Visit(expressions[0]);
 			var rightExpression = Visit(expressions[1]);
 
-			var qualiffer = ParseQualifier(context.qualifier());
+			var qualiffer = ParsingCommon.ParseQualifier(context.qualifier());
 
 			if (leftExpression == null || rightExpression == null) throw new NotImplementedException();
 
@@ -471,27 +471,7 @@ namespace EvolZero.Parsing
 			if (string.IsNullOrEmpty(typeName))
 				throw new NotImplementedException();
 
-			var qualifiers = new List<QualifierWorkpiece>();
-			int i = 0;
-			foreach (var qualifier in context.qualifier())
-			{
-				qualifiers.Add(ParseQualifier(qualifier)!);
-				if (qualifiers[i].Kind == "array")
-				{
-					if (i == 0) throw new NotImplementedException(); // TODO: тут формировать ошибку что кваллификатор массива не может быть самостоятельным
-
-					var temp = qualifiers[i - 1];
-					qualifiers[i - 1] = qualifiers[i];
-					qualifiers[i] = temp;
-				}
-
-				i++;
-			}
-
-			foreach (var arr in context.arraySpec())
-			{
-				qualifiers.Add(ParseArraySpec(arr));
-			}
+			var qualifiers = ParsingCommon.ParseQualifiers(context);
 
 			var typeDesc = _membersFinder.TryFindType(typeName);
 			if (typeDesc == null)
@@ -501,30 +481,6 @@ namespace EvolZero.Parsing
 			}
 
 			return new TypeSpec(typeDesc, QualifierWorkpiece.ToQualifiers(qualifiers));
-		}
-
-		public QualifierWorkpiece? ParseQualifier(QualifierContext? context)
-		{
-			if (context == null) return null;
-
-			var arr = context.arraySpec();
-			if (arr == null)
-				return new QualifierWorkpiece(context.GetText());
-
-			return ParseArraySpec(arr);
-		}
-
-		public QualifierWorkpiece ParseArraySpec([NotNull] CEvolParser.ArraySpecContext context)
-		{
-			var expr = context.expression();
-			var numExpr = expr as CEvolParser.NumberExprContext;
-
-			if (numExpr == null) throw new NotImplementedException();
-
-			var value = numExpr.NUMBER().GetText();
-			var num = ulong.Parse(value);
-
-			return new QualifierWorkpiece("array", num);
 		}
 
 		public override Expression? VisitNumberExpr([NotNull] CEvolParser.NumberExprContext context)

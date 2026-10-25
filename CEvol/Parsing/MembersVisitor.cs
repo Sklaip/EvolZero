@@ -86,7 +86,7 @@ namespace EvolZero.Parsing
 
 			var fieldSpec = ParseTypeSpec(context.typeSpec());
 
-			AccessModifier access = ParseAccessModifier(context.accessModifier(), isClassMember: true);
+			AccessModifier access = ParsingCommon.ParseAccessModifier(context.accessModifier(), isClassMember: true);
 
 			var desc = new VariableSignature(fieldName, fieldSpec, access);
 			_currentClassVariables.Add(fieldName, desc);
@@ -111,7 +111,7 @@ namespace EvolZero.Parsing
 
 			var funcsList = _currentClassFunctions ?? SingleFunctions;
 
-			AccessModifier access = ParseAccessModifier(context.accessModifier(), _currentClassFunctions != null);
+			AccessModifier access = ParsingCommon.ParseAccessModifier(context.accessModifier(), _currentClassFunctions != null);
 
 			if (!funcsList.TryGetValue(funcName, out List<FuncSignature>? functions))
 			{
@@ -147,7 +147,7 @@ namespace EvolZero.Parsing
 
 			var funcsList = _currentClassFunctions ?? SingleFunctions;
 
-			AccessModifier access = ParseAccessModifier(context.accessModifier(), _currentClassFunctions != null);
+			AccessModifier access = ParsingCommon.ParseAccessModifier(context.accessModifier(), _currentClassFunctions != null);
 
 			if (!funcsList.TryGetValue(funcName, out List<FuncSignature>? functions))
 			{
@@ -173,7 +173,7 @@ namespace EvolZero.Parsing
 
 			if (_currentClassConstructors == null) throw new NotImplementedException();
 
-			AccessModifier access = ParseAccessModifier(context.accessModifier(), isClassMember: true);
+			AccessModifier access = ParsingCommon.ParseAccessModifier(context.accessModifier(), isClassMember: true);
 
 			List<LifetimeDecl>? lifetimes = ParseLifetimesDecl(context.lifetimesDecl());
 
@@ -197,7 +197,7 @@ namespace EvolZero.Parsing
 		{
 			if (_currentClassDestructors == null) throw new NotImplementedException();
 
-			AccessModifier access = ParseAccessModifier(context.accessModifier(), isClassMember: true);
+			AccessModifier access = ParsingCommon.ParseAccessModifier(context.accessModifier(), isClassMember: true);
 
 			_currentClassDestructors.Add(new DestructorSignature([], access));
 
@@ -240,20 +240,6 @@ namespace EvolZero.Parsing
 			return new LifetimeDecl.Key(LifetimeDecl.KeyType.Var, varName);
 		}
 
-		private AccessModifier ParseAccessModifier(CEvolParser.AccessModifierContext? context, bool isClassMember)
-		{
-			if (context == null)
-			{
-				return isClassMember ? AccessModifier.Private : AccessModifier.Public;
-			}
-
-			return context.GetText() switch
-			{
-				"public" => AccessModifier.Public,
-				"private" => AccessModifier.Private,
-				_ => throw new NotImplementedException()
-			};
-		}
 		private List<(TypeDeclaring Type, string Name)> ParseParams([NotNull] CEvolParser.ParamsContext context)
 		{
 			var parameters = new List<(TypeDeclaring Type, string Name)>();
@@ -277,53 +263,9 @@ namespace EvolZero.Parsing
 			if (string.IsNullOrEmpty(typeName))
 				throw new NotImplementedException();
 
-			var qualifiers = new List<QualifierWorkpiece>();
-			int i = 0;
-			foreach (var qualifier in context.qualifier())
-			{
-				qualifiers.Add(ParseQualifier(qualifier)!);
-				if (qualifiers[i].Kind == "array")
-				{
-					if (i == 0) throw new NotImplementedException(); // TODO: тут формировать ошибку что кваллификатор массива не может быть самостоятельным
-
-					var temp = qualifiers[i - 1];
-					qualifiers[i - 1] = qualifiers[i];
-					qualifiers[i] = temp;
-				}
-
-				i++;
-			}
-
-			foreach (var arr in context.arraySpec())
-			{
-				qualifiers.Add(ParseArraySpec(arr));
-			}
+			var qualifiers = ParsingCommon.ParseQualifiers(context);
 
 			return new TypeDeclaring(typeName, qualifiers.ToArray(), []);
-		}
-
-		public QualifierWorkpiece? ParseQualifier(QualifierContext? context)
-		{
-			// TODO: этот метод идентичен такому же методу в LogicVisitor. Всю подобную общую логику куда-нибудь вынести
-			if (context == null) return null;
-
-			var arr = context.arraySpec();
-			if (arr == null)
-				return new QualifierWorkpiece(context.GetText());
-
-			return ParseArraySpec(arr);
-		}
-
-		public QualifierWorkpiece ParseArraySpec([NotNull] CEvolParser.ArraySpecContext context)
-		{
-			var numExpr = context.expression() as NumberExprContext;
-
-			if (numExpr == null) throw new NotImplementedException();
-
-			var value = numExpr.NUMBER().GetText();
-			var num = ulong.Parse(value);
-
-			return new QualifierWorkpiece("array", num);
 		}
 
 	}
