@@ -1,4 +1,5 @@
-﻿using EvolZero.Core;
+using EvolZero.Core;
+using EvolZero.Core.Analysis;
 using EvolZero.Core.LogicModels.Expressions;
 using EvolZero.Core.LogicModels.Statements;
 using EvolZero.Core.MemebersModels;
@@ -6,7 +7,7 @@ using EvolZero.Generation.Accessors;
 
 namespace EvolZero.Generation
 {
-	public class Emitter
+	public class Emitter : SemanticTreeVisitor<IValueAccessor>
 	{
 		private CodeGenerator _codeGenerator = null!;
 		private PlatformTypesProvider _typesProvider = null!;
@@ -25,70 +26,34 @@ namespace EvolZero.Generation
 
 		public void Build(ProgramStatement program)
 		{
-			foreach (var child in program.Childs)
-			{
-				if (!(child is Statement stm)) throw new NotImplementedException();
-				HandleStatement(stm);
-			}
+			Visit(program);
 		}
 
-		private void HandleStatement(Statement statement)
+		protected override void SubTreeEnd(IValueAccessor? value)
 		{
-			switch (statement)
-			{
-				case NamespaceStatement nameSpaceStatement:
-					HandleNameSpace(nameSpaceStatement);
-					break;
-				case ClassStatement classStatement:
-					HandleClass(classStatement);
-					break;
-				case FunctionStatement functionStatement:
-					HandleFunctionalBlock(functionStatement);
-					break;
-				case ConstructorStatement contructorStatetment:
-					HandleFunctionalBlock(contructorStatetment);
-					break;
-				case DestructorStatement destructorStatetment:
-					HandleFunctionalBlock(destructorStatetment);
-					break;
-				case IfStatement ifStatement:
-					HandleIfStatement(ifStatement);
-					break;
-				case ReturnStatement returnStatement:
-					HandleReturnStatement(returnStatement);
-					break;
-				case WhileStatement whileStatement:
-					HandleWhileStatement(whileStatement);
-					break;
-				case BlockStatement blockStatement:
-					HandleStatemetChilds(blockStatement);
-					break;
-				default:
-					throw new NotImplementedException();
-			}
 		}
 
-		private void HandleNameSpace(NamespaceStatement statement)
+		protected override void HandleNameSpace(NamespaceStatement statement)
 		{
 			foreach (var child in statement.Childs)
 			{
-				if (!(child is Statement stm)) throw new NotImplementedException();
-				HandleStatement(stm);
+				if (child is Statement stm) HandleStatement(stm);
+				else throw new NotImplementedException();
 			}
 		}
 
-		private void HandleClass(ClassStatement statement)
+		protected override void HandleClass(ClassStatement statement)
 		{
 			_currentClass = statement.TypeDesc;
 			foreach (var child in statement.Childs)
 			{
-				if (!(child is Statement stm)) throw new NotImplementedException();
-				HandleStatement(stm);
+				if (child is Statement stm) HandleStatement(stm);
+				else throw new NotImplementedException();
 			}
 			_currentClass = null;
 		}
 
-		private void HandleFunctionalBlock<TBlock>(TBlock statement) where TBlock : Statement, IFunctionalBlockStatement
+		protected override void HandleFunctionalBlock<TBlock>(TBlock statement)
 		{
 			_functionLocalVariables = new();
 
@@ -125,7 +90,7 @@ namespace EvolZero.Generation
 
 			foreach (var child in statement.Childs)
 			{
-				if ((child is Statement stm)) HandleStatement(stm);
+				if (child is Statement stm) HandleStatement(stm);
 				else if (child is Expression expr) HandleExpression(expr);
 				else throw new NotImplementedException();
 			}
@@ -135,7 +100,7 @@ namespace EvolZero.Generation
 			_codeGenerator.StopFunctionBodyFill();
 		}
 
-		private void HandleIfStatement(IfStatement statement)
+		protected override void HandleIfStatement(IfStatement statement)
 		{
 			var condition = HandleExpression(statement.Condition);
 
@@ -167,17 +132,17 @@ namespace EvolZero.Generation
 			}
 		}
 
-		private void HandleStatemetChilds(Statement statement)
+		protected override void HandleStatemetChilds(Statement statement)
 		{
 			foreach (var child in statement.Childs)
 			{
-				if ((child is Statement stm)) HandleStatement(stm);
+				if (child is Statement stm) HandleStatement(stm);
 				else if (child is Expression expr) HandleExpression(expr);
 				else throw new NotImplementedException();
 			}
 		}
 
-		private void HandleReturnStatement(ReturnStatement statement)
+		protected override IValueAccessor? HandleReturnStatement(ReturnStatement statement)
 		{
 			Expression resExpr = statement.Value;
 			if (resExpr.ResultTypeSpec.Type.Name != "void")
@@ -188,16 +153,18 @@ namespace EvolZero.Generation
 			{
 				_codeGenerator.AddReturn(null);
 			}
+
+			return default;
 		}
 
-		private void HandleWhileStatement(WhileStatement statement)
+		protected override void HandleWhileStatement(WhileStatement statement)
 		{
 			var condition = HandleExpression(statement.Condition);
 			_codeGenerator.CreateWhileBlock(condition);
 
 			foreach (var child in statement.Childs)
 			{
-				if ((child is Statement stm)) HandleStatement(stm);
+				if (child is Statement stm) HandleStatement(stm);
 				else if (child is Expression expr) HandleExpression(expr);
 				else throw new NotImplementedException();
 			}
@@ -205,81 +172,13 @@ namespace EvolZero.Generation
 			_codeGenerator.EndWhileBlock();
 		}
 
-		private IValueAccessor HandleExpression(Expression expression)
-		{
-			switch (expression)
-			{
-				case NumConstExpression numConstExpression:
-					return CreateNum(numConstExpression);
-				case VariableCreatingExpression varCreate:
-					return CreateVar(varCreate);
-				case VariableAccessExpression varAccess:
-					return VarAccess(varAccess);
-				case AllocateHeapMemoryToType allocateHeapMemoryToType:
-					return AllocateHeapMemory(allocateHeapMemoryToType);
-				case DestructPointerExpression destructPointerExpression:
-					return FreeHeapMemory(destructPointerExpression);
-				case AppealToThisExpression appealToThis:
-					return AppealToThis(appealToThis);
-				case ArrayCellAccessExpression arrayCellAccess:
-					return ArrayCellAccess(arrayCellAccess);
-				case SimpleBinaryOperationExpression simpleBinaryOperation:
-					return SimpleBinaryOperationHandle(simpleBinaryOperation);
-				case ExchangeExpression exchange:
-					return ExchangeHandle(exchange);
-				case CallFunctionExpression callFunction:
-					return CallFunction(callFunction);
-				case CompareOperationExpression compareOperation:
-					return CompareOperationHandle(compareOperation);
-				case GetPointerToVarExpression getPointerToVar:
-					return GetPointerToVar(getPointerToVar);
-				case NotExpression notExpression:
-					return Not(notExpression);
-				case PointerDereferenceExpression pointerDereference:
-					return PointerDereference(pointerDereference);
-				case StructureFieldAccessExpression structureFieldAccess:
-					return StructureFiledAccess(structureFieldAccess);
-				case DoNotAutoDereferenceIfPointerExpression doNotAutoDereferenceIfPointerExpression:
-					return HandleExpression(doNotAutoDereferenceIfPointerExpression.Expression);
-				case CallConstructorExpression callConstructorExpression:
-					return CallConstructor(callConstructorExpression);
-				case CallDesructorExpression callDesructorExpression:
-					return CallDestructor(callDesructorExpression);
-				case GlobalArrayExpression globalArrayExpression:
-					return CreateGlobalArray(globalArrayExpression);
-				case CastExpression castExpression:
-					return CastHandle(castExpression);
-				case IntToIntExtensionExpression intToIntExtensionExpression:
-					return IntToIntExtensionHandle(intToIntExtensionExpression);
-				case IntToFloatExtensionExpression intToFloatExtensionExpression:
-					return IntToFloatExtensionHandle(intToFloatExtensionExpression);
-				case IntTruncExpression intTruncExpression:
-					return IntTruncHandle(intTruncExpression);
-				case IntToPointerExpression intToPointerExpression:
-					return IntToPointerHandle(intToPointerExpression);
-				case PointerToIntExpression pointerToIntExpression:
-					return PointerToIntHandle(pointerToIntExpression);
-				case FloatToIntExpression floatToIntExpression:
-					return FloatToIntHandle(floatToIntExpression);
-				case FloatToFloatExpression floatToFloatExpression:
-					return FloatToFloatHandle(floatToFloatExpression);
-				case FloatTruncExpression floatTruncExpression:
-					return FloatTruncHandle(floatTruncExpression);
-				case ReinterpretCastExpression reinterpretCastExpression:
-					return ReinterpretCastHandle(reinterpretCastExpression);
-				default:
-					throw new NotImplementedException();
-			}
-
-		}
-
-		private IValueAccessor CreateNum(NumConstExpression expr)
+		protected override IValueAccessor CreateNum(NumConstExpression expr)
 		{
 			var num = (ulong)(expr.Value & ulong.MaxValue);
 			return _codeGenerator.CreateIntConst(num, expr.IntType);
 		}
 
-		private IValueAccessor CreateVar(VariableCreatingExpression expr)
+		protected override IValueAccessor CreateVar(VariableCreatingExpression expr)
 		{
 			var varAccessor = _codeGenerator.CreateVar(expr.Name, GetActualTypeRef(expr.ResultTypeSpec));
 			_functionLocalVariables[expr.Name] = varAccessor;
@@ -287,12 +186,12 @@ namespace EvolZero.Generation
 			return varAccessor;
 		}
 
-		private IValueAccessor VarAccess(VariableAccessExpression expr)
+		protected override IValueAccessor VarAccess(VariableAccessExpression expr)
 		{
 			return _functionLocalVariables[expr.Name];
 		}
 
-		private IValueAccessor AppealToThis(AppealToThisExpression expr)
+		protected override IValueAccessor AppealToThis(AppealToThisExpression expr)
 		{
 			if (_currentClass == null || _currentFunctionParentClassRef == null
 				|| expr.ResultTypeSpec.Type != _currentClass) throw new NotImplementedException();
@@ -300,7 +199,7 @@ namespace EvolZero.Generation
 			return _currentFunctionParentClassRef;
 		}
 
-		private IValueAccessor AllocateHeapMemory(AllocateHeapMemoryToType expr)
+		protected override IValueAccessor AllocateHeapMemory(AllocateHeapMemoryToType expr)
 		{
 			var type = expr.ResultTypeSpec.RemoveFirtsQualifier().GetRealTypeRef(_typesProvider) as TypeRef;
 
@@ -309,13 +208,13 @@ namespace EvolZero.Generation
 			return _codeGenerator.AllocateHeapMemory(type);
 		}
 
-		private IValueAccessor FreeHeapMemory(DestructPointerExpression expr)
+		protected override IValueAccessor FreeHeapMemory(DestructPointerExpression expr)
 		{
 			var ptr = HandleExpression(expr.Expr);
 			return _codeGenerator.FreeHeapMemory(ptr);
 		}
 
-		private IValueAccessor ArrayCellAccess(ArrayCellAccessExpression expr)
+		protected override IValueAccessor ArrayCellAccess(ArrayCellAccessExpression expr)
 		{
 			bool byRef = false;
 
@@ -339,7 +238,7 @@ namespace EvolZero.Generation
 			}
 		}
 
-		private IValueAccessor SimpleBinaryOperationHandle(SimpleBinaryOperationExpression expr)
+		protected override IValueAccessor SimpleBinaryOperationHandle(SimpleBinaryOperationExpression expr)
 		{
 			IValueAccessor left = HandleExpression(expr.LeftExpression);
 			IValueAccessor right = HandleExpression(expr.RightExpression);
@@ -368,7 +267,7 @@ namespace EvolZero.Generation
 			}
 		}
 
-		private IValueAccessor ExchangeHandle(ExchangeExpression expr)
+		protected override IValueAccessor Exchange(ExchangeExpression expr)
 		{
 			var target = HandleExpression(expr.Target);
 			var value = HandleExpression(expr.Value);
@@ -376,13 +275,13 @@ namespace EvolZero.Generation
 			return _codeGenerator.Exchange(target, value);
 		}
 
-		private IValueAccessor CallFunction(CallFunctionExpression expr)
+		protected override IValueAccessor CallFunction(CallFunctionExpression expr)
 		{
 			var accessors = expr.Arguments.Select(HandleExpression).ToArray();
 			return _codeGenerator.FunctionCall(expr.Function.RefData, accessors);
 		}
 
-		private IValueAccessor CompareOperationHandle(CompareOperationExpression expr)
+		protected override IValueAccessor CompareOperationHandle(CompareOperationExpression expr)
 		{
 			var left = HandleExpression(expr.LeftExpression);
 			var right = HandleExpression(expr.RightExpression);
@@ -390,22 +289,22 @@ namespace EvolZero.Generation
 			return _codeGenerator.Compare(left, right, expr.IsSigned, expr.CompareOperator);
 		}
 
-		private IValueAccessor GetPointerToVar(GetPointerToVarExpression expr)
+		protected override IValueAccessor GetPointerToVar(GetPointerToVarExpression expr)
 		{
 			return _codeGenerator.GetPointerToVar(HandleExpression(expr.Variable));
 		}
 
-		private IValueAccessor Not(NotExpression expr)
+		protected override IValueAccessor Not(NotExpression expr)
 		{
-			return _codeGenerator.BitNot(HandleExpression(expr));
+			return _codeGenerator.BitNot(HandleExpression(expr.Expression));
 		}
 
-		private IValueAccessor PointerDereference(PointerDereferenceExpression expr)
+		protected override IValueAccessor PointerDereference(PointerDereferenceExpression expr)
 		{
 			return _codeGenerator.PointerDereference(HandleExpression(expr.Target), expr.ResultTypeSpec.Type.TypeRef);
 		}
 
-		private IValueAccessor StructureFiledAccess(StructureFieldAccessExpression expr)
+		protected override IValueAccessor StructureFiledAccess(StructureFieldAccessExpression expr)
 		{
 			bool byRef = false;
 
@@ -430,7 +329,7 @@ namespace EvolZero.Generation
 			}
 		}
 
-		private IValueAccessor CallConstructor(CallConstructorExpression expr)
+		protected override IValueAccessor CallConstructor(CallConstructorExpression expr)
 		{
 			var memoryGetting = HandleExpression(expr.MemoryGetting);
 
@@ -440,75 +339,75 @@ namespace EvolZero.Generation
 			return memoryGetting;
 		}
 
-		private IValueAccessor CallDestructor(CallDesructorExpression expr)
+		protected override IValueAccessor CallDestructor(CallDesructorExpression expr)
 		{
 			var memoryGetting = HandleExpression(expr.MemoryGetting);
 			IValueAccessor[] accessors = [memoryGetting];
 			_codeGenerator.FunctionCall(expr.Destructor.RefData, accessors);
 
 			return memoryGetting;
-		}		
+		}
 
-		private IValueAccessor CastHandle(CastExpression expr)
+		protected override IValueAccessor CastHandle(CastExpression expr)
 		{
 			return HandleExpression(expr.Expression);
 		}
 
-		private IValueAccessor IntToIntExtensionHandle(IntToIntExtensionExpression expr)
+		protected override IValueAccessor IntToIntExtensionHandle(IntToIntExtensionExpression expr)
 		{
 			var accessor = HandleExpression(expr.NumGetting);
 			return _codeGenerator.IntToIntExtension(accessor, expr.IsSigned, expr.ResultTypeSpec.Type.TypeRef);
 		}
 
-		private IValueAccessor IntToFloatExtensionHandle(IntToFloatExtensionExpression expr)
+		protected override IValueAccessor IntToFloatExtensionHandle(IntToFloatExtensionExpression expr)
 		{
 			var accessor = HandleExpression(expr.NumGetting);
 			return _codeGenerator.IntToFloatExtension(accessor, expr.IsSigned, expr.ResultTypeSpec.Type.TypeRef);
 		}
 
-		private IValueAccessor IntTruncHandle(IntTruncExpression expr)
+		protected override IValueAccessor IntTruncHandle(IntTruncExpression expr)
 		{
 			var accessor = HandleExpression(expr.NumGetting);
 			return _codeGenerator.IntTruncation(accessor, GetActualTypeRef(expr.ResultTypeSpec));
 		}
 
-		private IValueAccessor IntToPointerHandle(IntToPointerExpression expr)
+		protected override IValueAccessor IntToPointerHandle(IntToPointerExpression expr)
 		{
 			var accessor = HandleExpression(expr.NumGetting);
 			return _codeGenerator.IntToPointerCast(accessor, GetActualTypeRef(expr.ResultTypeSpec));
 		}
 
-		private IValueAccessor PointerToIntHandle(PointerToIntExpression expr)
+		protected override IValueAccessor PointerToIntHandle(PointerToIntExpression expr)
 		{
 			var accessor = HandleExpression(expr.PointerGetting);
 			return _codeGenerator.PointerToIntCast(accessor, GetActualTypeRef(expr.ResultTypeSpec));
 		}
 
-		private IValueAccessor FloatToIntHandle(FloatToIntExpression expr)
+		protected override IValueAccessor FloatToIntHandle(FloatToIntExpression expr)
 		{
 			var accessor = HandleExpression(expr.NumGetting);
 			return _codeGenerator.FloatToIntCast(accessor, expr.IsSigned, GetActualTypeRef(expr.ResultTypeSpec));
 		}
 
-		private IValueAccessor FloatToFloatHandle(FloatToFloatExpression expr)
+		protected override IValueAccessor FloatToFloatHandle(FloatToFloatExpression expr)
 		{
 			var accessor = HandleExpression(expr.NumGetting);
 			return _codeGenerator.FloatToFloat(accessor, GetActualTypeRef(expr.ResultTypeSpec));
 		}
 
-		private IValueAccessor FloatTruncHandle(FloatTruncExpression expr)
+		protected override IValueAccessor FloatTruncHandle(FloatTruncExpression expr)
 		{
 			var accessor = HandleExpression(expr.NumGetting);
 			return _codeGenerator.FloatTruncation(accessor, GetActualTypeRef(expr.ResultTypeSpec));
 		}
 
-		private IValueAccessor ReinterpretCastHandle(ReinterpretCastExpression expr)
+		protected override IValueAccessor ReinterpretCastHandle(ReinterpretCastExpression expr)
 		{
 			var accessor = HandleExpression(expr.CastedExpression);
 			return _codeGenerator.ReinterpretCast(accessor, GetActualTypeRef(expr.ResultTypeSpec));
 		}
 
-		private IValueAccessor CreateGlobalArray(GlobalArrayExpression expr)
+		protected override IValueAccessor CreateGlobalArray(GlobalArrayExpression expr)
 		{
 			return _codeGenerator.CreateGlobalArray(expr.Array);
 		}
