@@ -51,8 +51,11 @@ statement
     | whileStatement                 # WhileStmt
     | RETURN expression SEMICOLON    # ReturnStmt
     | block                          # BlockStmt
+    | unsafeStatement                # UnsafeStmt
     | expression SEMICOLON           # ExprStmt
     ;
+
+unsafeStatement : UNSAFE block ;
 
 assignment : (qualifier)? expression ASSIGN expression ;
 

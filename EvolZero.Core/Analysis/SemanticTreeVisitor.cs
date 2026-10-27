@@ -53,6 +53,9 @@ namespace EvolZero.Core.Analysis
 				case WhileStatement whileStatement:
 					HandleWhileStatement(whileStatement);
 					break;
+				case BlockStatement blockStatement:
+					HandleStatemet(blockStatement);
+					break;
 				default:
 					throw new NotImplementedException();
 			}

@@ -5,6 +5,7 @@ NAMESPACE: 'namespace';
 USING: 'using';
 CLASS    : 'class';
 LIFETIMES    : 'lifetimes';
+UNSAFE       : 'unsafe';
 IF       : 'if';
 ELSEIF     : 'else if';
 ELSE     : 'else';

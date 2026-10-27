@@ -21,6 +21,7 @@ namespace EvolZero.Core.Analysis
 
 		public PositionInSources CurrentPosition { get; set; }
 
+		public bool UnchekedMode { get; set; } = false;
 		public bool UnsafeMode { get; set; } = false;
 
 		private class Var(TypeSpec type, bool isInit)
@@ -328,6 +329,24 @@ namespace EvolZero.Core.Analysis
 			{
 				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "The expression passed to 'while' must be of type bool", CurrentPosition);
 			}
+		}
+
+		public void EnterUnsafeBlock()
+		{
+			var childs = new List<ILogicModel>();
+			var statement = new BlockStatement(childs, CurrentPosition, isUnsafe: true);
+
+			CodeBlock block = _blocks.Peek();
+			block.StatementChilds.Add(statement);
+
+			var currentFunction = block.CurrentFunction;
+			if (currentFunction == null) throw new NotImplementedException();
+			var currentClass = block.CurrentClass;
+
+			var variables = new Dictionary<string, Var>(block.Variables);
+			var classFields = (block.CurrentClassFields != null) ? new Dictionary<string, Field>(block.CurrentClassFields) : null;
+
+			_blocks.Push(new CodeBlock(statement, childs, variables, classFields, currentFunction, currentClass));
 		}
 
 		public Statement ExitFromBlock()
@@ -1175,7 +1194,7 @@ namespace EvolZero.Core.Analysis
 			CheckInitializable(expr);
 			if (CheckStubForError(expr)) return new StubForErrorExpression(CurrentPosition);
 
-			if (!UnsafeMode)
+			if (!UnchekedMode)
 			{
 				if (toType.ArrayExists)
 				{

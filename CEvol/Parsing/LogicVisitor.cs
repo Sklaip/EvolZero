@@ -605,6 +605,19 @@ namespace EvolZero.Parsing
 			return null;
 		}
 
+		public override Expression? VisitUnsafeStmt([NotNull] CEvolParser.UnsafeStmtContext context)
+		{
+			var lastPos = _semanticAnalyzer.CurrentPosition;
+			SetCurrentPosition(context);
+
+			_semanticAnalyzer.EnterUnsafeBlock();
+			Visit(context.unsafeStatement().block());
+			_semanticAnalyzer.ExitFromBlock();
+
+			_semanticAnalyzer.CurrentPosition = lastPos;
+			return null;
+		}
+
 		public override Expression? VisitIdExpr([NotNull] CEvolParser.IdExprContext context)
 		{
 			var lastPos = _semanticAnalyzer.CurrentPosition;

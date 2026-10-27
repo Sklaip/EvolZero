@@ -135,6 +135,8 @@ namespace EvolZero.Core.Analysis.Semantic
 
 		protected override void HandleStatemetChilds(Statement statement)
 		{
+			if (statement is BlockStatement block && block.IsUnsafe) return;
+
 			_currentBlocks.Push(new(statement));
 			_currentBlockNum++;
 

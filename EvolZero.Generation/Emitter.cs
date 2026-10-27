@@ -60,6 +60,9 @@ namespace EvolZero.Generation
 				case WhileStatement whileStatement:
 					HandleWhileStatement(whileStatement);
 					break;
+				case BlockStatement blockStatement:
+					HandleStatemetChilds(blockStatement);
+					break;
 				default:
 					throw new NotImplementedException();
 			}
