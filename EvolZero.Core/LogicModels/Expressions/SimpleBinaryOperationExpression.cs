@@ -11,8 +11,8 @@ namespace EvolZero.Core.LogicModels.Expressions
 		public readonly Expression RightExpression;
 		public readonly BinaryOperation OperationType;
 
-		public SimpleBinaryOperationExpression(BinaryOperation operationType, Expression leftExpression, Expression rightExpression, TypeSpec resultTypeSpec, PositionInSources pos)
-			: base(new TypeSpec(resultTypeSpec.Type), pos)
+		public SimpleBinaryOperationExpression(BinaryOperation operationType, Expression leftExpression, Expression rightExpression, 
+			TypeSpec resultTypeSpec, PositionInSources pos) : base(resultTypeSpec, pos)
 		{
 			LeftExpression = leftExpression;
 			RightExpression = rightExpression;

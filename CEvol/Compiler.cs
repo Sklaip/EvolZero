@@ -163,6 +163,8 @@ namespace EvolZero
 			types["ulong"].CanExpandedTo.AddRange(types["double"]);
 			types["float"].CanExpandedTo.Add(types["double"]);
 
+			types[AnonymousObjectTypeDesc.TYPE_NAME] = new AnonymousObjectTypeDesc();
+
 			return new MembersTable([], types);
 		}
 

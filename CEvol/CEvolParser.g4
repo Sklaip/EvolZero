@@ -14,35 +14,42 @@ accessModifier : PUBLIC | PRIVATE ;
 
 // Дополнительные модификаторы: static, readonly (в любом количестве и порядке)
 extraModifier : STATIC | READONLY | EXTERN | INFARGS;
-
 qualifier : REF | REFB | arraySpec;
 
 // --- Типы данных ---
-
 arraySpec : LBRACK expression? RBRACK ;
 typeSpec : (qualifier)* IDENTIFIER arraySpec* ;
 
 
 // --- Объявления ---
-// Модификаторы + Тип + Имя
-fieldDecl : accessModifier? extraModifier* typeSpec IDENTIFIER (LPAREN args? RPAREN)? (ASSIGN expression)? SEMICOLON ;
+classDecl : CLASS IDENTIFIER LBRACE (fieldDecl | functionDecl | abstractFunctionDecl | constructorDecl | desctructorDecl)* RBRACE ;
+fieldDecl : accessModifier? extraModifier* typeSpec IDENTIFIER (LPAREN args? RPAREN)? objectInitializer? (ASSIGN expression)? SEMICOLON ;
 
-// Функция/Метод
 functionDecl : accessModifier? extraModifier* typeSpec IDENTIFIER LPAREN params? RPAREN lifetimesDecl? block ;
 abstractFunctionDecl : accessModifier? extraModifier* typeSpec IDENTIFIER LPAREN params? RPAREN SEMICOLON ;
 constructorDecl : accessModifier? extraModifier* CONSTRUCTOR LPAREN params? RPAREN lifetimesDecl? block ;
 desctructorDecl : accessModifier? extraModifier* DESTRUCTOR LPAREN RPAREN block ;
 
+assignment : (qualifier)? expression ASSIGN expression ;
+args : expression (COMMA expression)* ;
 params : typeSpec IDENTIFIER (COMMA typeSpec IDENTIFIER)* ;
+
 lifetimeMember : (RETURN | THIS | IDENTIFIER) ;
 lifetimeDecl : lifetimeMember LIFETIMEASSING lifetimeMember ;
 lifetimesArgs : lifetimeDecl (COMMA lifetimeDecl)* ;
 lifetimesDecl : LIFETIMES LPAREN lifetimesArgs? RPAREN ;
 
-// --- Инструкции ---
-classDecl : CLASS IDENTIFIER LBRACE (fieldDecl | functionDecl | abstractFunctionDecl | constructorDecl | desctructorDecl)* RBRACE ;
 
+// --- Инструкции ---
 block : LBRACE statement* RBRACE ;
+unsafeStatement : UNSAFE block ;
+ifStatement : IF LPAREN expression RPAREN block elseIfStatement* elseStatement? ;
+elseIfStatement : ELSEIF LPAREN expression RPAREN block ;
+elseStatement : ELSE block ;
+whileStatement : WHILE LPAREN expression RPAREN block ;
+
+objectInitializerParams : expression (COMMA expression)* COMMA? ;
+objectInitializer : LBRACE objectInitializerParams? RBRACE ;
 
 statement 
     : fieldDecl                      # VarDeclStmt
@@ -55,44 +62,32 @@ statement
     | expression SEMICOLON           # ExprStmt
     ;
 
-unsafeStatement : UNSAFE block ;
-
-assignment : (qualifier)? expression ASSIGN expression ;
-
-ifStatement : IF LPAREN expression RPAREN block elseIfStatement* elseStatement? ;
-elseIfStatement : ELSEIF LPAREN expression RPAREN block ;
-elseStatement : ELSE block ;
-
-whileStatement : WHILE LPAREN expression RPAREN block ;
-
 // --- Выражения ---
 expression 
-    : MINUS? NUMBER                                        # NumberExpr
-    | STRING                                               # StringExpr
-    | IDENTIFIER                                           # IdExpr
-    | LPAREN expression RPAREN                             # ParenExpr
+    : MINUS? NUMBER                                                           # NumberExpr
+    | STRING                                                                  # StringExpr
+    | IDENTIFIER                                                              # IdExpr
+    | LPAREN expression RPAREN                                                # ParenExpr
 
-    | NEW typeSpec ( LPAREN args? RPAREN )?                # NewExpr
+    | NEW typeSpec ( LPAREN args? RPAREN )? objectInitializer?                # NewExpr
 
-    | IDENTIFIER LPAREN args? RPAREN                       # CallExpr
-    | expression LBRACK args RBRACK                        # IndexExpr
-    | expression DOT IDENTIFIER ( LPAREN args? RPAREN )?   # MemberAccess
+    | IDENTIFIER LPAREN args? RPAREN                                          # CallExpr
+    | expression LBRACK args RBRACK                                           # IndexExpr
+    | expression DOT IDENTIFIER ( LPAREN args? RPAREN )?                      # MemberAccess
 
-    | LPAREN typeSpec RPAREN expression                    # CastExpr
+    | LPAREN typeSpec RPAREN expression                                       # CastExpr
 
-    | LOC expression                                       # LocExpr
-    | qualifier expression                                 # RefExpr
+    | LOC expression                                                          # LocExpr
+    | qualifier expression                                                    # RefExpr
 
-    | expression (MUL | DIV) expression                    # MulDivExpr
-    | expression (PLUS | MINUS) expression                 # AddSubExpr
-    | expression (LT | GT) expression                      # LtGtExpr
-    | expression (EQ | NEQ) expression                     # EqNeqExpr
-    | expression BIT_AND expression                        # BitAndExpr
-    | expression BIT_XOR expression                        # BitXorExpr
-    | expression BIT_OR expression                         # BitOrExpr
-    | expression AND expression                            # LogicalAndExpr
-    | expression OR expression                             # LogicalOrExpr
-    | expression EXCHANGE expression                       # ExchangeExpr
+    | expression (MUL | DIV) expression                                       # MulDivExpr
+    | expression (PLUS | MINUS) expression                                    # AddSubExpr
+    | expression (LT | GT) expression                                         # LtGtExpr
+    | expression (EQ | NEQ) expression                                        # EqNeqExpr
+    | expression BIT_AND expression                                           # BitAndExpr
+    | expression BIT_XOR expression                                           # BitXorExpr
+    | expression BIT_OR expression                                            # BitOrExpr
+    | expression AND expression                                               # LogicalAndExpr
+    | expression OR expression                                                # LogicalOrExpr
+    | expression EXCHANGE expression                                          # ExchangeExpr
     ;
-
-args : expression (COMMA expression)* ;

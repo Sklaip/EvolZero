@@ -397,7 +397,7 @@ namespace EvolZero.Core.Analysis.Semantic
 			if (arrayGetting.VarData == null)
 				throw new NotImplementedException(); // такой хуйни быть не должно
 
-			var meta = new VarMeta(arrayGetting.VarData.Lifetime, false, true, arrayGetting.VarData);
+			var meta = new VarMeta(arrayGetting.VarData.Lifetime, false, arrayGetting.VarData.IsInitialized, arrayGetting.VarData);
 
 			return new ValueMeta()
 			{
@@ -623,7 +623,7 @@ namespace EvolZero.Core.Analysis.Semantic
 					return null;
 				}
 
-				if (value.Expr is StructureFieldAccessExpression)
+				if (value.Expr is StructureFieldAccessExpression or ArrayCellAccessExpression)
 				{
 					AddLifetimeError("LT004", "Нельзя снимать владеющую (ref) ссылку с поля класса", value.Expr.Pos);
 					return null;
@@ -721,9 +721,9 @@ namespace EvolZero.Core.Analysis.Semantic
 					return;
 				}
 
-				if (value.Expr is StructureFieldAccessExpression)
+				if (value.Expr is StructureFieldAccessExpression or ArrayCellAccessExpression)
 				{
-					// снять владеющую ссылку с поля класса можно только через оператор <-,
+					// снять владеющую ссылку с поля класса или с массива можно только через оператор <-,
 					// чтобы поле не осталось деинициализированным, а старая ссылка ушла в приемник
 					if (!value.IsStrippedViaExchange)
 					{

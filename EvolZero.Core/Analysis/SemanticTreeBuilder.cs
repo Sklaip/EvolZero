@@ -6,6 +6,7 @@ using EvolZero.Core.MemebersModels;
 using EvolZero.Core.Tools;
 using System.Numerics;
 using System.Text;
+using System.Xml.Linq;
 
 namespace EvolZero.Core.Analysis
 {
@@ -510,9 +511,15 @@ namespace EvolZero.Core.Analysis
 			return new CallFunctionExpression(realArgs, funcDesc, CurrentPosition);
 		}
 
-		public Expression AllocateHeapMemory(TypeSpec type, Expression[]? args)
+		public Expression CreateObjectHeapMemory(TypeSpec type, Expression[]? args, Expression? objInitializer)
 		{
 			CheckInitializable(args);
+
+			if (objInitializer != null && !type.IsArray)
+			{
+				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", $"Данный тип не поддерживает инициализатор объекта!", CurrentPosition);
+				return new StubForErrorExpression(CurrentPosition);
+			}
 
 			if (type.QualifiersExists)
 			{
@@ -524,7 +531,35 @@ namespace EvolZero.Core.Analysis
 				}
 
 				Qualifier[] qualifiers = [Qualifier.Reference, .. type.Qualifiers];
-				return new AllocateHeapMemoryToType(new TypeSpec(type.Type, qualifiers), CurrentPosition);
+				var resType = new TypeSpec(type.Type, qualifiers);
+
+				Expression res = new AllocateHeapMemoryToType(resType, CurrentPosition);
+
+				if (objInitializer != null)
+				{
+					if (objInitializer is not ObjectInitializerExpression objectInitializer)
+						throw new NotImplementedException();
+
+					if (!ValidateObjectInitializer(objectInitializer, type))
+						return new StubForErrorExpression(CurrentPosition);
+
+					string name = $"temp_pointer_to_{type.Type.Name}";
+					string baseName = name;
+
+					int i = 0;
+					var currentBlock = _blocks.Peek();
+					while (currentBlock.Variables.ContainsKey(name))
+					{
+						name = $"{baseName}_{i}";
+					}
+
+					var tempVar = new VariableCreatingExpression(name, resType, CurrentPosition);
+					var assign = new SimpleBinaryOperationExpression(BinaryOperation.Assing, tempVar, res, resType, CurrentPosition);
+					res = objectInitializer.RecreateToObject(assign,
+						(Expression expr, int i) => WrapArrayCellInitializer(expr, name, i, resType));
+				}
+
+				return res;
 			}
 
 			if (args == null)
@@ -701,6 +736,18 @@ namespace EvolZero.Core.Analysis
 			}
 
 			return new ExchangeExpression(target, value, target.ResultTypeSpec, CurrentPosition);
+		}
+
+		public Expression ObjectInitializer(List<Expression> childExpressions)
+		{
+			for (int i = 0; i < childExpressions.Count; i++)
+			{
+				childExpressions[i] = AutoDereferenceIfPointer(childExpressions[i]);
+			}
+
+			//небезопасное приведение, ну да похуй. Если будет косяк, пусть лучше здесь отъебнет
+			var type = (AnonymousObjectTypeDesc)_membersFinder.FindType(AnonymousObjectTypeDesc.TYPE_NAME);
+			return new ObjectInitializerExpression(childExpressions, type, CurrentPosition);
 		}
 
 		public Expression Division(Expression left, Expression right)
@@ -909,7 +956,7 @@ namespace EvolZero.Core.Analysis
 				[Qualifier.BorrowReference, new ArrayQualifier((ulong)strBytes.LongLength)]), CurrentPosition);
 		}
 
-		public Expression CreateLocalVariable(string name, TypeSpec declaring, Expression[]? args)
+		public Expression CreateLocalVariable(string name, TypeSpec declaring, Expression[]? args, Expression? objInitializer)
 		{
 			CheckInitializable(args);
 
@@ -920,15 +967,27 @@ namespace EvolZero.Core.Analysis
 				return new StubForErrorExpression(CurrentPosition);
 			}
 
-			var varExpr = new VariableCreatingExpression(name, declaring, CurrentPosition);
+			Expression res = new VariableCreatingExpression(name, declaring, CurrentPosition);
 			block.Variables[name] = new(declaring, !declaring.IsRef);
 
 			if (!declaring.QualifiersExists)
 			{
-				return CallStackConstructor(declaring.Type, varExpr, args);
+				res = CallStackConstructor(declaring.Type, res, args);
 			}
 
-			return varExpr;
+			if (objInitializer != null)
+			{
+				if (objInitializer is not ObjectInitializerExpression objectInitializer)
+					throw new NotImplementedException();
+
+				if (!ValidateObjectInitializer(objectInitializer, declaring))
+					return new StubForErrorExpression(CurrentPosition);
+
+				res = objectInitializer.RecreateToObject(res,
+					(Expression expr, int i) => WrapArrayCellInitializer(expr, name, i, declaring));
+			}
+
+			return res;
 		}
 
 		private void InitializeVariable(Expression expr)
@@ -1101,19 +1160,6 @@ namespace EvolZero.Core.Analysis
 			}
 
 			return new SimpleBinaryOperationExpression(BinaryOperation.Assing, varExpr, expr, varExpr.ResultTypeSpec, CurrentPosition);
-		}
-
-		public Expression AutoDereferenceIfPointer(Expression expr) => AutoDereferenceIfPointer(expr, false);
-
-		public Expression AutoDereferenceIfPointer(Expression expr, bool excludeNewRefs)
-		{
-			if (CheckStubForError(expr)) return new StubForErrorExpression(CurrentPosition);
-
-			if (!expr.ResultTypeSpec.IsRef || expr is DoNotAutoDereferenceIfPointerExpression) return expr;
-
-			if (excludeNewRefs && (expr is GetPointerToVarExpression || expr is CallConstructorExpression)) return expr;
-
-			return new PointerDereferenceExpression(expr, CurrentPosition);
 		}
 
 		public Expression VariableAccess(string name)
@@ -1304,6 +1350,96 @@ namespace EvolZero.Core.Analysis
 			{
 				return new IntToIntExtensionExpression(expr, isSigned, resultType, CurrentPosition);
 			}
+		}
+
+		private bool ValidateObjectInitializer(ObjectInitializerExpression expr, TypeSpec arrayType)
+		{
+			if (!arrayType.IsArray || (arrayType.Qualifiers[0] is not ArrayQualifier arrQualifier))
+			{
+				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Инициализатор объекта поддерживается только массивами!", CurrentPosition);
+				return false;
+			}
+
+			if (arrQualifier.Size != (uint)expr.Expressions.Count)
+			{
+				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Недопустимое количество значений в " +
+					$"инициализаторе объекта! Размер массива {arrQualifier.Size}, " +
+					$"количество объектов {expr.Expressions.Count}", CurrentPosition);
+				return false;
+			}
+
+			TypeSpec cellType = arrayType.RemoveFirtsQualifier();
+
+			for (int i = 0; i < expr.Expressions.Count; i++)
+			{
+				Expression childExpr = expr.Expressions[i];
+				if (!_typeAnalyzer.CheckTypeMatching(cellType, childExpr.ResultTypeSpec, out bool needCast))
+				{
+					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", $"Все типы в данном инициалзиторе " +
+						$"объекта должны быть {cellType.Type.Name}", CurrentPosition);
+					return false;
+				}
+
+				// TODO: тут нужно доделать неявное приведени чисел
+				if (needCast && (expr.ResultTypeSpec.Type is IntegerTypeDesc or FloatTypeDesc))
+				{
+					expr.Expressions[i] = ImplicitIntExtenssion(expr, cellType);
+				}
+			}
+
+			return true;
+		}
+
+		private Expression AutoDereferenceIfPointer(Expression expr) => AutoDereferenceIfPointer(expr, false);
+
+		private Expression AutoDereferenceIfPointer(Expression expr, bool excludeNewRefs)
+		{
+			if (CheckStubForError(expr)) return new StubForErrorExpression(CurrentPosition);
+
+			if (!expr.ResultTypeSpec.IsRef || expr is DoNotAutoDereferenceIfPointerExpression) return expr;
+
+			if (excludeNewRefs && (expr is GetPointerToVarExpression || expr is CallConstructorExpression)) return expr;
+
+			return new PointerDereferenceExpression(expr, CurrentPosition);
+		}
+
+		private Expression WrapArrayCellInitializer(Expression initializer, string arrayVarName, int index, TypeSpec arrayVarType)
+		{
+			var intType = new TypeSpec(TypeNameToTypeDesc("int")); // TODO: это массив, здесь в теории может быть и лонг
+
+			Expression res;
+			if (!arrayVarType.IsRef)
+			{
+				res = new SimpleBinaryOperationExpression(BinaryOperation.Assing,
+							new ArrayCellAccessExpression(
+								new VariableAccessExpression(arrayVarName, arrayVarType, false, CurrentPosition),
+								new NumConstExpression(intType, BaseTypes.Int, new BigInteger(index), CurrentPosition),
+								CurrentPosition
+							),
+							initializer,
+							initializer.ResultTypeSpec,
+							CurrentPosition
+						);
+
+				return res;
+			}
+
+			res = new SimpleBinaryOperationExpression(BinaryOperation.Assing,
+						new ArrayCellAccessExpression(
+							new PointerDereferenceExpression(
+								new VariableAccessExpression(arrayVarName, arrayVarType, false, CurrentPosition),
+								CurrentPosition
+							),
+							new NumConstExpression(intType, BaseTypes.Int, new BigInteger(index), CurrentPosition),
+							CurrentPosition
+						),
+						initializer,
+						initializer.ResultTypeSpec,
+						CurrentPosition
+					);
+
+
+			return res;
 		}
 
 		private TypeSpec GetWiderType(TypeSpec first, TypeSpec second)

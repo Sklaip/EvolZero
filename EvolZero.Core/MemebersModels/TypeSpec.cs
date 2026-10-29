@@ -90,5 +90,11 @@
 		{
 			return new TypeSpec(Type, Qualifiers.Skip(1).ToArray());
 		}
+
+		//public override string ToString()
+		//{
+		//	string qualifiers = "";
+
+		//}
 	}
 }

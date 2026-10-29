@@ -223,6 +223,8 @@ namespace EvolZero.Core.Analysis
 					return FloatTruncHandle(floatTruncExpression);
 				case ReinterpretCastExpression reinterpretCastExpression:
 					return ReinterpretCastHandle(reinterpretCastExpression);
+				case ObjectInitializerExpression objectInitializerExpression:
+					return ObjectInitializerHandle(objectInitializerExpression);
 				default:
 					throw new NotImplementedException();
 			}
@@ -374,6 +376,17 @@ namespace EvolZero.Core.Analysis
 		protected virtual T ReinterpretCastHandle(ReinterpretCastExpression expr)
 		{
 			return HandleExpression(expr.CastedExpression);
+		}
+
+		protected virtual T ObjectInitializerHandle(ObjectInitializerExpression expr)
+		{
+			var res = HandleExpression(expr.ObjectToInit);
+			foreach(var childExpr in expr.Expressions)
+			{
+				HandleExpression(childExpr);
+			}
+
+			return res;
 		}
 
 		protected virtual T CreateGlobalArray(GlobalArrayExpression expr)

@@ -246,8 +246,16 @@ namespace EvolZero.Parsing
 			var varName = ctx.IDENTIFIER().ToString();
 			if (varName == null) throw new NotImplementedException();
 
-			var args = ctx.args();
-			Expression varAccessing = _semanticAnalyzer.CreateLocalVariable(varName, typeSpec, args != null ? ParseArgs(args) : null);
+			Expression? initializer = null;
+			if (ctx.objectInitializer() != null)
+			{
+				initializer = VisitObjectInitializer(ctx.objectInitializer());
+			}
+
+			var argsContext = ctx.args();
+			var args = argsContext != null ? ParseArgs(argsContext) : null;
+
+			Expression varAccessing = _semanticAnalyzer.CreateLocalVariable(varName, typeSpec, args, initializer);
 
 			if (ctx.ASSIGN() != null)
 			{
@@ -406,7 +414,13 @@ namespace EvolZero.Parsing
 				arguments = Array.Empty<Expression>();
 			}
 
-			var res = _semanticAnalyzer.AllocateHeapMemory(typeSpec.Value, arguments);
+			Expression? objectInitializer = null;
+			if (context.objectInitializer() != null)
+			{
+				objectInitializer = Visit(context.objectInitializer());
+			}
+
+			var res = _semanticAnalyzer.CreateObjectHeapMemory(typeSpec.Value, arguments, objectInitializer);
 
 			_semanticAnalyzer.CurrentPosition = lastPos;
 			return res;
@@ -616,6 +630,25 @@ namespace EvolZero.Parsing
 
 			_semanticAnalyzer.CurrentPosition = lastPos;
 			return null;
+		}
+
+		public override Expression VisitObjectInitializer([NotNull] ObjectInitializerContext context)
+		{
+			var lastPos = _semanticAnalyzer.CurrentPosition;
+			SetCurrentPosition(context);
+
+			var res = new List<Expression>();
+			if (context.objectInitializerParams() != null)
+			{
+				foreach (var param in context.objectInitializerParams().expression())
+				{
+					var expr = Visit(param);
+					if (expr != null) res.Add(expr);
+				}
+			}
+
+			_semanticAnalyzer.CurrentPosition = lastPos;
+			return _semanticAnalyzer.ObjectInitializer(res);
 		}
 
 		public override Expression? VisitIdExpr([NotNull] CEvolParser.IdExprContext context)
