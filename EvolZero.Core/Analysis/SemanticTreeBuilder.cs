@@ -1376,7 +1376,7 @@ namespace EvolZero.Core.Analysis
 				if (!_typeAnalyzer.CheckTypeMatching(cellType, childExpr.ResultTypeSpec, out bool needCast))
 				{
 					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", $"Все типы в данном инициалзиторе " +
-						$"объекта должны быть {cellType.Type.Name}", CurrentPosition);
+						$"объекта должны быть {cellType}, был передан {childExpr.ResultTypeSpec}", CurrentPosition);
 					return false;
 				}
 

@@ -91,10 +91,39 @@
 			return new TypeSpec(Type, Qualifiers.Skip(1).ToArray());
 		}
 
-		//public override string ToString()
-		//{
-		//	string qualifiers = "";
+		public override string ToString()
+		{
+			if (!QualifiersExists) return Type.Name;
 
-		//}
+			// Создаем список элементов с сохранением исходного индекса квалификатора
+			var items = new List<(string Text, int OrigIndex)>();
+
+			for (int i = 0; i < Qualifiers.Length; i++)
+			{
+				items.Add((Qualifiers[i].ToString()!, i));
+			}
+
+			// Добавляем тип в конец
+			items.Add((Type.Name, -1));
+
+			// Применяем правило перемещения для ArrayQualifier
+			for (int i = 0; i < Qualifiers.Length; i++)
+			{
+				if (Qualifiers[i] is ArrayQualifier)
+				{
+					int currIndex = items.FindIndex(x => x.OrigIndex == i);
+
+					// Если элемент не последний в списке (то есть перед ним/за ним есть другой квалификатор или тип)
+					if (currIndex < items.Count - 1)
+					{
+						var item = items[currIndex];
+						items.RemoveAt(currIndex);
+						items.Insert(currIndex + 1, item); // перемещаем за следующий элемент
+					}
+				}
+			}
+
+			return string.Join(" ", items.Select(x => x.Text));
+		}
 	}
 }
