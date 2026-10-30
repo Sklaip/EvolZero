@@ -742,7 +742,7 @@ namespace EvolZero.Core.Analysis
 		{
 			for (int i = 0; i < childExpressions.Count; i++)
 			{
-				childExpressions[i] = AutoDereferenceIfPointer(childExpressions[i]);
+				childExpressions[i] = AutoDereferenceIfPointer(childExpressions[i], true);
 			}
 
 			//небезопасное приведение, ну да похуй. Если будет косяк, пусть лучше здесь отъебнет
