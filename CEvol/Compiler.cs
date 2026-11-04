@@ -270,7 +270,7 @@ namespace EvolZero
 		{
 			using var process = new System.Diagnostics.Process();
 
-			process.StartInfo.FileName = "clang";
+			process.StartInfo.FileName = @"D:\Programs\LLVM\bin\clang.exe";
 			process.StartInfo.Arguments = $"{objFile} -o {exeFile} -llegacy_stdio_definitions";
 
 			process.StartInfo.UseShellExecute = false;

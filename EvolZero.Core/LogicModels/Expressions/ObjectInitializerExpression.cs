@@ -4,6 +4,7 @@ namespace EvolZero.Core.LogicModels.Expressions
 {
 	public class ObjectInitializerExpression : Expression
 	{
+		public bool ByRef { get; set; }
 		public Expression ObjectToInit { get;set;  }
 		public List<Expression> Expressions { get; set; }
 
@@ -20,17 +21,12 @@ namespace EvolZero.Core.LogicModels.Expressions
 			ObjectToInit = objectToInit;
 		}
 
-		public ObjectInitializerExpression RecreateToObject(Expression objectToInit, Func<Expression, int, Expression> getExpressionWrapper)
+		public ObjectInitializerExpression RecreateToObject(Expression objectToInit, bool byRef = false)
 		{
-			var newList = Expressions.ToList();
-
-			for (int i = 0; i < newList.Count; i++)
+			return new ObjectInitializerExpression(objectToInit, Expressions.ToList(), Pos)
 			{
-				Expression? item = newList[i];
-				newList[i] = getExpressionWrapper(item, i);
-			}
-
-			return new ObjectInitializerExpression(objectToInit, newList, Pos);
+				ByRef = byRef
+            };
 		}
 	}
 }

@@ -15,8 +15,8 @@ class String
         myInt = 1020;
     }
 
-    public ref byte[4] ToBytes()
+    public refb byte[4] ToBytes() lifetimes(return ~ this)
     {
-        return ref _rawBytes;
+        return refb _rawBytes;
     }
 }

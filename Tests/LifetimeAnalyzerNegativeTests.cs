@@ -159,12 +159,12 @@ public sealed class LifetimeAnalyzerNegativeTests : IDisposable
 	}
 
 	[Fact]
-	public void OwnerFieldIntoOwnerParam_FailsWithLT004()
+	public void OwnerFieldIntoOwnerParam_FailsWithLT006()
 	{
 		// Правило: владеющую (ref) ссылку с поля класса можно снять только через '<-',
 		// но не передачей поля во владеющий параметр.
 		TestAssertions.AssertCompilationFails(
-			_compiler, "LifetimeAnalyzerNegative", "LT004_OwnerFieldIntoOwnerParam.cev", "LT004");
+			_compiler, "LifetimeAnalyzerNegative", "LT006_OwnerFieldIntoOwnerParam.cev", "LT006");
 	}
 
 	[Fact]

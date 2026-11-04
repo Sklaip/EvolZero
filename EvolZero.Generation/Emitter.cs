@@ -412,7 +412,44 @@ namespace EvolZero.Generation
 			return _codeGenerator.CreateGlobalArray(expr.Array);
 		}
 
-		private ITypeRef GetActualTypeRef(TypeSpec varDeclaring)
+        protected override IValueAccessor ObjectInitializerHandle(ObjectInitializerExpression expr)
+        {
+            // TODO: хороший пример кода для compiletime в cevol.
+            // Надо придумать как сделать это так, чтобы не нужно было дублировать весь for для того чтобы внутри выбрать
+            // GetStackArrayCell или GetStackArrayCell и при том не выносить проверку в цикл, чтобы оно на каждой
+			// итерации не проверяло условие, которое можно проверить до входа в цикл. Возможно сделать какой-нибудь делегат времени компиляции
+            var objectGetting = HandleExpression(expr.ObjectToInit);
+			if (expr.ByRef)
+			{
+				for (int i = 0; i < expr.Expressions.Count; i++)
+				{
+					Expression? childExpr = expr.Expressions[i];
+					var value = HandleExpression(childExpr);
+
+					var index = _codeGenerator.CreateIntConst((ulong)i, BaseTypes.Int);
+                    var cellAccessor = _codeGenerator.GetHeapArrayCell(objectGetting, index, GetActualTypeRef(childExpr.ResultTypeSpec));
+
+                    _codeGenerator.Assign(cellAccessor, value);
+				}
+			}
+			else
+			{
+				for (int i = 0; i < expr.Expressions.Count; i++)
+				{
+					Expression? childExpr = expr.Expressions[i];
+					var value = HandleExpression(childExpr);
+
+					var index = _codeGenerator.CreateIntConst((ulong)i, BaseTypes.Int);
+					var cellAccessor = _codeGenerator.GetStackArrayCell(objectGetting, index, GetActualTypeRef(childExpr.ResultTypeSpec));
+
+                    _codeGenerator.Assign(cellAccessor, value);
+				}
+			}
+
+            return objectGetting;
+        }
+
+        private ITypeRef GetActualTypeRef(TypeSpec varDeclaring)
 		{
 			if (varDeclaring.QualifiersExists) return varDeclaring.GetRealTypeRef(_typesProvider);
 			return varDeclaring.Type.TypeRef;

@@ -543,21 +543,9 @@ namespace EvolZero.Core.Analysis
 					if (!ValidateObjectInitializer(objectInitializer, type))
 						return new StubForErrorExpression(CurrentPosition);
 
-					string name = $"temp_pointer_to_{type.Type.Name}";
-					string baseName = name;
+					res = objectInitializer.RecreateToObject(res, true);
 
-					int i = 0;
-					var currentBlock = _blocks.Peek();
-					while (currentBlock.Variables.ContainsKey(name))
-					{
-						name = $"{baseName}_{i}";
-					}
-
-					var tempVar = new VariableCreatingExpression(name, resType, CurrentPosition);
-					var assign = new SimpleBinaryOperationExpression(BinaryOperation.Assing, tempVar, res, resType, CurrentPosition);
-					res = objectInitializer.RecreateToObject(assign,
-						(Expression expr, int i) => WrapArrayCellInitializer(expr, name, i, resType));
-				}
+                }
 
 				return res;
 			}
@@ -983,8 +971,7 @@ namespace EvolZero.Core.Analysis
 				if (!ValidateObjectInitializer(objectInitializer, declaring))
 					return new StubForErrorExpression(CurrentPosition);
 
-				res = objectInitializer.RecreateToObject(res,
-					(Expression expr, int i) => WrapArrayCellInitializer(expr, name, i, declaring));
+				res = objectInitializer.RecreateToObject(res);
 			}
 
 			return res;
@@ -1401,45 +1388,6 @@ namespace EvolZero.Core.Analysis
 			if (excludeNewRefs && (expr is GetPointerToVarExpression || expr is CallConstructorExpression)) return expr;
 
 			return new PointerDereferenceExpression(expr, CurrentPosition);
-		}
-
-		private Expression WrapArrayCellInitializer(Expression initializer, string arrayVarName, int index, TypeSpec arrayVarType)
-		{
-			var intType = new TypeSpec(TypeNameToTypeDesc("int")); // TODO: это массив, здесь в теории может быть и лонг
-
-			Expression res;
-			if (!arrayVarType.IsRef)
-			{
-				res = new SimpleBinaryOperationExpression(BinaryOperation.Assing,
-							new ArrayCellAccessExpression(
-								new VariableAccessExpression(arrayVarName, arrayVarType, false, CurrentPosition),
-								new NumConstExpression(intType, BaseTypes.Int, new BigInteger(index), CurrentPosition),
-								CurrentPosition
-							),
-							initializer,
-							initializer.ResultTypeSpec,
-							CurrentPosition
-						);
-
-				return res;
-			}
-
-			res = new SimpleBinaryOperationExpression(BinaryOperation.Assing,
-						new ArrayCellAccessExpression(
-							new PointerDereferenceExpression(
-								new VariableAccessExpression(arrayVarName, arrayVarType, false, CurrentPosition),
-								CurrentPosition
-							),
-							new NumConstExpression(intType, BaseTypes.Int, new BigInteger(index), CurrentPosition),
-							CurrentPosition
-						),
-						initializer,
-						initializer.ResultTypeSpec,
-						CurrentPosition
-					);
-
-
-			return res;
 		}
 
 		private TypeSpec GetWiderType(TypeSpec first, TypeSpec second)
