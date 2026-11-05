@@ -728,22 +728,25 @@ namespace EvolZero.Core.Analysis.Semantic
             if (arrayGetting == null)
                 throw new NotImplementedException(); // такой хуйни быть не должно
 
+            var currentLifetime = _transmissionsSequence.GetCurrent().Lifetime ?? new Lifetime(_currentBlockNum + 1);
+
             int i = 0;
             foreach (var childExpr in expr.Expressions)
             {
-                //            var right = HandleExpression(childExpr);
-                //            if (right == null) throw new NotImplementedException();
+                var right = HandleExpression(childExpr);
+                if (right == null) throw new NotImplementedException();
 
-                //var exprObjectToInit = expr.ByRef ? new PointerDereferenceExpression(expr.ObjectToIn  it, expr.Pos) : expr.ObjectToInit;
-                //            var left = new ValueMeta()
-                //{
-                //                //в indexGetting пихаем null потому что в AssignHandler не должен провоцировать анализ дочерних Expression.
-                //                //А если каким-то образом произойдет вызов проверки indexGetting, то лучше пусть отхебнет нуллпоинтером, чем непредсказуемое поведение
-                //                Expr = new ArrayCellAccessExpression(exprObjectToInit, null!, expr.ObjectToInit.Pos)
-                //};
+                var exprObjectToInit = expr.ByRef ? new PointerDereferenceExpression(expr.ObjectToInit, expr.Pos) : expr.ObjectToInit;
+                var left = new ValueMeta()
+                {
+                    //в indexGetting пихаем null потому что в AssignHandler не должен провоцировать анализ дочерних Expression.
+                    //А если каким-то образом произойдет вызов проверки indexGetting, то лучше пусть отхебнет нуллпоинтером, чем непредсказуемое поведение
+                    Expr = new ArrayCellAccessExpression(exprObjectToInit, null!, expr.ObjectToInit.Pos),
+                    IsStrippedViaExchange = true,
+                    VarData = new VarMeta(currentLifetime, false, false, arrayGetting.VarData)
+                };
 
-                //arrayGetting.AddReferTo(arrayGetting);
-                //            AssignHandler(left, right);
+                AssignHandler(left, right);
             }
             i++;
 
