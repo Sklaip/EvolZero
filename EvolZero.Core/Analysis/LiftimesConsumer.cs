@@ -3,7 +3,6 @@ using EvolZero.Core.LogicModels;
 using EvolZero.Core.LogicModels.Expressions;
 using EvolZero.Core.LogicModels.Statements;
 using EvolZero.Core.MemebersModels;
-using System.Reflection;
 
 namespace EvolZero.Core.Analysis
 {

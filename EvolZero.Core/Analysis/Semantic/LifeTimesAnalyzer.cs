@@ -735,7 +735,7 @@ namespace EvolZero.Core.Analysis.Semantic
             foreach (var childExpr in expr.Expressions)
             {
                 var right = HandleExpression(childExpr);
-                if (right == null) throw new NotImplementedException();
+                if (right == null) continue; // null здесь возможно если при HandleExpression найдена ошибка
 
                 var exprObjectToInit = expr.ByRef ? new PointerDereferenceExpression(expr.ObjectToInit, expr.Pos) : expr.ObjectToInit;
                 var left = new ValueMeta()
