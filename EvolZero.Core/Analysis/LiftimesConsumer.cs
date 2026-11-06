@@ -7,104 +7,147 @@ using System.Reflection;
 
 namespace EvolZero.Core.Analysis
 {
-	internal class LiftimesConsumer : ILifitemesBypassConsumer
-	{
-		class ConditionBlock(IfStatement statement)
-		{
-			public IfStatement Statement = statement;
-			public List<(Expression refExpr, VarMeta? Var, Statement SubStatement)> GivenRefs = new();
-			public Statement CurrentSubStatement;
-		}
+    public class LiftimesConsumer : ILifitemesBypassConsumer
+    {
+        class ConditionBlock(IfStatement statement)
+        {
+            public IfStatement Statement = statement;
+            public List<(Expression refExpr, VarMeta? Var, Statement SubStatement)> GivenRefs = new();
+            public Statement CurrentSubStatement;
+        }
 
-		private readonly Stack<ConditionBlock> _blocks = new();
+        private readonly Stack<ConditionBlock> _blocks = new();
+        private readonly MembersFinder _membersFinder;
 
-		public void EnterToIfStatement(IfStatement statement)
-		{
-			_blocks.Push(new ConditionBlock(statement));
-		}
+        public LiftimesConsumer(MembersFinder membersFinder)
+        {
+            _membersFinder = membersFinder;
+        }
 
-		public void ExitFromIfStatement(IfStatement statement)
-		{
-			var condBlock = _blocks.Pop();
+        public void EnterToIfStatement(IfStatement statement)
+        {
+            _blocks.Push(new ConditionBlock(statement));
+        }
 
-			if (condBlock.GivenRefs.Count == 0) return;
+        public void ExitFromIfStatement(IfStatement statement)
+        {
+            var condBlock = _blocks.Pop();
 
-			// Ветки конструкции if/else-if/else: тело if лежит в самом statement,
-			// у else-if — отдельные IfStatement из ElseIfStatements, у else — свой блок.
-			var branches = new List<Statement> { statement };
-			branches.AddRange(statement.ElseIfStatements);
-			if (statement.ElseStatement == null)
-				statement.ElseStatement = new BlockStatement(new List<ILogicModel>(), statement.Pos);
-			branches.Add(statement.ElseStatement);
+            if (condBlock.GivenRefs.Count == 0) return;
 
-			// Группируем отдачи владения по переменной: выражения из разных веток —
-			// разные узлы AST, а VarMeta для одной переменной всегда один и тот же инстанс.
-			// Для записей без VarMeta идентичностью служит само выражение.
-			var groups = condBlock.GivenRefs.GroupBy(g => (object?)g.Var ?? g.refExpr);
+            // Ветки конструкции if/else-if/else: тело if лежит в самом statement,
+            // у else-if — отдельные IfStatement из ElseIfStatements, у else — свой блок.
+            var branches = new List<Statement> { statement };
+            branches.AddRange(statement.ElseIfStatements);
+            if (statement.ElseStatement == null)
+                statement.ElseStatement = new BlockStatement(new List<ILogicModel>(), statement.Pos);
+            branches.Add(statement.ElseStatement);
 
-			foreach (var group in groups)
-			{
-				// Ветки, которые сами отдали владение этой переменной, очистку не получают:
-				// объект уже переехал в другое место (или его удалит получатель владения).
-				var gaveAwayIn = group.Select(g => g.SubStatement).ToHashSet();
-				var destructExpr = group.First().refExpr;
+            // Группируем отдачи владения по переменной: выражения из разных веток —
+            // разные узлы AST, а VarMeta для одной переменной всегда один и тот же инстанс.
+            // Для записей без VarMeta идентичностью служит само выражение.
+            var groups = condBlock.GivenRefs.GroupBy(g => (object?)g.Var ?? g.refExpr);
 
-				foreach (var branch in branches)
-				{
-					if (gaveAwayIn.Contains(branch)) continue;
-					branch.AddLogicModel(GetDestructor(destructExpr));
-				}
-			}
-		}
+            foreach (var group in groups)
+            {
+                // Ветки, которые сами отдали владение этой переменной, очистку не получают:
+                // объект уже переехал в другое место (или его удалит получатель владения).
+                var gaveAwayIn = group.Select(g => g.SubStatement).ToHashSet();
+                var destructExpr = group.First().refExpr;
 
-		public void HandleConditionSubStatement(Statement statement)
-		{
-			var currentIf = _blocks.Peek();
-			currentIf.CurrentSubStatement = statement;
-		}
+                foreach (var branch in branches)
+                {
+                    if (gaveAwayIn.Contains(branch)) continue;
+                    branch.AddLogicModel(GetDestructionCode(destructExpr));
+                }
+            }
+        }
 
-		public void GiveAwayOwnership(Expression expr, VarMeta? var, bool refersToCurrentBlock)
-		{
-			if (!_blocks.TryPeek(out var currentIf) || refersToCurrentBlock) return;
-			currentIf.GivenRefs.Add((expr, var, currentIf.CurrentSubStatement));
-		}
+        public void HandleConditionSubStatement(Statement statement)
+        {
+            var currentIf = _blocks.Peek();
+            currentIf.CurrentSubStatement = statement;
+        }
 
-		public Expression? PointerLifetimeEnd(Expression pointerExpr)
-		{
-			if (!pointerExpr.ResultTypeSpec.Type.IsBaseType)
-			{
-				return GetDestructor(pointerExpr);
-			}
+        public void GiveAwayOwnership(Expression expr, VarMeta? var, bool refersToCurrentBlock)
+        {
+            if (!_blocks.TryPeek(out var currentIf) || refersToCurrentBlock) return;
+            currentIf.GivenRefs.Add((expr, var, currentIf.CurrentSubStatement));
+        }
 
-			return new DestructPointerExpression(pointerExpr); // TODO: emitter потом просто повторно въебет этот Statement (если например это был new), поэтому нужно сохранять в какую-нибудь анонимную ссылку
-		}
+        public ILogicModel? PointerLifetimeEnd(Expression pointerExpr)
+        {
+            if (!pointerExpr.ResultTypeSpec.Type.IsBaseType)
+            {
+                return GetDestructionCode(pointerExpr);
+            }
 
-		public List<Expression> HandleDestructor(TypeDesc typeDesc, DestructorStatement destructorStatement)
-		{
-			var pos = destructorStatement.Pos;
-			var result = new List<Expression>();
+            return new DestructPointerExpression(pointerExpr); // TODO: emitter потом просто повторно въебет этот Statement (если например это был new), поэтому нужно сохранять в какую-нибудь анонимную ссылку
+        }
 
-			foreach (var field in typeDesc.Variables.Values)
-			{
-				if (field.Declaring.IsOwnerRef && !field.Declaring.Type.IsBaseType)
-				{
-					var thisGetting = new PointerDereferenceExpression(new AppealToThisExpression(typeDesc, pos), pos);
-					Expression fieldAccess = new StructureFieldAccessExpression(field, thisGetting, field.Declaring, true, pos);
+        public List<ILogicModel> HandleDestructor(TypeDesc typeDesc, DestructorStatement destructorStatement)
+        {
+            var pos = destructorStatement.Pos;
+            var result = new List<ILogicModel>();
 
-					result.Add(GetDestructor(fieldAccess));
-				}
-			}
+            foreach (var field in typeDesc.Variables.Values)
+            {
+                if (field.Declaring.IsOwnerRef && !field.Declaring.Type.IsBaseType)
+                {
+                    var thisGetting = new PointerDereferenceExpression(new AppealToThisExpression(typeDesc, pos), pos);
+                    Expression fieldAccess = new StructureFieldAccessExpression(field, thisGetting, field.Declaring, true, pos);
 
-			result.Add(new DestructPointerExpression(new AppealToThisExpression(typeDesc, pos)));
+                    result.Add(GetDestructionCode(fieldAccess));
+                }
+            }
 
-			return result;
-		}
+            result.Add(new DestructPointerExpression(new AppealToThisExpression(typeDesc, pos)));
 
-		private CallDesructorExpression GetDestructor(Expression expr)
-		{
-			var typeDestructor = expr.ResultTypeSpec.Type.Destructors.First();
-			return new CallDesructorExpression(expr, typeDestructor, expr.Pos);
-		}
+            return result;
+        }
 
-	}
+
+        private ILogicModel GetDestructionCode(Expression expr, bool isFirst = true)
+        {
+            var currentType = expr.ResultTypeSpec;
+            if (currentType.Type.IsBaseType) throw new NotImplementedException();
+
+            if (!currentType.QualifiersExists)
+            {
+                var typeDestructor = expr.ResultTypeSpec.Type.Destructors.First();
+                return new CallDesructorExpression(new GetPointerToVarExpression(expr, true, expr.Pos), typeDestructor, expr.Pos);
+            }
+
+            if (currentType.IsRef)
+            {
+                var innerType = currentType.RemoveFirtsQualifier();
+                if (!innerType.QualifiersExists)
+                {
+                    var typeDestructor = expr.ResultTypeSpec.Type.Destructors.First();
+                    return new CallDesructorExpression(expr, typeDestructor, expr.Pos);
+                }
+
+                return GetDestructionCode(new PointerDereferenceExpression(expr, expr.Pos), false);
+            }
+
+            if (currentType.IsArray && currentType.Qualifiers[0] is ArrayQualifier arrayQualifier)
+            {
+                var statements = new List<ILogicModel>();
+                var destructionBlock = new BlockStatement(statements, expr.Pos);
+
+                ulong arraySize = arrayQualifier.Size;
+                for (ulong i = 0; i < arraySize; i++)
+                {
+                    var indexGetting = new NumConstExpression(new TypeSpec(_membersFinder.IntType), BaseTypes.Int, i, expr.Pos); // TODO: я тут в номер индекса передаю int. Надо учитывать что в теории инта может не хватить, ноаврное надо проверять число и если че делать лонг
+                    statements.Add(GetDestructionCode(new ArrayCellAccessExpression(expr, indexGetting, expr.Pos), false));
+                }
+
+                return destructionBlock;
+            }
+
+            throw new NotImplementedException();
+        }
+
+
+    }
 }

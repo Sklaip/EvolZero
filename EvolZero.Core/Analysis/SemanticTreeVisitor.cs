@@ -1,4 +1,5 @@
-﻿using EvolZero.Core.LogicModels.Expressions;
+﻿using EvolZero.Core.LogicModels;
+using EvolZero.Core.LogicModels.Expressions;
 using EvolZero.Core.LogicModels.Statements;
 
 namespace EvolZero.Core.Analysis
@@ -17,11 +18,11 @@ namespace EvolZero.Core.Analysis
 			}
 		}
 
-		protected void AddToCurrentStatement(Expression expression)
+		protected void AddToCurrentStatement(ILogicModel value)
 		{
 			if (_currentStatement == null) throw new NotImplementedException();
 
-			_currentStatement.AddLogicModel(expression, _positionInCurrentStatement);
+			_currentStatement.AddLogicModel(value, _positionInCurrentStatement);
 			_positionInCurrentStatement++;
 		}
 

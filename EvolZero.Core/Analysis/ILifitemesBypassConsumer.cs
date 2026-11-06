@@ -1,4 +1,5 @@
 ﻿using EvolZero.Core.Analysis.Semantic;
+using EvolZero.Core.LogicModels;
 using EvolZero.Core.LogicModels.Expressions;
 using EvolZero.Core.LogicModels.Statements;
 using EvolZero.Core.MemebersModels;
@@ -11,7 +12,7 @@ namespace EvolZero.Core.Analysis
 		void ExitFromIfStatement(IfStatement statement);
 		void HandleConditionSubStatement(Statement statement);
 		void GiveAwayOwnership(Expression expr, VarMeta? var, bool refersToCurrentBlock);
-		Expression? PointerLifetimeEnd(Expression pointerExpr);
-		List<Expression> HandleDestructor(TypeDesc typeDesc, DestructorStatement destructorStatement);
+        ILogicModel? PointerLifetimeEnd(Expression pointerExpr);
+		List<ILogicModel> HandleDestructor(TypeDesc typeDesc, DestructorStatement destructorStatement);
 	}
 }

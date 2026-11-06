@@ -1,6 +1,7 @@
 ﻿using Antlr4.Runtime;
 using Antlr4.Runtime.Tree;
 using EvolZero.Core;
+using EvolZero.Core.Analysis;
 using EvolZero.Core.Analysis.Semantic;
 using EvolZero.Core.LogicModels.Statements;
 using EvolZero.Core.MemebersModels;
@@ -115,7 +116,7 @@ namespace EvolZero
 				return;
 			}
 
-			var referencesAnalazer = new LifeTimesAnalyzer(errorsBag);
+			var referencesAnalazer = new LifeTimesAnalyzer(errorsBag, new LiftimesConsumer(finder));
 			referencesAnalazer.Visit(program);
 
 			var accessAnalazer = new AccessAnalyzer(errorsBag);

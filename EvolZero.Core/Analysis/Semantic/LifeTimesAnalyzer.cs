@@ -85,7 +85,7 @@ namespace EvolZero.Core.Analysis.Semantic
 
         private IFunctionalBlockStatement? _currentFunc = null;
 
-        private ILifitemesBypassConsumer _lifetimesConsumer = new LiftimesConsumer();
+        private ILifitemesBypassConsumer _lifetimesConsumer;
 
         class CurrentBlock(Statement codeBlock)
         {
@@ -94,9 +94,10 @@ namespace EvolZero.Core.Analysis.Semantic
             public bool IsDestructed { get; set; }
         }
 
-        public LifeTimesAnalyzer(ErrorsBag errorsBag)
+        public LifeTimesAnalyzer(ErrorsBag errorsBag, ILifitemesBypassConsumer lifetimesConsumer)
         {
             _errorsBag = errorsBag;
+            _lifetimesConsumer = lifetimesConsumer;
         }
 
         private void AddLifetimeError(string errorCode, string message, PositionInSources pos)

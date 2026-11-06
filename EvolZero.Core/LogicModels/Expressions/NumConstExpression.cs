@@ -6,5 +6,6 @@ using System.Text;
 
 namespace EvolZero.Core.LogicModels.Expressions
 {
-	public class NumConstExpression(TypeSpec intTypeSpec, BaseTypes intType, BigInteger value, PositionInSources pos) : ConstOperationExpression<BigInteger>(intTypeSpec, intType, value, pos);
+	public class NumConstExpression(TypeSpec intTypeSpec, BaseTypes intType, BigInteger value, PositionInSources pos) 
+		: ConstOperationExpression<BigInteger>(intTypeSpec, intType, value, pos);
 }

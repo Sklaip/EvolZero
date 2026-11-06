@@ -795,7 +795,7 @@ namespace EvolZero.Core.Analysis
 			if (CheckStubForError(left, right)) return new StubForErrorExpression(CurrentPosition);
 
 			var uIntType = new TypeSpec(_membersFinder.FindType("uint"));
-			var intType = new TypeSpec(_membersFinder.FindType("int"));
+			var intType = new TypeSpec(_membersFinder.IntType);
 
 			var leftAccessor = AutoDereferenceIfPointer(left);
 			var rightAccessor = AutoDereferenceIfPointer(right);
@@ -918,7 +918,7 @@ namespace EvolZero.Core.Analysis
 
 		public Expression CreateInt(BigInteger num)
 		{
-			return new NumConstExpression(new TypeSpec(TypeNameToTypeDesc("int")), BaseTypes.Int, num, CurrentPosition);
+			return new NumConstExpression(new TypeSpec(_membersFinder.IntType), BaseTypes.Int, num, CurrentPosition);
 		}
 
 		public Expression CreateShort(BigInteger num)

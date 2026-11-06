@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Xml.Linq;
 
 namespace EvolZero.Core
 {
@@ -11,10 +12,17 @@ namespace EvolZero.Core
 		private HashSet<string> _namespaces = [];
 		private HashSet<string> _usings = [];
 
-		public MembersFinder(MembersTable membersTable)
+		public TypeDesc IntType { get; }
+
+        public MembersFinder(MembersTable membersTable)
 		{
 			_membersTable = membersTable;
-		}
+
+			if (!_membersTable.Types.TryGetValue("int", out TypeDesc? intType))
+				throw new NotImplementedException();
+
+			IntType = intType;
+        }
 
 		public void AddNamespace(string nameSpace)
 		{
