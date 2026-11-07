@@ -1,5 +1,6 @@
 ﻿using Antlr4.Runtime;
 using Antlr4.Runtime.Misc;
+using Antlr4.Runtime.Tree;
 using EvolZero.Core;
 using EvolZero.Core.Analysis;
 using EvolZero.Core.Analysis.Semantic;
@@ -246,16 +247,7 @@ namespace EvolZero.Parsing
 			var varName = ctx.IDENTIFIER().ToString();
 			if (varName == null) throw new NotImplementedException();
 
-			Expression? initializer = null;
-			if (ctx.objectInitializer() != null)
-			{
-				initializer = VisitObjectInitializer(ctx.objectInitializer());
-			}
-
-			var argsContext = ctx.args();
-			var args = argsContext != null ? ParseArgs(argsContext) : null;
-
-			Expression varAccessing = _semanticAnalyzer.CreateLocalVariable(varName, typeSpec, args, initializer);
+			Expression varAccessing = _semanticAnalyzer.CreateLocalVariable(varName, typeSpec);
 
 			if (ctx.ASSIGN() != null)
 			{
@@ -389,44 +381,55 @@ namespace EvolZero.Parsing
 			return res;
 		}
 
-		public override Expression? VisitNewExpr([NotNull] CEvolParser.NewExprContext context)
+        public override Expression? VisitNewExpr([NotNull] NewExprContext context)
 		{
-			var lastPos = _semanticAnalyzer.CurrentPosition;
-			SetCurrentPosition(context);
+			return VisitObjectInstantiation(context, context.typeSpec(),
+				context.args(), context.LPAREN(), context.objectInitializer(), true);
+        }
 
-			var typeSpec = ParseTypeSpec(context.typeSpec());
-			if (typeSpec == null)
-			{
-				var errorPos = _semanticAnalyzer.CurrentPosition;
-				_semanticAnalyzer.CurrentPosition = lastPos;
-				return new StubForErrorExpression(errorPos);
-			}
+        public override Expression? VisitValExpr([NotNull] ValExprContext context)
+		{
+			return VisitObjectInstantiation(context, context.typeSpec(), context.args(), 
+				context.LPAREN(), context.objectInitializer(), false);
+        }
 
-			Expression[]? arguments = null;
-			var args = context.args();
+        private Expression? VisitObjectInstantiation(ParserRuleContext context, TypeSpecContext typeSpecContext, ArgsContext? argsContext, 
+			ITerminalNode? lparenNode, ObjectInitializerContext? objectInitializerContext, bool inHeap)
+        {
+            var lastPos = _semanticAnalyzer.CurrentPosition;
+            SetCurrentPosition(context);
 
-			if (args != null)
-			{
-				arguments = ParseArgs(context.args());
-			}
-			else if (context.LPAREN() != null)
-			{
-				arguments = Array.Empty<Expression>();
-			}
+            var typeSpec = ParseTypeSpec(typeSpecContext);
+            if (typeSpec == null)
+            {
+                var errorPos = _semanticAnalyzer.CurrentPosition;
+                _semanticAnalyzer.CurrentPosition = lastPos;
+                return new StubForErrorExpression(errorPos);
+            }
 
-			Expression? objectInitializer = null;
-			if (context.objectInitializer() != null)
-			{
-				objectInitializer = Visit(context.objectInitializer());
-			}
+            Expression[]? arguments = null;
+            if (argsContext != null)
+            {
+                arguments = ParseArgs(argsContext);
+            }
+            else if (lparenNode != null)
+            {
+                arguments = Array.Empty<Expression>();
+            }
 
-			var res = _semanticAnalyzer.CreateObjectHeapMemory(typeSpec.Value, arguments, objectInitializer);
+            Expression? objectInitializer = null;
+            if (objectInitializerContext != null)
+            {
+                objectInitializer = Visit(objectInitializerContext);
+            }
 
-			_semanticAnalyzer.CurrentPosition = lastPos;
-			return res;
-		}
+            var res = _semanticAnalyzer.CreateObject(typeSpec.Value, arguments, objectInitializer, inHeap);
 
-		public override Expression? VisitIndexExpr([NotNull] CEvolParser.IndexExprContext context)
+            _semanticAnalyzer.CurrentPosition = lastPos;
+            return res;
+        }
+
+        public override Expression? VisitIndexExpr([NotNull] CEvolParser.IndexExprContext context)
 		{
 			var lastPos = _semanticAnalyzer.CurrentPosition;
 			SetCurrentPosition(context);

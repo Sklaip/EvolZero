@@ -14,6 +14,7 @@ RETURN   : 'return';
 THIS   : 'this';
 LOC  : 'loc';
 NEW : 'new';
+VAL : 'val';
 CONSTRUCTOR : 'ctor';
 DESTRUCTOR : 'dtor';
 REF : 'ref';

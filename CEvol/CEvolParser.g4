@@ -23,7 +23,7 @@ typeSpec : (qualifier)* IDENTIFIER arraySpec* ;
 
 // --- Объявления ---
 classDecl : CLASS IDENTIFIER LBRACE (fieldDecl | functionDecl | abstractFunctionDecl | constructorDecl | desctructorDecl)* RBRACE ;
-fieldDecl : accessModifier? extraModifier* typeSpec IDENTIFIER (LPAREN args? RPAREN)? objectInitializer? (ASSIGN expression)? SEMICOLON ;
+fieldDecl : accessModifier? extraModifier* typeSpec IDENTIFIER (ASSIGN expression)? SEMICOLON ;
 
 functionDecl : accessModifier? extraModifier* typeSpec IDENTIFIER LPAREN params? RPAREN lifetimesDecl? block ;
 abstractFunctionDecl : accessModifier? extraModifier* typeSpec IDENTIFIER LPAREN params? RPAREN SEMICOLON ;
@@ -69,6 +69,7 @@ expression
     | IDENTIFIER                                                              # IdExpr
     | LPAREN expression RPAREN                                                # ParenExpr
 
+    | VAL typeSpec ( LPAREN args? RPAREN )? objectInitializer?                # ValExpr
     | NEW typeSpec ( LPAREN args? RPAREN )? objectInitializer?                # NewExpr
 
     | IDENTIFIER LPAREN args? RPAREN                                          # CallExpr

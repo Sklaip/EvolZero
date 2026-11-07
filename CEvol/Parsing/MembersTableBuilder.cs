@@ -196,7 +196,7 @@ namespace EvolZero.Parsing
 					TypeDesc fieldType = FindTypeForDeclaring(field.Type);
 					var qualifers = QualifierWorkpiece.ToQualifiers(field.Type.Qualifiers);
 
-					if (!fieldType.IsBaseType && (qualifers == null || qualifers.Length < 1)) throw new NotImplementedException(); // TODO: сделать возможность пихать класс в класс по значению
+					//if (!fieldType.IsBaseType && (qualifers == null || qualifers.Length < 1)) throw new NotImplementedException(); // TODO: сделать возможность пихать класс в класс по значению
 
 					currentClassTypeDesc.Variables.Add(field.Name, new VariableDesc(new TypeSpec(fieldType, qualifers), field.Name, fieldNum, field.Access));
 

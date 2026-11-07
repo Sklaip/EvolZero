@@ -333,7 +333,13 @@ namespace EvolZero.Generation
 		{
 			var memoryGetting = HandleExpression(expr.MemoryGetting);
 
-			IValueAccessor[] accessors = [memoryGetting, .. expr.Arguments.Select(HandleExpression)];
+			IValueAccessor firstArgument = memoryGetting;
+			if (!expr.ToHeap)
+			{
+                firstArgument = _codeGenerator.GetPointerToVar(memoryGetting);
+            }
+
+			IValueAccessor[] accessors = [firstArgument, .. expr.Arguments.Select(HandleExpression)];
 			_codeGenerator.FunctionCall(expr.Constructor.RefData, accessors);
 
 			return memoryGetting;

@@ -52,7 +52,7 @@ int main()
 	printf(refb "%d\n", c.D);
 	printf(refb "%d\n", c.Sum());
 
-	Point p(100);
+	Point p = val Point(100);
 	printf(refb "%d\n", p.X);
 	printf(refb "%d\n", p.Y);
 

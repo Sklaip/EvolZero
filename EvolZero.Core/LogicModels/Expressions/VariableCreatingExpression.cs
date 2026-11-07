@@ -1,7 +1,4 @@
 ﻿using EvolZero.Core.MemebersModels;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace EvolZero.Core.LogicModels.Expressions
 {
@@ -9,11 +6,14 @@ namespace EvolZero.Core.LogicModels.Expressions
 	{
 		public readonly string Name;
 		public bool IsInitialized { get; set; } = false;
+		public readonly bool IsTemp;
 
-		public VariableCreatingExpression(string name, TypeSpec resultTypeSpec, PositionInSources pos) : base(resultTypeSpec, pos)
+
+        public VariableCreatingExpression(string name, TypeSpec resultTypeSpec, bool isTemp, PositionInSources pos) : base(resultTypeSpec, pos)
 		{
 			Name = name;
-		}
+            IsTemp = isTemp;
+        }
 	}
 }
 

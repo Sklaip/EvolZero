@@ -14,10 +14,10 @@ int main()
 	int i = 0;
 	while (i < 2 * n)
 	{
-		int val = i - n;
-		if (val > 0)
+		int value = i - n;
+		if (value > 0)
 		{
-			sum = sum + val;
+			sum = sum + value;
 		}
 		i = i + 1;
 	}

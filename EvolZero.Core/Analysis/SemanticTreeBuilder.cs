@@ -511,7 +511,7 @@ namespace EvolZero.Core.Analysis
 			return new CallFunctionExpression(realArgs, funcDesc, CurrentPosition);
 		}
 
-		public Expression CreateObjectHeapMemory(TypeSpec type, Expression[]? args, Expression? objInitializer)
+		public Expression CreateObject(TypeSpec type, Expression[]? args, Expression? objInitializer, bool inHeap)
 		{
 			CheckInitializable(args);
 
@@ -543,7 +543,7 @@ namespace EvolZero.Core.Analysis
 					if (!ValidateObjectInitializer(objectInitializer, type))
 						return new StubForErrorExpression(CurrentPosition);
 
-					res = objectInitializer.RecreateToObject(res, true);
+					res = objectInitializer.RecreateToObject(res, inHeap);
 
                 }
 
@@ -556,7 +556,16 @@ namespace EvolZero.Core.Analysis
 				return new StubForErrorExpression(CurrentPosition);
 			}
 
-			return CallHeapConstructor(type, args);
+			if (inHeap)
+			{
+                return CallHeapConstructor(type, args);
+			}
+			else
+			{
+				var tempVar = CreateTempVar(type);
+                return CallValueConstructor(type.Type, tempVar, args);
+            }
+			
 		}
 
 		private Expression CallHeapConstructor(TypeSpec typeSpec, Expression[] args)
@@ -588,13 +597,13 @@ namespace EvolZero.Core.Analysis
 			}
 
 			var memory = new AllocateHeapMemoryToType(new TypeSpec(typeSpec.Type, [Qualifier.Reference]), pos: CurrentPosition);
-			return new CallConstructorExpression(memory, ctorDesc, arguments, CurrentPosition);
+			return new CallConstructorExpression(memory, ctorDesc, arguments, true, CurrentPosition);
 		}
 
-		private Expression CallStackConstructor(TypeDesc typeDesc, Expression objMemoryGetting, Expression[]? args)
+		private Expression CallValueConstructor(TypeDesc typeDesc, Expression objMemoryGetting, Expression[] args)
 		{
 			if (CheckStubForError(objMemoryGetting)) return new StubForErrorExpression(CurrentPosition);
-			if (args != null && CheckStubForError(args)) return new StubForErrorExpression(CurrentPosition);
+			if (CheckStubForError(args)) return new StubForErrorExpression(CurrentPosition);
 
 			CheckInitializable(args);
 			InitializeVariable(objMemoryGetting);
@@ -604,8 +613,6 @@ namespace EvolZero.Core.Analysis
 
 			if (constructors.Count > 0)
 			{
-				if (args == null) args = [];
-
 				var arguments = args.Select(x => AutoDereferenceIfPointer(x, true)).ToArray();
 				ctorDesc = _typeAnalyzer.FindSuitableConstructor(constructors, arguments.Select(x => x.ResultTypeSpec), out TypeSpec?[] casts);
 
@@ -625,7 +632,7 @@ namespace EvolZero.Core.Analysis
 					arguments[i] = ImplicitIntExtenssion(arguments[i], cast.Value);
 				}
 
-				return new CallConstructorExpression(new GetPointerToVarExpression(objMemoryGetting, false, CurrentPosition), ctorDesc, arguments, CurrentPosition);
+                return new CallConstructorExpression(objMemoryGetting, ctorDesc, arguments, false, CurrentPosition);
 			}
 
 			return objMemoryGetting;
@@ -944,10 +951,8 @@ namespace EvolZero.Core.Analysis
 				[Qualifier.BorrowReference, new ArrayQualifier((ulong)strBytes.LongLength)]), CurrentPosition);
 		}
 
-		public Expression CreateLocalVariable(string name, TypeSpec declaring, Expression[]? args, Expression? objInitializer)
+		public Expression CreateLocalVariable(string name, TypeSpec declaring)
 		{
-			CheckInitializable(args);
-
 			CodeBlock block = _blocks.Peek();
 			if (block.Variables.ContainsKey(name))
 			{
@@ -955,24 +960,8 @@ namespace EvolZero.Core.Analysis
 				return new StubForErrorExpression(CurrentPosition);
 			}
 
-			Expression res = new VariableCreatingExpression(name, declaring, CurrentPosition);
-			block.Variables[name] = new(declaring, !declaring.IsRef);
-
-			if (!declaring.QualifiersExists)
-			{
-				res = CallStackConstructor(declaring.Type, res, args);
-			}
-
-			if (objInitializer != null)
-			{
-				if (objInitializer is not ObjectInitializerExpression objectInitializer)
-					throw new NotImplementedException();
-
-				if (!ValidateObjectInitializer(objectInitializer, declaring))
-					return new StubForErrorExpression(CurrentPosition);
-
-				res = objectInitializer.RecreateToObject(res);
-			}
+			Expression res = new VariableCreatingExpression(name, declaring, false, CurrentPosition);
+			block.Variables[name] = new(declaring, !declaring.IsRef && declaring.Type.IsBaseType);
 
 			return res;
 		}
@@ -1424,6 +1413,26 @@ namespace EvolZero.Core.Analysis
 			if (exprs == null) return;
 			exprs.ForEach(x => CheckInitializable(x));
 		}
+
+		private VariableCreatingExpression CreateTempVar(TypeSpec type)
+		{
+			string baseName = $"temp_var_{type.Type.Name}";
+			string name = baseName;
+
+			var variables = _blocks.Peek().Variables;
+			int i = 0;
+			while (variables.ContainsKey(name))
+			{
+				name = $"{baseName}_{i}";
+				i++;
+            }
+
+            CodeBlock block = _blocks.Peek();
+            var tempVar = new VariableCreatingExpression(name, type, true, CurrentPosition);
+            block.Variables[name] = new(type, !type.IsRef);
+
+            return tempVar;
+        }
 
 	}
 }

@@ -36,7 +36,7 @@ class Holder
 int main()
 {
 	// 1. Чтение публичного поля стек-экземпляра.
-	Conn a(10);
+	Conn a = val Conn(10);
 	printf(refb "%d\n", a.Type);
 
 	// 2. Запись публичного поля стек-экземпляра.

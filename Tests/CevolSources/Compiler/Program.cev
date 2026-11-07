@@ -37,7 +37,7 @@ int main()
 
     printf(refb inputBufer);
 
-	Structure structure(10 + 15);
+	Structure structure = val Structure(10 + 15);
 
 	printf(refb "%d\n", structure.Num);
 

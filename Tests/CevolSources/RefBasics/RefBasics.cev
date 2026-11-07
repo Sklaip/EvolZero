@@ -43,7 +43,7 @@ int main()
 	printf(refb "%d\n", b);
 
 	// 4. Стек-экземпляр класса, чтение поля через ref-переменную.
-	Cell cell(10);
+	Cell cell = val Cell(10);
 	refb int rc = loc cell.Value;
 	printf(refb "%d\n", rc);
 

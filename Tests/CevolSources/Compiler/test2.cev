@@ -101,7 +101,7 @@ int Tests()
 	printf(refb serviceStr.ToBytes(), val1);
 	printf(refb serviceStr.ToBytes(), val2);
 
-	Connect connTest(500);
+	Connect connTest = val Connect(500);
 	connTest.ConnType = 500;
 	connTest.SetConnectType(10);
 	connTest.PrintConnectType();

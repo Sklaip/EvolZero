@@ -49,8 +49,8 @@ int main()
 	printf(refb "%d\n", q);
 
 	// 4. Ссылка на поле объекта, затем переуказание на поле другого объекта.
-	Conn c1(7);
-	Conn c2(9);
+	Conn c1 = val Conn(7);
+	Conn c2 = val Conn(9);
 	refb int rc = loc c1.Type;
 	rc = 70;
 	printf(refb "%d\n", c1.Type);

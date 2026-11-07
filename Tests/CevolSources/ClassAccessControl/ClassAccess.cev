@@ -42,7 +42,7 @@ class OtherClass
 
 int main()
 {
-	Item item(5);
+	Item item = val Item(5);
 	item.Open = 10;
 
 	// Public-поле доступно извне.
@@ -54,13 +54,13 @@ int main()
 	// Доступ к public-полю из другого класса.
 	ref Item heapItem = new Item(2);
 	heapItem.Open = 10;
-	OtherClass other;
+	OtherClass other = val OtherClass();
 	ref Item oldPublicItem;
 	ref oldPublicItem = other.PublicItem <- heapItem;
 	printf(refb "%d\n", other.ReadOpen());
 
 	// Public-поле другого экземпляра того же класса.
-	Item item2(1);
+	Item item2 = val Item(1);
 	item2.Open = 3;
 	item.Open = item2.Open + item.Open;
 	printf(refb "%d\n", item.Open);

@@ -21,7 +21,7 @@ class Cell
 
 int main()
 {
-	Cell cell(10);
+	Cell cell = val Cell(10);
 
 	// Возвращённая refb — алиас поля: запись через неё видна объекту.
 	refb int r = cell.GetRef();
