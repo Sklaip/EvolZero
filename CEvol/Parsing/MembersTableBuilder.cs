@@ -2,9 +2,6 @@
 using EvolZero.Core.MemebersModels;
 using EvolZero.Generation;
 using EvolZero.Parsing.Models;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace EvolZero.Parsing
 {
@@ -184,7 +181,7 @@ namespace EvolZero.Parsing
 			_existsClasses = generalTypesList;
 		}
 
-		private void BuildClassesList()
+        private void BuildClassesList()
 		{
 			foreach (var currentClass in _classes.Values)
 			{
