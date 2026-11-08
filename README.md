@@ -1,1 +1,1 @@
-EvolZero - bootstrap компилятор языка CEvol
+EvolZero - bootstrap компилятор языка Cevol
