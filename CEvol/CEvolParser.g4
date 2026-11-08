@@ -3,7 +3,7 @@ parser grammar CEvolParser;
 options { tokenVocab = CEvolLexer; }
 
 // --- Точка входа ---
-program : namespaceDecl usingDecl? (classDecl | functionDecl | fieldDecl | abstractFunctionDecl)* EOF;
+program : namespaceDecl usingDecl* (classDecl | functionDecl | fieldDecl | abstractFunctionDecl)* EOF;
 
 namespaceDecl : NAMESPACE IDENTIFIER SEMICOLON ;
 usingDecl : USING IDENTIFIER SEMICOLON ;
@@ -30,7 +30,6 @@ abstractFunctionDecl : accessModifier? extraModifier* typeSpec IDENTIFIER LPAREN
 constructorDecl : accessModifier? extraModifier* CONSTRUCTOR LPAREN params? RPAREN lifetimesDecl? block ;
 desctructorDecl : accessModifier? extraModifier* DESTRUCTOR LPAREN RPAREN block ;
 
-assignment : (qualifier)? expression ASSIGN expression ;
 args : expression (COMMA expression)* ;
 params : typeSpec IDENTIFIER (COMMA typeSpec IDENTIFIER)* ;
 
@@ -53,7 +52,6 @@ objectInitializer : LBRACE objectInitializerParams? RBRACE ;
 
 statement 
     : fieldDecl                      # VarDeclStmt
-    | assignment SEMICOLON           # AssignStmt
     | ifStatement                    # IfStmt
     | whileStatement                 # WhileStmt
     | RETURN expression SEMICOLON    # ReturnStmt
@@ -79,7 +77,7 @@ expression
     | LPAREN typeSpec RPAREN expression                                       # CastExpr
 
     | LOC expression                                                          # LocExpr
-    | qualifier expression                                                    # RefExpr
+    | qualifier expression                                                    # QualifierExpr
 
     | expression (MUL | DIV) expression                                       # MulDivExpr
     | expression (PLUS | MINUS) expression                                    # AddSubExpr
@@ -91,4 +89,6 @@ expression
     | expression AND expression                                               # LogicalAndExpr
     | expression OR expression                                                # LogicalOrExpr
     | expression EXCHANGE expression                                          # ExchangeExpr
+
+    | expression ASSIGN expression                                            # AssignExpr
     ;

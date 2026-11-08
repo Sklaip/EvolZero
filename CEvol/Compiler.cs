@@ -284,7 +284,7 @@ namespace EvolZero
             using var process = new System.Diagnostics.Process();
 
             process.StartInfo.FileName = @"D:\Programs\LLVM\bin\clang.exe";
-            process.StartInfo.Arguments = $"{objFile} -o {exeFile} -llegacy_stdio_definitions";
+            process.StartInfo.Arguments = $"{objFile} -o {exeFile} -llegacy_stdio_definitions -lws2_32";
 
             process.StartInfo.UseShellExecute = false;
             process.StartInfo.RedirectStandardError = true;

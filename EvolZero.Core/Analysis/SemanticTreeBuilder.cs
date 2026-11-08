@@ -10,1421 +10,1385 @@ using System.Xml.Linq;
 
 namespace EvolZero.Core.Analysis
 {
-	public class SemanticTreeBuilder
-	{
-		public const string COMPILATION_LAYER = "BasicSemanticsValidator";
-
-		private readonly MembersFinder _membersFinder;
-		private readonly TypeAnalyzer _typeAnalyzer;
-		private readonly ErrorsBag _errorsBag;
-
-		private Stack<CodeBlock> _blocks = new();
-
-		public PositionInSources CurrentPosition { get; set; }
-
-		public bool UnchekedMode { get; set; } = false;
-		public bool UnsafeMode { get; set; } = false;
-
-		private class Var(TypeSpec type, bool isInit)
-		{
-			public TypeSpec Type { get; set; } = type;
-			public bool IsInit { get; set; } = isInit;
-		}
-
-		private class Field(VariableDesc type, bool isInit)
-		{
-			public VariableDesc Type { get; set; } = type;
-			public bool IsInit { get; set; } = isInit;
-		}
-
-		private class CodeBlock
-		{
-			// TODO: здесь наверное сделать параметр показывающий текущий тип блока (функция, класс и тп) чтобы понимать можно ли сюда пихать выражение
-			public Statement CurentStatement;
-			public List<ILogicModel> StatementChilds;
-			public Dictionary<string, Var> Variables = new();
-			public Dictionary<string, Field>? CurrentClassFields;
-			public IFunctionalBlockStatement? CurrentFunction;
-			public ClassStatement? CurrentClass;
-
-			public CodeBlock(Statement curentStatement, List<ILogicModel> statementChilds, Dictionary<string, Var> variables,
-				Dictionary<string, Field>? currentClassFields, IFunctionalBlockStatement? currentFunction, ClassStatement? currentClass)
-			{
-				CurentStatement = curentStatement;
-				CurrentClassFields = currentClassFields;
-				StatementChilds = statementChilds;
-				Variables = variables;
-				CurrentFunction = currentFunction;
-				CurrentClass = currentClass;
-			}
-		}
-
-		public SemanticTreeBuilder(MembersFinder membersFinder, TypeAnalyzer typeAnalyzer, ErrorsBag errorsBag)
-		{
-			_membersFinder = membersFinder;
-			_typeAnalyzer = typeAnalyzer;
-			_errorsBag = errorsBag;
-		}
-
-		public void EnterToNameSpace(string nameSpace)
-		{
-			_membersFinder.AddUsing(nameSpace);
-			var childs = new List<ILogicModel>();
-			var statement = new NamespaceStatement(nameSpace, childs, CurrentPosition);
-
-			_blocks.Push(new CodeBlock(statement, childs, [], null, null, null));
-		}
-
-		public void Using(string nameSpace)
-		{
-			if (!_membersFinder.AddUsing(nameSpace))
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "A namespace was not found", CurrentPosition);
-			}
-		}
-
-		public void EnterToClass(string className)
-		{
-			var typeDesc = _membersFinder.FindType(className);
-			var childs = new List<ILogicModel>();
-			var statement = new ClassStatement(typeDesc, childs, CurrentPosition);
-
-			CodeBlock block = _blocks.Peek();
-			block.StatementChilds.Add(statement);
-
-			_blocks.Push(new CodeBlock(statement, childs, [], null, null, statement));
-		}
-
-		public void EnterToFunction(string funcName, List<(TypeSpec Type, string Name)> parameters)
-		{
-			CodeBlock block = _blocks.Peek();
-			var currentClass = block.CurrentClass;
-
-			FuncDesc? funcDesc = null;
-			if (currentClass != null)
-			{
-				var functions = _membersFinder.FindFunction(currentClass.TypeDesc, funcName);
-				if (functions == null)
-				{
-					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "A function with that name was not found", CurrentPosition);
-					return;
-				}
-
-				funcDesc = _typeAnalyzer.FindSuitableFunction(functions, parameters.Select(x => x.Type), out _);
-			}
-			else
-			{
-				var functions = _membersFinder.FindFunction(funcName);
-				if (functions == null)
-				{
-					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "A function with that name was not found", CurrentPosition);
-					return;
-				}
+    public class SemanticTreeBuilder
+    {
+        public const string COMPILATION_LAYER = "BasicSemanticsValidator";
+
+        private readonly MembersFinder _membersFinder;
+        private readonly TypeAnalyzer _typeAnalyzer;
+        private readonly ErrorsBag _errorsBag;
+
+        private Stack<CodeBlock> _blocks = new();
+
+        public PositionInSources CurrentPosition { get; set; }
+
+        private class Var(TypeSpec type, bool isInit)
+        {
+            public TypeSpec Type { get; set; } = type;
+            public bool IsInit { get; set; } = isInit;
+        }
+
+        private class Field(VariableDesc type, bool isInit)
+        {
+            public VariableDesc Type { get; set; } = type;
+            public bool IsInit { get; set; } = isInit;
+        }
+
+        private class CodeBlock
+        {
+            // TODO: здесь наверное сделать параметр показывающий текущий тип блока (функция, класс и тп) чтобы понимать можно ли сюда пихать выражение
+            public Statement CurentStatement;
+            public List<ILogicModel> StatementChilds;
+            public Dictionary<string, Var> Variables = new();
+            public Dictionary<string, Field>? CurrentClassFields;
+            public IFunctionalBlockStatement? CurrentFunction;
+            public ClassStatement? CurrentClass;
+            public bool IsUnsafe;
+
+            public CodeBlock(Statement curentStatement, List<ILogicModel> statementChilds,
+                Dictionary<string, Var> variables, Dictionary<string, Field>? currentClassFields,
+                IFunctionalBlockStatement? currentFunction, ClassStatement? currentClass, bool isUnsafe = false)
+            {
+                CurentStatement = curentStatement;
+                CurrentClassFields = currentClassFields;
+                StatementChilds = statementChilds;
+                Variables = variables;
+                CurrentFunction = currentFunction;
+                CurrentClass = currentClass;
+                IsUnsafe = isUnsafe;
+            }
+        }
+
+        public SemanticTreeBuilder(MembersFinder membersFinder, TypeAnalyzer typeAnalyzer, ErrorsBag errorsBag)
+        {
+            _membersFinder = membersFinder;
+            _typeAnalyzer = typeAnalyzer;
+            _errorsBag = errorsBag;
+        }
+
+        public void EnterToNameSpace(string nameSpace)
+        {
+            _membersFinder.AddUsing(nameSpace);
+            var childs = new List<ILogicModel>();
+            var statement = new NamespaceStatement(nameSpace, childs, CurrentPosition);
+
+            _blocks.Push(new CodeBlock(statement, childs, [], null, null, null));
+        }
+
+        public void Using(string nameSpace)
+        {
+            if (!_membersFinder.AddUsing(nameSpace))
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "A namespace was not found", CurrentPosition);
+            }
+        }
+
+        public void EnterToClass(string className)
+        {
+            var typeDesc = _membersFinder.FindType(className);
+            var childs = new List<ILogicModel>();
+            var statement = new ClassStatement(typeDesc, childs, CurrentPosition);
+
+            CodeBlock block = _blocks.Peek();
+            block.StatementChilds.Add(statement);
+
+            _blocks.Push(new CodeBlock(statement, childs, [], null, null, statement));
+        }
+
+        public void EnterToFunction(string funcName, List<(TypeSpec Type, string Name)> parameters)
+        {
+            CodeBlock block = _blocks.Peek();
+            var currentClass = block.CurrentClass;
+
+            FuncDesc? funcDesc = null;
+            if (currentClass != null)
+            {
+                var functions = _membersFinder.FindFunction(currentClass.TypeDesc, funcName);
+                if (functions == null)
+                {
+                    _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "A function with that name was not found", CurrentPosition);
+                    return;
+                }
+
+                funcDesc = _typeAnalyzer.FindSuitableFunction(functions, parameters.Select(x => x.Type), out _);
+            }
+            else
+            {
+                var functions = _membersFinder.FindFunction(funcName);
+                if (functions == null)
+                {
+                    _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "A function with that name was not found", CurrentPosition);
+                    return;
+                }
 
-				funcDesc = _typeAnalyzer.FindSuitableFunction(functions, parameters.Select(x => x.Type), out _);
-			}
+                funcDesc = _typeAnalyzer.FindSuitableFunction(functions, parameters.Select(x => x.Type), out _);
+            }
 
-			if (funcDesc == null)
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Function overload with specified arguments could not be found", CurrentPosition);
-				return;
-			}
+            if (funcDesc == null)
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Function overload with specified arguments could not be found", CurrentPosition);
+                return;
+            }
 
-			var childs = new List<ILogicModel>();
-			var statement = new FunctionStatement(funcDesc, childs, CurrentPosition);
+            var childs = new List<ILogicModel>();
+            var statement = new FunctionStatement(funcDesc, childs, CurrentPosition);
 
-			block.StatementChilds.Add(statement);
+            block.StatementChilds.Add(statement);
 
-			var variables = new Dictionary<string, Var>();
+            var variables = new Dictionary<string, Var>();
 
-			foreach (var param in parameters)
-			{
-				variables[param.Name] = new(param.Type, true);
-			}
+            foreach (var param in parameters)
+            {
+                variables[param.Name] = new(param.Type, true);
+            }
 
-			var classFields = currentClass?.TypeDesc.Variables.Values.Select(x => (x.Name, new Field(x, true))).ToDictionary();
+            var classFields = currentClass?.TypeDesc.Variables.Values.Select(x => (x.Name, new Field(x, true))).ToDictionary();
 
-			_blocks.Push(new CodeBlock(statement, childs, variables, classFields, statement, currentClass));
-		}
+            _blocks.Push(new CodeBlock(statement, childs, variables, classFields, statement, currentClass));
+        }
 
-		public void EnterToConstructor(List<(TypeSpec Type, string Name)> parameters)
-		{
-			CodeBlock block = _blocks.Peek();
-			var currentClass = block.CurrentClass;
+        public void EnterToConstructor(List<(TypeSpec Type, string Name)> parameters)
+        {
+            CodeBlock block = _blocks.Peek();
+            var currentClass = block.CurrentClass;
 
-			if (currentClass == null)
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Declaring a constructor outside of a class is not allowed", CurrentPosition);
-				return;
-			}
+            if (currentClass == null)
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Declaring a constructor outside of a class is not allowed", CurrentPosition);
+                return;
+            }
 
-			ConstructorDesc? ctorDesc = null;
-			var constructors = _membersFinder.FindConstructors(currentClass.TypeDesc);
+            ConstructorDesc? ctorDesc = null;
+            var constructors = _membersFinder.FindConstructors(currentClass.TypeDesc);
 
-			ctorDesc = _typeAnalyzer.FindSuitableConstructor(constructors, parameters.Select(x => x.Type));
+            ctorDesc = _typeAnalyzer.FindSuitableConstructor(constructors, parameters.Select(x => x.Type));
 
-			if (ctorDesc == null)
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Constructor with specified arguments could not be found", CurrentPosition);
-				return;
-			}
+            if (ctorDesc == null)
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Constructor with specified arguments could not be found", CurrentPosition);
+                return;
+            }
 
-			var childs = new List<ILogicModel>();
-			var statement = new ConstructorStatement(ctorDesc, childs, new TypeSpec(_membersFinder.FindType("void")), CurrentPosition);
+            var childs = new List<ILogicModel>();
+            var statement = new ConstructorStatement(ctorDesc, childs, new TypeSpec(_membersFinder.FindType("void")), CurrentPosition);
 
-			block.StatementChilds.Add(statement);
+            block.StatementChilds.Add(statement);
 
-			var variables = new Dictionary<string, Var>();
+            var variables = new Dictionary<string, Var>();
 
-			foreach (var param in parameters)
-			{
-				variables[param.Name] = new(param.Type, true);
-			}
+            foreach (var param in parameters)
+            {
+                variables[param.Name] = new(param.Type, true);
+            }
 
-			var classFields = currentClass?.TypeDesc.Variables.Values.Select(x => (x.Name, new Field(x, false))).ToDictionary();
+            var classFields = currentClass?.TypeDesc.Variables.Values.Select(x => (x.Name, new Field(x, false))).ToDictionary();
 
-			_blocks.Push(new CodeBlock(statement, childs, variables, classFields, statement, currentClass));
-		}
+            _blocks.Push(new CodeBlock(statement, childs, variables, classFields, statement, currentClass));
+        }
 
-		public void EnterToDestructor()
-		{
-			CodeBlock block = _blocks.Peek();
-			var currentClass = block.CurrentClass;
+        public void EnterToDestructor()
+        {
+            CodeBlock block = _blocks.Peek();
+            var currentClass = block.CurrentClass;
 
-			if (currentClass == null)
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Declaring a constructor outside of a class is not allowed", CurrentPosition);
-				return;
-			}
+            if (currentClass == null)
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Declaring a constructor outside of a class is not allowed", CurrentPosition);
+                return;
+            }
 
-			DestructorDesc? dtorDesc = null;
-			var destructors = _membersFinder.FindDesctructors(currentClass.TypeDesc);
+            DestructorDesc? dtorDesc = null;
+            var destructors = _membersFinder.FindDesctructors(currentClass.TypeDesc);
 
-			dtorDesc = _typeAnalyzer.FindSuitableDestructor(destructors);
+            dtorDesc = _typeAnalyzer.FindSuitableDestructor(destructors);
 
-			if (dtorDesc == null)
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Destructor with specified arguments could not be found", CurrentPosition);
-				return;
-			}
+            if (dtorDesc == null)
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Destructor with specified arguments could not be found", CurrentPosition);
+                return;
+            }
 
-			var childs = new List<ILogicModel>();
-			var statement = new DestructorStatement(dtorDesc, childs, new TypeSpec(_membersFinder.FindType("void")), CurrentPosition);
+            var childs = new List<ILogicModel>();
+            var statement = new DestructorStatement(dtorDesc, childs, new TypeSpec(_membersFinder.FindType("void")), CurrentPosition);
 
-			block.StatementChilds.Add(statement);
+            block.StatementChilds.Add(statement);
 
-			var variables = new Dictionary<string, Var>();
-			var classFields = currentClass?.TypeDesc.Variables.Values.Select(x => (x.Name, new Field(x, true))).ToDictionary();
+            var variables = new Dictionary<string, Var>();
+            var classFields = currentClass?.TypeDesc.Variables.Values.Select(x => (x.Name, new Field(x, true))).ToDictionary();
 
-			_blocks.Push(new CodeBlock(statement, childs, variables, classFields, statement, currentClass));
-		}
+            _blocks.Push(new CodeBlock(statement, childs, variables, classFields, statement, currentClass));
+        }
 
-		public void EnterToIfBlock(Expression condition)
-		{
-			var childs = new List<ILogicModel>();
-			var statement = new IfStatement(childs, condition, CurrentPosition);
+        public void EnterToIfBlock(Expression condition)
+        {
+            var childs = new List<ILogicModel>();
+            var statement = new IfStatement(childs, condition, CurrentPosition);
 
-			CodeBlock block = _blocks.Peek();
-			block.StatementChilds.Add(statement);
+            CodeBlock block = _blocks.Peek();
+            block.StatementChilds.Add(statement);
 
-			var currentFunction = block.CurrentFunction;
-			if (currentFunction == null) throw new NotImplementedException();
-			var currentClass = block.CurrentClass;
+            var currentFunction = block.CurrentFunction;
+            if (currentFunction == null) throw new NotImplementedException();
+            var currentClass = block.CurrentClass;
 
-			var variables = new Dictionary<string, Var>(block.Variables);
-			var classFields = (block.CurrentClassFields != null) ? new Dictionary<string, Field>(block.CurrentClassFields) : null;
+            var variables = new Dictionary<string, Var>(block.Variables);
+            var classFields = (block.CurrentClassFields != null) ? new Dictionary<string, Field>(block.CurrentClassFields) : null;
 
-			_blocks.Push(new CodeBlock(statement, childs, variables, classFields, currentFunction, currentClass));
+            _blocks.Push(new CodeBlock(statement, childs, variables, classFields, currentFunction, currentClass));
 
-			if (CheckStubForError(condition)) return;
+            if (CheckStubForError(condition)) return;
 
-			if (condition.ResultTypeSpec.Type != TypeNameToTypeDesc("bool"))
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "The expression passed to 'if' must be of type bool", CurrentPosition);
-			}
-		}
+            if (condition.ResultTypeSpec.Type != TypeNameToTypeDesc("bool"))
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "The expression passed to 'if' must be of type bool", CurrentPosition);
+            }
+        }
 
-		public void EnterToElseIfBlock(Statement ifStatement, Expression condition)
-		{
-			if (ifStatement is not IfStatement parent)
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Блок else if должен соответствовать блоку if", CurrentPosition);
-				return;
-			}
+        public void EnterToElseIfBlock(Statement ifStatement, Expression condition)
+        {
+            if (ifStatement is not IfStatement parent)
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Блок else if должен соответствовать блоку if", CurrentPosition);
+                return;
+            }
 
-			var childs = new List<ILogicModel>();
-			var statement = new IfStatement(childs, condition, CurrentPosition);
+            var childs = new List<ILogicModel>();
+            var statement = new IfStatement(childs, condition, CurrentPosition);
 
-			CodeBlock block = _blocks.Peek();
-			parent.AddElseIf(statement);
+            CodeBlock block = _blocks.Peek();
+            parent.AddElseIf(statement);
 
-			var currentFunction = block.CurrentFunction;
-			if (currentFunction == null) throw new NotImplementedException();
+            var currentFunction = block.CurrentFunction;
+            if (currentFunction == null) throw new NotImplementedException();
 
-			var currentClass = block.CurrentClass;
-			var variables = new Dictionary<string, Var>(block.Variables);
-			var classFields = (block.CurrentClassFields != null) ? new Dictionary<string, Field>(block.CurrentClassFields) : null;
+            var currentClass = block.CurrentClass;
+            var variables = new Dictionary<string, Var>(block.Variables);
+            var classFields = (block.CurrentClassFields != null) ? new Dictionary<string, Field>(block.CurrentClassFields) : null;
 
-			_blocks.Push(new CodeBlock(statement, childs, variables, classFields, currentFunction, currentClass));
+            _blocks.Push(new CodeBlock(statement, childs, variables, classFields, currentFunction, currentClass));
 
-			if (CheckStubForError(condition)) return;
+            if (CheckStubForError(condition)) return;
 
-			if (condition.ResultTypeSpec.Type != TypeNameToTypeDesc("bool"))
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "The expression passed to 'if' must be of type bool", CurrentPosition);
-			}
-		}
+            if (condition.ResultTypeSpec.Type != TypeNameToTypeDesc("bool"))
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "The expression passed to 'if' must be of type bool", CurrentPosition);
+            }
+        }
 
-		public void EnterToElseBlock(Statement ifStatement)
-		{
-			if (ifStatement is not IfStatement parent)
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Блок else if должен соответствовать блоку if", CurrentPosition);
-				return;
-			}
-
-			var childs = new List<ILogicModel>();
-			var statement = new BlockStatement(childs, CurrentPosition);
-
-			CodeBlock block = _blocks.Peek();
-
-			if (parent.ElseStatement != null)
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Блоку if должен соответствовать один блок else", CurrentPosition);
-				return;
-			}
-
-			parent.ElseStatement = statement;
-
-			var currentFunction = block.CurrentFunction;
-			if (currentFunction == null) throw new NotImplementedException();
-
-			var currentClass = block.CurrentClass;
-			var variables = new Dictionary<string, Var>(block.Variables);
-			var classFields = (block.CurrentClassFields != null) ? new Dictionary<string, Field>(block.CurrentClassFields) : null;
+        public void EnterToElseBlock(Statement ifStatement)
+        {
+            if (ifStatement is not IfStatement parent)
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Блок else if должен соответствовать блоку if", CurrentPosition);
+                return;
+            }
+
+            var childs = new List<ILogicModel>();
+            var statement = new BlockStatement(childs, CurrentPosition);
+
+            CodeBlock block = _blocks.Peek();
+
+            if (parent.ElseStatement != null)
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Блоку if должен соответствовать один блок else", CurrentPosition);
+                return;
+            }
+
+            parent.ElseStatement = statement;
+
+            var currentFunction = block.CurrentFunction;
+            if (currentFunction == null) throw new NotImplementedException();
+
+            var currentClass = block.CurrentClass;
+            var variables = new Dictionary<string, Var>(block.Variables);
+            var classFields = (block.CurrentClassFields != null) ? new Dictionary<string, Field>(block.CurrentClassFields) : null;
 
-			_blocks.Push(new CodeBlock(statement, childs, variables, classFields, currentFunction, currentClass));
-		}
-
-		public void EnterToWhileBlock(Expression condition)
-		{
-			var childs = new List<ILogicModel>();
-			var statement = new WhileStatement(childs, condition, CurrentPosition);
-
-			CodeBlock block = _blocks.Peek();
-			block.StatementChilds.Add(statement);
-
-			var currentFunction = block.CurrentFunction;
-			if (currentFunction == null) throw new NotImplementedException();
-			var currentClass = block.CurrentClass;
-
-			// TODO: вынести в отдельный метод наверное эти копирования
-			var variables = new Dictionary<string, Var>(block.Variables);
-			var classFields = (block.CurrentClassFields != null) ? new Dictionary<string, Field>(block.CurrentClassFields) : null;
-
-			_blocks.Push(new CodeBlock(statement, childs, variables, classFields, currentFunction, currentClass));
-
-			if (CheckStubForError(condition)) return;
-
-			if (condition.ResultTypeSpec.Type != TypeNameToTypeDesc("bool"))
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "The expression passed to 'while' must be of type bool", CurrentPosition);
-			}
-		}
-
-		public void EnterUnsafeBlock()
-		{
-			var childs = new List<ILogicModel>();
-			var statement = new BlockStatement(childs, CurrentPosition, isUnsafe: true);
-
-			CodeBlock block = _blocks.Peek();
-			block.StatementChilds.Add(statement);
-
-			var currentFunction = block.CurrentFunction;
-			if (currentFunction == null) throw new NotImplementedException();
-			var currentClass = block.CurrentClass;
-
-			var variables = new Dictionary<string, Var>(block.Variables);
-			var classFields = (block.CurrentClassFields != null) ? new Dictionary<string, Field>(block.CurrentClassFields) : null;
-
-			_blocks.Push(new CodeBlock(statement, childs, variables, classFields, currentFunction, currentClass));
-		}
-
-		public Statement ExitFromBlock()
-		{
-			var block = _blocks.Pop();
-			Statement statement = block.CurentStatement;
-
-			if (statement is ConstructorStatement && block.CurrentClassFields != null)
-			{
-				foreach (var (fieldName, field) in block.CurrentClassFields)
-				{
-					if (field.Type.Declaring.IsRef && !field.IsInit)
-					{
-						string kind = field.Type.Declaring.IsBorrowRef ? "refb" : "ref";
-						_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB",
-							$"Поле '{fieldName}' ({kind}) должно быть инициализировано к выходу из конструктора", CurrentPosition);
-					}
-				}
-			}
-
-			if (statement is IFunctionalBlockStatement fnStatement)
-			{
-				var voidType = _membersFinder.FindType("void");
-				if (fnStatement.ReturnType.Type == voidType)
-				{
-					block.StatementChilds.Add(new ReturnStatement(new SimpleTypeExpression(new TypeSpec(voidType), CurrentPosition), CurrentPosition));
-				}
-				else if (!statement.InevitableTerminating)
-				{
-					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Не все пути возвращают значение!", CurrentPosition);
-				}
-			}
-
-			return statement;
-		}
-
-		public void InserToCurrentBlock(Expression expression)
-		{
-			_blocks.Peek().StatementChilds.Add(expression);
-		}
-
-		public void BuildReturn(Expression returnResult)
-		{
-			CodeBlock block = _blocks.Peek();
-			var currentFunction = block.CurrentFunction;
-			if (currentFunction == null) throw new NotImplementedException();
-
-			CheckInitializable(returnResult);
-
-			if (!ValidateReferenceQualifier(returnResult, currentFunction.ReturnType))
-				return;
-
-			returnResult = AutoDereferenceIfPointer(returnResult, true);
-
-			if (!_typeAnalyzer.CheckTypeMatching(currentFunction.ReturnType, returnResult.ResultTypeSpec, out bool needCast))
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Invalid return type", CurrentPosition);
-				return;
-			}
-
-			if (needCast && (returnResult.ResultTypeSpec.Type is IntegerTypeDesc or FloatTypeDesc))
-			{
-				returnResult = ImplicitIntExtenssion(returnResult, currentFunction.ReturnType);
-			}
-
-			_blocks.Peek().StatementChilds.Add(new ReturnStatement(returnResult, CurrentPosition));
-		}
-
-		public Expression CallFunction(string name, Expression[] args)
-		{
-			if (CheckStubForError(args)) return new StubForErrorExpression(CurrentPosition);
-
-			CheckInitializable(args);
-			var arguments = args.Select(x => AutoDereferenceIfPointer(x, true)).ToArray();
-
-			// TODO: внутри класса при вызове метода выдавать ошибку если сигнатура вызываемого метода пересекается с сигнатурой какой-то внешней функции
-			var functions = _membersFinder.FindFunction(name);
-			if (functions == null)
-			{
-				CodeBlock block = _blocks.Peek();
-				var currentClass = block.CurrentClass?.TypeDesc;
-
-				if (currentClass == null)
-				{
-					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "No variable with that name was found", CurrentPosition);
-					return new StubForErrorExpression(CurrentPosition);
-				}
-
-				var thisGetting = new AppealToThisExpression(currentClass, CurrentPosition);
-				return CallClassMethod(name, thisGetting, args);
-			}
-
-			FuncDesc? funcDesc = _typeAnalyzer.FindSuitableFunction(functions, arguments.Select(x => x.ResultTypeSpec), out TypeSpec?[] casts);
-
-			if (funcDesc == null)
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Function overload with specified arguments could not be found", CurrentPosition);
-				return new StubForErrorExpression(CurrentPosition);
-			}
-
-			if (!ValidateReferenceQualifiers(arguments, funcDesc.Arguments))
-				return new StubForErrorExpression(CurrentPosition);
-
-			for (int i = 0; i < casts.Length; i++)
-			{
-				TypeSpec? cast = casts[i];
-				if (!cast.HasValue || !(arguments[i].ResultTypeSpec.Type is IntegerTypeDesc or FloatTypeDesc)) continue;
-				arguments[i] = ImplicitIntExtenssion(arguments[i], cast.Value);
-			}
-
-			return new CallFunctionExpression(arguments, funcDesc, CurrentPosition);
-		}
-
-		public Expression CallClassMethod(string name, Expression instanceGetting, Expression[] args)
-		{
-			if (CheckStubForError(args) || CheckStubForError(instanceGetting)) return new StubForErrorExpression(CurrentPosition);
-
-			CheckInitializable(instanceGetting);
-			CheckInitializable(args);
-
-			var arguments = args.Select(x => AutoDereferenceIfPointer(x, true)).ToArray();
-
-			// TODO: проверить instanceGetting на валидность
-			var func = _membersFinder.FindFunction(instanceGetting.ResultTypeSpec.Type, name);
-			if (func == null)
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "A method with that name was not found", CurrentPosition);
-				return new StubForErrorExpression(CurrentPosition);
-			}
-
-			var funcDesc = _typeAnalyzer.FindSuitableFunction(func, arguments.Select(x => x.ResultTypeSpec), out TypeSpec?[] casts);
-
-			if (funcDesc == null)
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Function overload with specified arguments could not be found", CurrentPosition);
-				return new StubForErrorExpression(CurrentPosition);
-			}
-
-			if (!ValidateReferenceQualifiers(arguments, funcDesc.Arguments))
-				return new StubForErrorExpression(CurrentPosition);
-
-			Expression[] realArgs = new Expression[arguments.Length + 1];
-			realArgs[0] = instanceGetting.ResultTypeSpec.IsRef ? instanceGetting : new GetPointerToVarExpression(instanceGetting, false, CurrentPosition);
-
-			for (int i = 1; i <= arguments.Length; i++)
-			{
-				var sourceArgumentIndex = i - 1;
-				var currentCast = casts[sourceArgumentIndex];
-				var currentArg = arguments[sourceArgumentIndex];
-
-				if (currentCast.HasValue && (currentArg.ResultTypeSpec.Type is IntegerTypeDesc))
-				{
-					realArgs[i] = ImplicitIntExtenssion(currentArg, currentCast.Value);
-				}
-				else
-				{
-					realArgs[i] = currentArg;
-				}
-			}
-
-			return new CallFunctionExpression(realArgs, funcDesc, CurrentPosition);
-		}
-
-		public Expression CreateObject(TypeSpec type, Expression[]? args, Expression? objInitializer, bool inHeap)
-		{
-			CheckInitializable(args);
-
-			if (objInitializer != null && !type.IsArray)
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", $"Данный тип не поддерживает инициализатор объекта!", CurrentPosition);
-				return new StubForErrorExpression(CurrentPosition);
-			}
-
-			if (type.QualifiersExists)
-			{
-				if (args != null && args.Length > 0)
-				{
-					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB",
-						$"Если кваллификаторы есть, значит это не прямой вызов конструктора. Нахуя тут аргументы?", CurrentPosition);
-					return new StubForErrorExpression(CurrentPosition);
-				}
-
-				Qualifier[] qualifiers = [Qualifier.Reference, .. type.Qualifiers];
-				var resType = new TypeSpec(type.Type, qualifiers);
-
-				Expression res = new AllocateHeapMemoryToType(resType, CurrentPosition);
-
-				if (objInitializer != null)
-				{
-					if (objInitializer is not ObjectInitializerExpression objectInitializer)
-						throw new NotImplementedException();
-
-					if (!ValidateObjectInitializer(objectInitializer, type))
-						return new StubForErrorExpression(CurrentPosition);
-
-					res = objectInitializer.RecreateToObject(res, inHeap);
+            _blocks.Push(new CodeBlock(statement, childs, variables, classFields, currentFunction, currentClass));
+        }
+
+        public void EnterToWhileBlock(Expression condition)
+        {
+            var childs = new List<ILogicModel>();
+            var statement = new WhileStatement(childs, condition, CurrentPosition);
+
+            CodeBlock block = _blocks.Peek();
+            block.StatementChilds.Add(statement);
+
+            var currentFunction = block.CurrentFunction;
+            if (currentFunction == null) throw new NotImplementedException();
+            var currentClass = block.CurrentClass;
+
+            // TODO: вынести в отдельный метод наверное эти копирования
+            var variables = new Dictionary<string, Var>(block.Variables);
+            var classFields = (block.CurrentClassFields != null) ? new Dictionary<string, Field>(block.CurrentClassFields) : null;
+
+            _blocks.Push(new CodeBlock(statement, childs, variables, classFields, currentFunction, currentClass));
+
+            if (CheckStubForError(condition)) return;
+
+            if (condition.ResultTypeSpec.Type != TypeNameToTypeDesc("bool"))
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "The expression passed to 'while' must be of type bool", CurrentPosition);
+            }
+        }
+
+        public void EnterUnsafeBlock()
+        {
+            var childs = new List<ILogicModel>();
+            var statement = new BlockStatement(childs, CurrentPosition, isUnsafe: true);
+
+            CodeBlock block = _blocks.Peek();
+            block.StatementChilds.Add(statement);
+
+            var currentFunction = block.CurrentFunction;
+            if (currentFunction == null) throw new NotImplementedException();
+            var currentClass = block.CurrentClass;
+
+            var variables = new Dictionary<string, Var>(block.Variables);
+            var classFields = (block.CurrentClassFields != null) ? new Dictionary<string, Field>(block.CurrentClassFields) : null;
+
+            _blocks.Push(new CodeBlock(statement, childs, variables, classFields, currentFunction, currentClass, true));
+        }
+
+        public Statement ExitFromBlock()
+        {
+            var block = _blocks.Pop();
+            Statement statement = block.CurentStatement;
+
+            if (statement is ConstructorStatement && block.CurrentClassFields != null)
+            {
+                foreach (var (fieldName, field) in block.CurrentClassFields)
+                {
+                    if (field.Type.Declaring.IsRef && !field.IsInit)
+                    {
+                        _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB",
+                            $"Поле '{fieldName}' должно быть инициализировано к выходу из конструктора", CurrentPosition);
+                    }
+                }
+            }
+
+            if (statement is IFunctionalBlockStatement fnStatement)
+            {
+                var voidType = _membersFinder.FindType("void");
+                if (fnStatement.ReturnType.Type == voidType)
+                {
+                    block.StatementChilds.Add(new ReturnStatement(new SimpleTypeExpression(new TypeSpec(voidType), CurrentPosition), CurrentPosition));
+                }
+                else if (!statement.InevitableTerminating)
+                {
+                    _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Не все пути возвращают значение!", CurrentPosition);
+                }
+            }
+
+            return statement;
+        }
+
+        public void InserToCurrentBlock(Expression expression)
+        {
+            _blocks.Peek().StatementChilds.Add(expression);
+        }
+
+        public void BuildReturn(Expression returnResult)
+        {
+            CodeBlock block = _blocks.Peek();
+            var currentFunction = block.CurrentFunction;
+            if (currentFunction == null) throw new NotImplementedException();
+
+            CheckInitializable(returnResult);
+
+            if (!ValidateReferenceQualifier(returnResult, currentFunction.ReturnType))
+                return;
+
+            returnResult = AutoDereferenceIfPointer(returnResult, true);
+
+            if (!_typeAnalyzer.CheckTypeMatching(currentFunction.ReturnType, returnResult.ResultTypeSpec, out bool needCast))
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Invalid return type", CurrentPosition);
+                return;
+            }
+
+            if (needCast && (returnResult.ResultTypeSpec.Type is IntegerTypeDesc or FloatTypeDesc))
+            {
+                returnResult = ImplicitIntExtenssion(returnResult, currentFunction.ReturnType);
+            }
+
+            _blocks.Peek().StatementChilds.Add(new ReturnStatement(returnResult, CurrentPosition));
+        }
+
+        public Expression CallFunction(string name, Expression[] args)
+        {
+            if (CheckStubForError(args)) return new StubForErrorExpression(CurrentPosition);
+
+            CheckInitializable(args);
+            var arguments = args.Select(x => AutoDereferenceIfPointer(x, true)).ToArray();
+
+            // TODO: внутри класса при вызове метода выдавать ошибку если сигнатура вызываемого метода пересекается с сигнатурой какой-то внешней функции
+            var functions = _membersFinder.FindFunction(name);
+            if (functions == null)
+            {
+                CodeBlock block = _blocks.Peek();
+                var currentClass = block.CurrentClass?.TypeDesc;
+
+                if (currentClass == null)
+                {
+                    _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "No variable with that name was found", CurrentPosition);
+                    return new StubForErrorExpression(CurrentPosition);
+                }
+
+                var thisGetting = new AppealToThisExpression(currentClass, CurrentPosition);
+                return CallClassMethod(name, thisGetting, args);
+            }
+
+            FuncDesc? funcDesc = _typeAnalyzer.FindSuitableFunction(functions, arguments.Select(x => x.ResultTypeSpec), out TypeSpec?[] casts);
+
+            if (funcDesc == null)
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Function overload with specified arguments could not be found", CurrentPosition);
+                return new StubForErrorExpression(CurrentPosition);
+            }
+
+            if (!ValidateReferenceQualifiers(arguments, funcDesc.Arguments))
+                return new StubForErrorExpression(CurrentPosition);
+
+            for (int i = 0; i < casts.Length; i++)
+            {
+                TypeSpec? cast = casts[i];
+                if (!cast.HasValue || !(arguments[i].ResultTypeSpec.Type is IntegerTypeDesc or FloatTypeDesc)) continue;
+                arguments[i] = ImplicitIntExtenssion(arguments[i], cast.Value);
+            }
+
+            return new CallFunctionExpression(arguments, funcDesc, CurrentPosition);
+        }
+
+        public Expression CallClassMethod(string name, Expression instanceGetting, Expression[] args)
+        {
+            if (CheckStubForError(args) || CheckStubForError(instanceGetting)) return new StubForErrorExpression(CurrentPosition);
+
+            CheckInitializable(instanceGetting);
+            CheckInitializable(args);
+
+            var arguments = args.Select(x => AutoDereferenceIfPointer(x, true)).ToArray();
+
+            // TODO: проверить instanceGetting на валидность
+            var func = _membersFinder.FindFunction(instanceGetting.ResultTypeSpec.Type, name);
+            if (func == null)
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "A method with that name was not found", CurrentPosition);
+                return new StubForErrorExpression(CurrentPosition);
+            }
+
+            var funcDesc = _typeAnalyzer.FindSuitableFunction(func, arguments.Select(x => x.ResultTypeSpec), out TypeSpec?[] casts);
+
+            if (funcDesc == null)
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Function overload with specified arguments could not be found", CurrentPosition);
+                return new StubForErrorExpression(CurrentPosition);
+            }
+
+            if (!ValidateReferenceQualifiers(arguments, funcDesc.Arguments))
+                return new StubForErrorExpression(CurrentPosition);
+
+            Expression[] realArgs = new Expression[arguments.Length + 1];
+            realArgs[0] = instanceGetting.ResultTypeSpec.IsRef ? instanceGetting : new GetPointerToVarExpression(instanceGetting, false, CurrentPosition);
+
+            for (int i = 1; i <= arguments.Length; i++)
+            {
+                var sourceArgumentIndex = i - 1;
+                var currentCast = casts[sourceArgumentIndex];
+                var currentArg = arguments[sourceArgumentIndex];
+
+                if (currentCast.HasValue && (currentArg.ResultTypeSpec.Type is IntegerTypeDesc))
+                {
+                    realArgs[i] = ImplicitIntExtenssion(currentArg, currentCast.Value);
+                }
+                else
+                {
+                    realArgs[i] = currentArg;
+                }
+            }
+
+            return new CallFunctionExpression(realArgs, funcDesc, CurrentPosition);
+        }
+
+        public Expression CreateObject(TypeSpec type, Expression[]? args, Expression? objInitializer, bool inHeap)
+        {
+            CheckInitializable(args);
+
+            if (objInitializer != null && !type.IsArray)
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", $"Данный тип не поддерживает инициализатор объекта!", CurrentPosition);
+                return new StubForErrorExpression(CurrentPosition);
+            }
+
+            if (type.QualifiersExists)
+            {
+                if (args != null && args.Length > 0)
+                {
+                    _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB",
+                        $"Если кваллификаторы есть, значит это не прямой вызов конструктора. Нахуя тут аргументы?", CurrentPosition);
+                    return new StubForErrorExpression(CurrentPosition);
+                }
+
+                Qualifier[] qualifiers = [Qualifier.Reference, .. type.Qualifiers];
+                var resType = new TypeSpec(type.Type, qualifiers);
+
+                Expression res = new AllocateHeapMemoryToType(resType, CurrentPosition);
+
+                if (objInitializer != null)
+                {
+                    if (objInitializer is not ObjectInitializerExpression objectInitializer)
+                        throw new NotImplementedException();
+
+                    if (!ValidateObjectInitializer(objectInitializer, type))
+                        return new StubForErrorExpression(CurrentPosition);
+
+                    res = objectInitializer.RecreateToObject(res, inHeap);
 
                 }
 
-				return res;
-			}
+                return res;
+            }
 
-			if (args == null)
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", $"Схуяли аргументы null?", CurrentPosition);
-				return new StubForErrorExpression(CurrentPosition);
-			}
+            if (args == null)
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", $"Схуяли аргументы null?", CurrentPosition);
+                return new StubForErrorExpression(CurrentPosition);
+            }
 
-			if (inHeap)
-			{
+            if (inHeap)
+            {
                 return CallHeapConstructor(type, args);
-			}
-			else
-			{
-				var tempVar = CreateTempVar(type);
+            }
+            else
+            {
+                var tempVar = CreateTempVar(type);
                 return CallValueConstructor(type.Type, tempVar, args);
             }
-			
-		}
 
-		private Expression CallHeapConstructor(TypeSpec typeSpec, Expression[] args)
-		{
-			if (CheckStubForError(args)) return new StubForErrorExpression(CurrentPosition);
+        }
 
-			CheckInitializable(args);
-			var arguments = args.Select(x => AutoDereferenceIfPointer(x, true)).ToArray();
+        private Expression CallHeapConstructor(TypeSpec typeSpec, Expression[] args)
+        {
+            if (CheckStubForError(args)) return new StubForErrorExpression(CurrentPosition);
 
-			ConstructorDesc? ctorDesc = null;
-			var constructors = _membersFinder.FindConstructors(typeSpec.Type);
+            CheckInitializable(args);
+            var arguments = args.Select(x => AutoDereferenceIfPointer(x, true)).ToArray();
 
-			ctorDesc = _typeAnalyzer.FindSuitableConstructor(constructors, arguments.Select(x => x.ResultTypeSpec), out TypeSpec?[] casts);
+            ConstructorDesc? ctorDesc = null;
+            var constructors = _membersFinder.FindConstructors(typeSpec.Type);
 
-			if (ctorDesc == null)
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Constructor with specified arguments could not be found", CurrentPosition);
-				return new StubForErrorExpression(CurrentPosition);
-			}
+            ctorDesc = _typeAnalyzer.FindSuitableConstructor(constructors, arguments.Select(x => x.ResultTypeSpec), out TypeSpec?[] casts);
 
-			if (!ValidateReferenceQualifiers(arguments, ctorDesc.Arguments))
-				return new StubForErrorExpression(CurrentPosition);
+            if (ctorDesc == null)
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Constructor with specified arguments could not be found", CurrentPosition);
+                return new StubForErrorExpression(CurrentPosition);
+            }
 
-			for (int i = 0; i < casts.Length; i++)
-			{
-				TypeSpec? cast = casts[i];
-				if (!cast.HasValue || !(arguments[i].ResultTypeSpec.Type is IntegerTypeDesc or FloatTypeDesc)) continue;
-				arguments[i] = ImplicitIntExtenssion(arguments[i], cast.Value);
-			}
+            if (!ValidateReferenceQualifiers(arguments, ctorDesc.Arguments))
+                return new StubForErrorExpression(CurrentPosition);
 
-			var memory = new AllocateHeapMemoryToType(new TypeSpec(typeSpec.Type, [Qualifier.Reference]), pos: CurrentPosition);
-			return new CallConstructorExpression(memory, ctorDesc, arguments, true, CurrentPosition);
-		}
+            for (int i = 0; i < casts.Length; i++)
+            {
+                TypeSpec? cast = casts[i];
+                if (!cast.HasValue || !(arguments[i].ResultTypeSpec.Type is IntegerTypeDesc or FloatTypeDesc)) continue;
+                arguments[i] = ImplicitIntExtenssion(arguments[i], cast.Value);
+            }
 
-		private Expression CallValueConstructor(TypeDesc typeDesc, Expression objMemoryGetting, Expression[] args)
-		{
-			if (CheckStubForError(objMemoryGetting)) return new StubForErrorExpression(CurrentPosition);
-			if (CheckStubForError(args)) return new StubForErrorExpression(CurrentPosition);
+            var memory = new AllocateHeapMemoryToType(new TypeSpec(typeSpec.Type, [Qualifier.Reference]), pos: CurrentPosition);
+            return new CallConstructorExpression(memory, ctorDesc, arguments, true, CurrentPosition);
+        }
 
-			CheckInitializable(args);
-			InitializeVariable(objMemoryGetting);
+        private Expression CallValueConstructor(TypeDesc typeDesc, Expression objMemoryGetting, Expression[] args)
+        {
+            if (CheckStubForError(objMemoryGetting)) return new StubForErrorExpression(CurrentPosition);
+            if (CheckStubForError(args)) return new StubForErrorExpression(CurrentPosition);
 
-			ConstructorDesc? ctorDesc = null;
-			var constructors = _membersFinder.FindConstructors(typeDesc);
+            CheckInitializable(args);
+            InitializeVariable(objMemoryGetting);
 
-			if (constructors.Count > 0)
-			{
-				var arguments = args.Select(x => AutoDereferenceIfPointer(x, true)).ToArray();
-				ctorDesc = _typeAnalyzer.FindSuitableConstructor(constructors, arguments.Select(x => x.ResultTypeSpec), out TypeSpec?[] casts);
+            ConstructorDesc? ctorDesc = null;
+            var constructors = _membersFinder.FindConstructors(typeDesc);
 
-				if (ctorDesc == null)
-				{
-					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Constructor with specified arguments could not be found", CurrentPosition);
-					return new StubForErrorExpression(CurrentPosition);
-				}
+            if (constructors.Count > 0)
+            {
+                var arguments = args.Select(x => AutoDereferenceIfPointer(x, true)).ToArray();
+                ctorDesc = _typeAnalyzer.FindSuitableConstructor(constructors, arguments.Select(x => x.ResultTypeSpec), out TypeSpec?[] casts);
 
-				if (!ValidateReferenceQualifiers(arguments, ctorDesc.Arguments))
-					return new StubForErrorExpression(CurrentPosition);
+                if (ctorDesc == null)
+                {
+                    _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Constructor with specified arguments could not be found", CurrentPosition);
+                    return new StubForErrorExpression(CurrentPosition);
+                }
 
-				for (int i = 0; i < casts.Length; i++)
-				{
-					TypeSpec? cast = casts[i];
-					if (!cast.HasValue || !(arguments[i].ResultTypeSpec.Type is IntegerTypeDesc or FloatTypeDesc)) continue;
-					arguments[i] = ImplicitIntExtenssion(arguments[i], cast.Value);
-				}
+                if (!ValidateReferenceQualifiers(arguments, ctorDesc.Arguments))
+                    return new StubForErrorExpression(CurrentPosition);
+
+                for (int i = 0; i < casts.Length; i++)
+                {
+                    TypeSpec? cast = casts[i];
+                    if (!cast.HasValue || !(arguments[i].ResultTypeSpec.Type is IntegerTypeDesc or FloatTypeDesc)) continue;
+                    arguments[i] = ImplicitIntExtenssion(arguments[i], cast.Value);
+                }
 
                 return new CallConstructorExpression(objMemoryGetting, ctorDesc, arguments, false, CurrentPosition);
-			}
-
-			return objMemoryGetting;
-		}
-
-
-		public Expression ClassFieldAccess(Expression instanceGetting, string fieldName)
-		{
-			CheckInitializable(instanceGetting);
-
-			if (!instanceGetting.ResultTypeSpec.Type.Variables.TryGetValue(fieldName, out VariableDesc variable))
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "The class field does not exist", CurrentPosition);
-				return new StubForErrorExpression(CurrentPosition);
-			}
-
-			instanceGetting = AutoDereferenceIfPointer(instanceGetting);
-			return new StructureFieldAccessExpression(variable, instanceGetting, variable.Declaring, true, CurrentPosition);
-		}
-
-		public Expression ArrayCellAccess(Expression arrayGetting, Expression indexGetting)
-		{
-			CheckInitializable(arrayGetting);
-			CheckInitializable(indexGetting);
-
-			// TODO: сделать проверку indexGetting
-			arrayGetting = AutoDereferenceIfPointer(arrayGetting);
-
-			if (!arrayGetting.ResultTypeSpec.IsArray)
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Попытка обратиться по индексатору к типу не являющемуся массивом.", CurrentPosition);
-				return new StubForErrorExpression(CurrentPosition);
-			}
-
-			return new ArrayCellAccessExpression(arrayGetting, indexGetting, CurrentPosition);
-		}
-
-		public Expression GetPointerToVar(Expression variable)
-		{
-			CheckInitializable(variable);
-
-			if (CheckStubForError(variable)) return new StubForErrorExpression(CurrentPosition);
-
-			bool isLValue = variable is VariableAccessExpression
-				or StructureFieldAccessExpression
-				or ArrayCellAccessExpression
-				or PointerDereferenceExpression
-				or VariableCreatingExpression;
-
-			if (!isLValue)
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "The 'ref' operator can only be applied to a variable or field", CurrentPosition);
-				return new StubForErrorExpression(CurrentPosition);
-			}
-
-			return new GetPointerToVarExpression(variable, false, CurrentPosition);
-		}
-
-		public Expression Exchange(Expression target, Expression value)
-		{
-			CheckInitializable(target);
-			CheckInitializable(value);
-
-			if (CheckStubForError(target, value)) return new StubForErrorExpression(CurrentPosition);
-
-			bool isLValue = target is VariableAccessExpression
-				or StructureFieldAccessExpression
-				or ArrayCellAccessExpression
-				or PointerDereferenceExpression
-				or VariableCreatingExpression;
-
-			if (!isLValue)
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "The '<-' operator can only be applied to a variable or field", CurrentPosition);
-				return new StubForErrorExpression(CurrentPosition);
-			}
-
-			if (!target.ResultTypeSpec.IsRef && value.ResultTypeSpec.IsRef)
-			{
-				value = AutoDereferenceIfPointer(value);
-			}
-			else if (target.ResultTypeSpec.IsRef && !value.ResultTypeSpec.IsRef)
-			{
-				target = new PointerDereferenceExpression(target, CurrentPosition);
-			}
-
-			if (!_typeAnalyzer.CheckTypeMatching(target.ResultTypeSpec, value.ResultTypeSpec, out bool needCast))
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Cannot interchange a value of the specified type", CurrentPosition);
-				return new StubForErrorExpression(CurrentPosition);
-			}
-
-			if (needCast && (value.ResultTypeSpec.Type is IntegerTypeDesc or FloatTypeDesc))
-			{
-				value = ImplicitIntExtenssion(value, target.ResultTypeSpec);
-			}
-
-			return new ExchangeExpression(target, value, target.ResultTypeSpec, CurrentPosition);
-		}
-
-		public Expression ObjectInitializer(List<Expression> childExpressions)
-		{
-			for (int i = 0; i < childExpressions.Count; i++)
-			{
-				childExpressions[i] = AutoDereferenceIfPointer(childExpressions[i], true);
-			}
-
-			//небезопасное приведение, ну да похуй. Если будет косяк, пусть лучше здесь отъебнет
-			var type = (AnonymousObjectTypeDesc)_membersFinder.FindType(AnonymousObjectTypeDesc.TYPE_NAME);
-			return new ObjectInitializerExpression(childExpressions, type, CurrentPosition);
-		}
-
-		public Expression Division(Expression left, Expression right)
-		{
-			return ArithmeticOperation(left, right, BinaryOperation.Division, "/");
-		}
-
-		public Expression Multiple(Expression left, Expression right)
-		{
-			return ArithmeticOperation(left, right, BinaryOperation.Multiple, "*");
-		}
-
-		public Expression Sum(Expression left, Expression right)
-		{
-			return ArithmeticOperation(left, right, BinaryOperation.Sum, "+");
-		}
-
-		public Expression Sub(Expression left, Expression right)
-		{
-			return ArithmeticOperation(left, right, BinaryOperation.Sub, "-");
-		}
-
-		public Expression ArithmeticOperation(Expression left, Expression right, BinaryOperation operation, string operand)
-		{
-			CheckInitializable(left);
-			CheckInitializable(right);
-
-			if (CheckStubForError(left, right)) return new StubForErrorExpression(CurrentPosition);
-
-			var leftAccessor = AutoDereferenceIfPointer(left);
-			var rightAccessor = AutoDereferenceIfPointer(right);
-
-			if (leftAccessor.ResultTypeSpec.Type is FloatTypeDesc || rightAccessor.ResultTypeSpec.Type is FloatTypeDesc)
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Arithmetic operations with floating-point numbers are not supported yet", CurrentPosition);
-				return new StubForErrorExpression(CurrentPosition);
-			}
-
-			if (!_typeAnalyzer.SoftCheckTypeMatching(leftAccessor.ResultTypeSpec, rightAccessor.ResultTypeSpec))
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", $"The operands of the '{operand}' operation must be of matching types", CurrentPosition);
-				return new StubForErrorExpression(CurrentPosition);
-			}
-
-			var resultType = GetWiderType(leftAccessor.ResultTypeSpec, rightAccessor.ResultTypeSpec);
-			leftAccessor = ImplicitIntExtenssion(leftAccessor, resultType);
-			rightAccessor = ImplicitIntExtenssion(rightAccessor, resultType);
-
-			return new SimpleBinaryOperationExpression(operation, leftAccessor, rightAccessor, resultType, CurrentPosition);
-		}
-
-		public Expression Compare(Expression left, Expression right, CompareOperator compareOperator)
-		{
-			CheckInitializable(left);
-			CheckInitializable(right);
-
-			if (CheckStubForError(left, right)) return new StubForErrorExpression(CurrentPosition);
-
-			var uIntType = new TypeSpec(_membersFinder.FindType("uint"));
-			var intType = new TypeSpec(_membersFinder.IntType);
-
-			var leftAccessor = AutoDereferenceIfPointer(left);
-			var rightAccessor = AutoDereferenceIfPointer(right);
-
-			var boolTypeSpec = new TypeSpec(TypeNameToTypeDesc("bool"));
-
-			if (leftAccessor.ResultTypeSpec.Type is FloatTypeDesc || rightAccessor.ResultTypeSpec.Type is FloatTypeDesc)
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Comparison of floating-point numbers is not supported yet", CurrentPosition);
-				return new StubForErrorExpression(CurrentPosition);
-			}
-
-			if (_typeAnalyzer.CheckTypeMatching(uIntType, leftAccessor.ResultTypeSpec, out _)
-				&& _typeAnalyzer.CheckTypeMatching(uIntType, rightAccessor.ResultTypeSpec, out _))
-			{
-				//сравнение беззнаковых чисел
-				return new CompareOperationExpression(compareOperator, false, leftAccessor, rightAccessor, boolTypeSpec, CurrentPosition);
-			}
-			else if (_typeAnalyzer.CheckTypeMatching(intType, leftAccessor.ResultTypeSpec, out _)
-				&& _typeAnalyzer.CheckTypeMatching(intType, rightAccessor.ResultTypeSpec, out _))
-			{
-				//сравнение знаковых чисел
-				return new CompareOperationExpression(compareOperator, true, leftAccessor, rightAccessor, boolTypeSpec, CurrentPosition);
-			}
-			else
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "The compared operands must be of an integer type", CurrentPosition);
-				return new StubForErrorExpression(CurrentPosition);
-			}
-		}
-
-		public Expression LogicalAnd(Expression left, Expression right)
-		{
-			CheckInitializable(left);
-			CheckInitializable(right);
-
-			if (CheckStubForError(left, right)) return new StubForErrorExpression(CurrentPosition);
-
-			var boolType = _membersFinder.FindType("bool");
-			if (left.ResultTypeSpec.Type != boolType || right.ResultTypeSpec.Type != boolType)
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "The operands of '&&' must be of type bool", CurrentPosition);
-				return new StubForErrorExpression(CurrentPosition);
-			}
-
-			var leftAccessor = AutoDereferenceIfPointer(left);
-			var rightAccessor = AutoDereferenceIfPointer(right);
-
-			return new SimpleBinaryOperationExpression(BinaryOperation.LogicalAnd, leftAccessor, rightAccessor, new TypeSpec(boolType), CurrentPosition);
-		}
-
-		//public Expr LogicalOr(Expr left, Expr right)
-		//{
-		//	var boolType = _membersFinder.FindType("bool");
-		//	if (left.Declaring.Type != boolType || right.Declaring.Type != boolType)
-		//		throw new NotImplementedException();
-
-		//	var leftAccessor = AutoDereferenceIfPointer(left);
-		//	var rightAccessor = AutoDereferenceIfPointer(right);
-
-		//	throw new NotImplementedException();
-		//}
-
-		private Expression BitOperationPrepeare(BinaryOperation operation, Expression left, Expression right)
-		{
-			CheckInitializable(left);
-			CheckInitializable(right);
-
-			if (CheckStubForError(left, right)) return new StubForErrorExpression(CurrentPosition);
-
-			var boolType = _membersFinder.FindType("bool");
-
-			bool isValidType = left.ResultTypeSpec.Type == boolType || left.ResultTypeSpec.Type is IntegerTypeDesc;
-
-			if (left.ResultTypeSpec.Type != right.ResultTypeSpec.Type || !isValidType)
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "The operands of the bit operation must be of matching integer types or bool", CurrentPosition);
-				return new StubForErrorExpression(CurrentPosition);
-			}
-
-			var leftExpr = AutoDereferenceIfPointer(left);
-			var rightExpr = AutoDereferenceIfPointer(right);
-
-			return new SimpleBinaryOperationExpression(operation, leftExpr, rightExpr, new TypeSpec(left.ResultTypeSpec.Type), CurrentPosition);
-		}
-
-		public Expression BitAnd(Expression leftExpr, Expression rightExpr)
-		{
-			return BitOperationPrepeare(BinaryOperation.BitAnd, leftExpr, rightExpr);
-		}
-
-		public Expression BitXor(Expression leftExpr, Expression rightExpr)
-		{
-			return BitOperationPrepeare(BinaryOperation.BitXor, leftExpr, rightExpr);
-		}
-
-		public Expression BitOr(Expression leftExpr, Expression rightExpr)
-		{
-			return BitOperationPrepeare(BinaryOperation.BitOr, leftExpr, rightExpr);
-		}
-
-		public Expression BitNot(Expression expr)
-		{
-			CheckInitializable(expr);
-
-			if (CheckStubForError(expr)) return new StubForErrorExpression(CurrentPosition);
-
-			var boolType = _membersFinder.FindType("bool");
-
-			if (expr.ResultTypeSpec.Type != boolType && expr.ResultTypeSpec.Type is not IntegerTypeDesc)
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "The '~' operator requires an integer or bool operand", CurrentPosition);
-				return new StubForErrorExpression(CurrentPosition);
-			}
-
-			var accessor = AutoDereferenceIfPointer(expr);
-
-			return new NotExpression(accessor, CurrentPosition);
-		}
-
-		public Expression CreateInt(BigInteger num)
-		{
-			return new NumConstExpression(new TypeSpec(_membersFinder.IntType), BaseTypes.Int, num, CurrentPosition);
-		}
-
-		public Expression CreateShort(BigInteger num)
-		{
-			return new NumConstExpression(new TypeSpec(TypeNameToTypeDesc("short")), BaseTypes.Short, num, CurrentPosition);
-		}
-
-		public Expression CreateByte(BigInteger num)
-		{
-			return new NumConstExpression(new TypeSpec(TypeNameToTypeDesc("byte")), BaseTypes.Byte, num, CurrentPosition);
-		}
-
-		public Expression CreateString(string str)
-		{
-			if (str[0] != '"' || str[str.Length - 1] != '"')
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Ivalid string", CurrentPosition);
-				return new StubForErrorExpression(CurrentPosition);
-			}
-
-			byte[] strBytes = Encoding.UTF8.GetBytes($"{str.Replace(@"\n", Environment.NewLine)[1..^1]}\0");
-			return new GlobalArrayExpression(strBytes, new TypeSpec(TypeNameToTypeDesc("byte"),
-				[Qualifier.BorrowReference, new ArrayQualifier((ulong)strBytes.LongLength)]), CurrentPosition);
-		}
-
-		public Expression CreateLocalVariable(string name, TypeSpec declaring)
-		{
-			CodeBlock block = _blocks.Peek();
-			if (block.Variables.ContainsKey(name))
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "A variable with that name is already declared in this block", CurrentPosition);
-				return new StubForErrorExpression(CurrentPosition);
-			}
-
-			Expression res = new VariableCreatingExpression(name, declaring, false, CurrentPosition);
-			block.Variables[name] = new(declaring, !declaring.IsRef && declaring.Type.IsBaseType);
-
-			return res;
-		}
-
-		private void InitializeVariable(Expression expr)
-		{
-			if (expr is not IInitializableExpresion initializable || initializable.IsInitialized)
-				return;
-
-			if (expr is StructureFieldAccessExpression field)
-			{
-				_blocks.Peek().CurrentClassFields![field.Field.Name].IsInit = true;
-			}
-			else if (expr is VariableAccessExpression varAccess)
-			{
-				_blocks.Peek().Variables[varAccess.Name].IsInit = true;
-			}
-			else if (expr is VariableCreatingExpression varCreate)
-			{
-				_blocks.Peek().Variables[varCreate.Name].IsInit = true;
-			}
-		}
-
-		private bool ValidateReferenceQualifier(Expression expression, TypeSpec targetType)
-		{
-			if (expression is not DoNotAutoDereferenceIfPointerExpression referenceExpression)
-				return true;
-
-			if (!targetType.IsRef)
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB",
-					"Квалификатор 'ref'/'refb' можно применять только к ссылкам", expression.Pos);
-				return false;
-			}
-
-			if (targetType.IsBorrowRef && !referenceExpression.IsBorrow)
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB",
-					"Для заимствованной (refb) ссылки требуется квалификатор 'refb'", expression.Pos);
-				return false;
-			}
-
-			if (targetType.IsOwnerRef && referenceExpression.IsBorrow)
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB",
-					"Для владеющей (ref) ссылки требуется квалификатор 'ref'", expression.Pos);
-				return false;
-			}
-
-			return true;
-		}
-
-		private bool ValidateReferenceQualifiers(Expression[] arguments, Argument[] parameters)
-		{
-			int count = Math.Min(arguments.Length, parameters.Length);
-
-			for (int i = 0; i < count; i++)
-			{
-				if (!ValidateReferenceQualifier(arguments[i], parameters[i].Declaring))
-					return false;
-			}
-
-			return true;
-		}
-
-		private bool ValidateAssignmentReferenceQualifier(TypeSpec targetType, Expression value, Qualifier? assignQualifier)
-		{
-			bool isBorrowQualifier = assignQualifier is BorrowReferenceQualifier;
-
-			if (assignQualifier != null)
-			{
-				if (!targetType.IsRef)
-				{
-					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB",
-						"Квалификатор 'ref'/'refb' можно применять только к ссылкам", CurrentPosition);
-					return false;
-				}
-
-				if (targetType.IsBorrowRef && !isBorrowQualifier)
-				{
-					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB",
-						"Для заимствованной (refb) ссылки требуется квалификатор 'refb'", CurrentPosition);
-					return false;
-				}
-
-				if (targetType.IsOwnerRef && isBorrowQualifier)
-				{
-					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB",
-						"Для владеющей (ref) ссылки требуется квалификатор 'ref'", CurrentPosition);
-					return false;
-				}
-			}
-
-			return ValidateReferenceQualifier(value, targetType);
-		}
-
-		public Expression VariableAssing(Expression varExpr, Expression expr, Qualifier? assignQualifier)
-		{
-			CheckInitializable(expr);
-			if (CheckStubForError(varExpr, expr)) return new StubForErrorExpression(CurrentPosition);
-
-			if (!ValidateAssignmentReferenceQualifier(varExpr.ResultTypeSpec, expr, assignQualifier))
-				return new StubForErrorExpression(CurrentPosition);
-
-			InitializeVariable(varExpr);
-
-			bool needCast = false;
-			if (varExpr.ResultTypeSpec.IsRef && !expr.ResultTypeSpec.IsRef)
-			{
-				if (assignQualifier is ReferenceQualifier)
-				{
-					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Схуяли ты при установленном квалификаторе ref пытаешься присвоить значение, а не ссылку?", CurrentPosition);
-					return new StubForErrorExpression(CurrentPosition);
-				}
-
-				if (!_typeAnalyzer.CheckTypeMatching(varExpr.ResultTypeSpec.RemoveFirtsQualifier(), expr.ResultTypeSpec, out needCast))
-				{
-					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Cannot assign a value of the specified type", CurrentPosition);
-					return new StubForErrorExpression(CurrentPosition);
-				}
-
-				varExpr = new PointerDereferenceExpression(varExpr, CurrentPosition);
-			}
-			else if (varExpr.ResultTypeSpec.IsRef && expr.ResultTypeSpec.IsRef)
-			{
-				if (assignQualifier == null)
-				{
-					if (varExpr.ResultTypeSpec.Type.IsBaseType && expr.ResultTypeSpec.Type.IsBaseType)
-					{
-						if (!_typeAnalyzer.CheckTypeMatching(varExpr.ResultTypeSpec.RemoveFirtsQualifier(),
-							expr.ResultTypeSpec.RemoveFirtsQualifier(), out needCast))
-						{
-							_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Cannot assign a value of the specified type", CurrentPosition);
-							return new StubForErrorExpression(CurrentPosition);
-						}
-					}
-					else if (!UnsafeMode)
-					{
-						// TODO: эта поебота отъбывает если в поле класса присвоить переменную (поле было refb, перменная ref с типом кастомного класса)
-						_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Reassignment of a reference for composite type without a 'ref' qualifier requires an unsafe context", CurrentPosition);
-						return new StubForErrorExpression(CurrentPosition);
-					}
-
-					expr = new PointerDereferenceExpression(expr, CurrentPosition);
-					varExpr = new PointerDereferenceExpression(varExpr, CurrentPosition);
-				}
-				else if (assignQualifier is not (ReferenceQualifier or BorrowReferenceQualifier))
-				{
-					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "The assignment qualifier must be 'ref'", CurrentPosition);
-					return new StubForErrorExpression(CurrentPosition);
-				}
-
-				if (!_typeAnalyzer.CheckTypeMatching(varExpr.ResultTypeSpec, expr.ResultTypeSpec, out needCast))
-				{
-					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Cannot assign a value of the specified type", CurrentPosition);
-					return new StubForErrorExpression(CurrentPosition);
-				}
-			}
-			else
-			{
-				expr = AutoDereferenceIfPointer(expr);
-				if (!_typeAnalyzer.CheckTypeMatching(varExpr.ResultTypeSpec, expr.ResultTypeSpec, out needCast))
-				{
-					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Cannot assign a value of the specified type", CurrentPosition);
-					return new StubForErrorExpression(CurrentPosition);
-				}
-			}
-
-			if (needCast && (expr.ResultTypeSpec.Type is IntegerTypeDesc or FloatTypeDesc))
-			{
-				expr = ImplicitIntExtenssion(expr, varExpr.ResultTypeSpec);
-			}
-
-			return new SimpleBinaryOperationExpression(BinaryOperation.Assing, varExpr, expr, varExpr.ResultTypeSpec, CurrentPosition);
-		}
-
-		public Expression VariableAccess(string name)
-		{
-			CodeBlock block = _blocks.Peek();
-			if (!block.Variables.TryGetValue(name, out var value))
-			{
-				var currentClass = block.CurrentClass?.TypeDesc;
-				if (currentClass == null)
-				{
-					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "No variable with that name was found", CurrentPosition);
-					return new StubForErrorExpression(CurrentPosition);
-				}
-
-				if (block.CurrentClassFields == null || !block.CurrentClassFields.TryGetValue(name, out var field))
-				{
-					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "No variable or field with that name was found", CurrentPosition);
-					return new StubForErrorExpression(CurrentPosition);
-				}
-
-				TypeSpec fieldDeclaring = field.Type.Declaring;
-
-				Expression thisGetting = new AppealToThisExpression(currentClass, CurrentPosition);
-				thisGetting = new PointerDereferenceExpression(thisGetting, CurrentPosition);
-
-				return new StructureFieldAccessExpression(field.Type, thisGetting, fieldDeclaring, field.IsInit, CurrentPosition);
-			}
-
-			return new VariableAccessExpression(name, value.Type, value.IsInit, CurrentPosition);
-		}
-
-		public bool CurrentClassHasRefFields()
-		{
-			var currentClass = _blocks.Peek().CurrentClass?.TypeDesc;
-			if (currentClass == null) return false;
-
-			return currentClass.Variables.Values.Any(v => v.Declaring.IsRef);
-		}
-
-		public Expression FieldAssing(string fieldName, Expression value)
-		{
-			CheckInitializable(value);
-
-			CodeBlock block = _blocks.Peek();
-			var currentClass = block.CurrentClass?.TypeDesc;
-			if (currentClass == null || block.CurrentClassFields == null || !block.CurrentClassFields.TryGetValue(fieldName, out var field))
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "No field with that name was found", CurrentPosition);
-				return new StubForErrorExpression(CurrentPosition);
-			}
-
-			TypeSpec fieldDeclaring = field.Type.Declaring;
-			Qualifier? qualifier = fieldDeclaring.QualifiersExists ? fieldDeclaring.Qualifiers[0] : null;
-
-			Expression thisGetting = new AppealToThisExpression(currentClass, CurrentPosition);
-			thisGetting = new PointerDereferenceExpression(thisGetting, CurrentPosition);
-			var fieldAccess = new StructureFieldAccessExpression(field.Type, thisGetting, fieldDeclaring, field.IsInit, CurrentPosition);
-
-			return VariableAssing(fieldAccess, value, qualifier);
-		}
-
-		public Expression SetRefQualifier(Expression expr, bool isBorrow)
-		{
-			if (CheckStubForError(expr)) return new StubForErrorExpression(CurrentPosition);
-
-			if (!expr.ResultTypeSpec.IsRef)
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "REF005",
-					"Квалификатор 'ref'/'refb' можно применять только к ссылкам", CurrentPosition);
-				return new StubForErrorExpression(CurrentPosition);
-			}
-
-			return new DoNotAutoDereferenceIfPointerExpression(expr, isBorrow, CurrentPosition);
-		}
-
-		public Expression TypeCast(Expression expr, TypeSpec toType)
-		{
-			CheckInitializable(expr);
-			if (CheckStubForError(expr)) return new StubForErrorExpression(CurrentPosition);
-
-			if (!UnchekedMode)
-			{
-				if (toType.ArrayExists)
-				{
-					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Casting array types is prohibited in a safe context", CurrentPosition);
-					return new StubForErrorExpression(CurrentPosition);
-				}
-
-				if (!_typeAnalyzer.SoftCheckTypeMatching(expr.ResultTypeSpec, toType))
-				{
-					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Implicit casting of heterogeneous types is prohibited in a safe context", CurrentPosition);
-					return new StubForErrorExpression(CurrentPosition);
-				}
-			}
-
-			return BuildCastExpression(expr, toType);
-		}
-
-		private Expression BuildCastExpression(Expression expr, TypeSpec toType)
-		{
-			TypeSpec fromSpec = expr.ResultTypeSpec;
-
-			bool fromIsPointer = fromSpec.IsRef;
-			bool toIsPointer = toType.IsRef;
-			bool fromIsInt = fromSpec.Type is IntegerTypeDesc;
-			bool toIsInt = toType.Type is IntegerTypeDesc;
-			bool fromIsFloat = fromSpec.Type is FloatTypeDesc;
-			bool toIsFloat = toType.Type is FloatTypeDesc;
-
-			if (fromIsPointer && toIsPointer)
-				return new CastExpression(expr, toType, CurrentPosition);
-
-			if (fromIsInt && toIsPointer)
-				return new IntToPointerExpression(expr, toType, CurrentPosition);
-
-			if (fromIsPointer && toIsInt)
-				return new PointerToIntExpression(expr, toType, CurrentPosition);
-
-			if (fromIsInt && toIsFloat)
-				return new IntToFloatExtensionExpression(expr, IsSignedInteger(fromSpec), toType, CurrentPosition);
-
-			if (fromIsFloat && toIsInt)
-				return new FloatToIntExpression(expr, IsSignedInteger(toType), toType, CurrentPosition);
-
-			if (fromIsInt && toIsInt)
-			{
-				if (fromSpec.Type == toType.Type)
-					return new CastExpression(expr, toType, CurrentPosition); // TODO: тут должно быть сообщение что приведение бессмысленно
-
-				if (_typeAnalyzer.CheckTypeMatching(toType, fromSpec, out _))
-					return new IntToIntExtensionExpression(expr, IsSignedInteger(fromSpec), toType, CurrentPosition);
-
-				if (_typeAnalyzer.CheckTypeMatching(fromSpec, toType, out _))
-					return new IntTruncExpression(expr, toType, CurrentPosition);
-
-			}
-
-			if (fromIsFloat && toIsFloat)
-			{
-				if (fromSpec.Type == toType.Type)
-					return new CastExpression(expr, toType, CurrentPosition);
-
-				if (_typeAnalyzer.CheckTypeMatching(toType, fromSpec, out _))
-					return new FloatToFloatExpression(expr, toType, CurrentPosition);
-
-				if (_typeAnalyzer.CheckTypeMatching(fromSpec, toType, out _))
-					return new FloatTruncExpression(expr, toType, CurrentPosition);
-			}
-
-			return new ReinterpretCastExpression(expr, toType, CurrentPosition);
-		}
-
-		private bool IsSignedInteger(TypeSpec typeSpec)
-		{
-			var ulongType = _membersFinder.FindType("ulong");
-			return !_typeAnalyzer.CheckTypeMatching(typeSpec, new TypeSpec(ulongType), out _);
-		}
-
-		/// <summary>
-		/// Создает <see cref="Expression"/> для каста целого числа к переданному <see cref="TypeDesc"/>.
-		/// Подразумивается что <paramref name="expr"/> является целым числом, то есть может быть раширен до long, а
-		/// <paramref name="resultType"/> либо целоче число, либо число с плвающей точкой.
-		/// </summary>
-		/// <param name="expr">Выражение, которое нужно привести к типу <paramref name="resultType"/>. 
-		/// Должно иметь тип либо целого числа, либо числа с плавающей точкой</param>
-		/// <param name="resultType"></param>
-		/// <returns></returns>
-		private Expression ImplicitIntExtenssion(Expression expr, TypeSpec resultType)
-		{
-			CheckInitializable(expr);
-			if (expr.ResultTypeSpec.Type == resultType.Type) return expr;
-
-			var doubleType = _membersFinder.FindType("double");
-
-			if (expr.ResultTypeSpec.Type is FloatTypeDesc && resultType.Type is FloatTypeDesc)
-			{
-				return new FloatToFloatExpression(expr, resultType, CurrentPosition);
-			}
-
-			bool isSigned = IsSignedInteger(expr.ResultTypeSpec);
-			bool resultTypeIsFloat = _typeAnalyzer.CheckTypeMatching(resultType, new TypeSpec(doubleType), out _);
-
-			if (resultTypeIsFloat)
-			{
-				return new IntToFloatExtensionExpression(expr, isSigned, resultType, CurrentPosition);
-			}
-			else
-			{
-				return new IntToIntExtensionExpression(expr, isSigned, resultType, CurrentPosition);
-			}
-		}
-
-		private bool ValidateObjectInitializer(ObjectInitializerExpression expr, TypeSpec arrayType)
-		{
-			if (!arrayType.IsArray || (arrayType.Qualifiers[0] is not ArrayQualifier arrQualifier))
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Инициализатор объекта поддерживается только массивами!", CurrentPosition);
-				return false;
-			}
-
-			if (arrQualifier.Size != (uint)expr.Expressions.Count)
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Недопустимое количество значений в " +
-					$"инициализаторе объекта! Размер массива {arrQualifier.Size}, " +
-					$"количество объектов {expr.Expressions.Count}", CurrentPosition);
-				return false;
-			}
-
-			TypeSpec cellType = arrayType.RemoveFirtsQualifier();
-
-			for (int i = 0; i < expr.Expressions.Count; i++)
-			{
-				Expression childExpr = expr.Expressions[i];
-				if (!_typeAnalyzer.CheckTypeMatching(cellType, childExpr.ResultTypeSpec, out bool needCast))
-				{
-					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", $"Все типы в данном инициалзиторе " +
-						$"объекта должны быть {cellType}, был передан {childExpr.ResultTypeSpec}", CurrentPosition);
-					return false;
-				}
-
-				// TODO: тут нужно доделать неявное приведени чисел
-				if (needCast && (expr.ResultTypeSpec.Type is IntegerTypeDesc or FloatTypeDesc))
-				{
-					expr.Expressions[i] = ImplicitIntExtenssion(expr, cellType);
-				}
-			}
-
-			return true;
-		}
-
-		private Expression AutoDereferenceIfPointer(Expression expr) => AutoDereferenceIfPointer(expr, false);
-
-		private Expression AutoDereferenceIfPointer(Expression expr, bool excludeNewRefs)
-		{
-			if (CheckStubForError(expr)) return new StubForErrorExpression(CurrentPosition);
-
-			if (!expr.ResultTypeSpec.IsRef || expr is DoNotAutoDereferenceIfPointerExpression) return expr;
-
-			if (excludeNewRefs && (expr is GetPointerToVarExpression || expr is CallConstructorExpression)) return expr;
-
-			return new PointerDereferenceExpression(expr, CurrentPosition);
-		}
-
-		private TypeSpec GetWiderType(TypeSpec first, TypeSpec second)
-		{
-			return _typeAnalyzer.CheckTypeMatching(first, second, out _) ? first : second;
-		}
-
-		private TypeDesc TypeNameToTypeDesc(string typeName)
-		{
-			return _membersFinder.FindType(typeName);
-		}
-
-		public void ReportError(string message)
-		{
-			_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", message, CurrentPosition);
-		}
-
-		private bool CheckStubForError(params Expression[] expressions)
-		{
-			return expressions.Any(x => x is StubForErrorExpression);
-		}
-
-		private void CheckInitializable(Expression? expr)
-		{
-			if (expr == null) return;
-			if (expr is IInitializableExpresion initializable && !initializable.IsInitialized)
-			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Переменная не инициализирована", CurrentPosition);
-			}
-		}
-
-		private void CheckInitializable(IEnumerable<Expression>? exprs)
-		{
-			if (exprs == null) return;
-			exprs.ForEach(x => CheckInitializable(x));
-		}
-
-		private VariableCreatingExpression CreateTempVar(TypeSpec type)
-		{
-			string baseName = $"temp_var_{type.Type.Name}";
-			string name = baseName;
-
-			var variables = _blocks.Peek().Variables;
-			int i = 0;
-			while (variables.ContainsKey(name))
-			{
-				name = $"{baseName}_{i}";
-				i++;
+            }
+
+            return objMemoryGetting;
+        }
+
+
+        public Expression ClassFieldAccess(Expression instanceGetting, string fieldName)
+        {
+            CheckInitializable(instanceGetting);
+
+            if (!instanceGetting.ResultTypeSpec.Type.Variables.TryGetValue(fieldName, out VariableDesc variable))
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "The class field does not exist", CurrentPosition);
+                return new StubForErrorExpression(CurrentPosition);
+            }
+
+            instanceGetting = AutoDereferenceIfPointer(instanceGetting);
+            return new StructureFieldAccessExpression(variable, instanceGetting, variable.Declaring, true, CurrentPosition);
+        }
+
+        public Expression ArrayCellAccess(Expression arrayGetting, Expression indexGetting)
+        {
+            CheckInitializable(arrayGetting);
+            CheckInitializable(indexGetting);
+
+            // TODO: сделать проверку indexGetting
+            arrayGetting = AutoDereferenceIfPointer(arrayGetting);
+
+            if (!arrayGetting.ResultTypeSpec.IsArray)
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Попытка обратиться по индексатору к типу не являющемуся массивом.", CurrentPosition);
+                return new StubForErrorExpression(CurrentPosition);
+            }
+
+            return new ArrayCellAccessExpression(arrayGetting, indexGetting, CurrentPosition);
+        }
+
+        public Expression GetPointerToVar(Expression variable)
+        {
+            CheckInitializable(variable);
+
+            if (CheckStubForError(variable)) return new StubForErrorExpression(CurrentPosition);
+
+            bool isLValue = variable is VariableAccessExpression
+                or StructureFieldAccessExpression
+                or ArrayCellAccessExpression
+                or PointerDereferenceExpression
+                or VariableCreatingExpression;
+
+            if (!isLValue)
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "The 'ref' operator can only be applied to a variable or field", CurrentPosition);
+                return new StubForErrorExpression(CurrentPosition);
+            }
+
+            return new GetPointerToVarExpression(variable, false, CurrentPosition);
+        }
+
+        public Expression Exchange(Expression target, Expression value)
+        {
+            CheckInitializable(target);
+            CheckInitializable(value);
+
+            if (CheckStubForError(target, value)) return new StubForErrorExpression(CurrentPosition);
+
+            bool isLValue = target is VariableAccessExpression
+                or StructureFieldAccessExpression
+                or ArrayCellAccessExpression
+                or PointerDereferenceExpression
+                or VariableCreatingExpression;
+
+            if (!isLValue)
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "The '<-' operator can only be applied to a variable or field", CurrentPosition);
+                return new StubForErrorExpression(CurrentPosition);
+            }
+
+            if (!target.ResultTypeSpec.IsRef && value.ResultTypeSpec.IsRef)
+            {
+                value = AutoDereferenceIfPointer(value);
+            }
+            else if (target.ResultTypeSpec.IsRef && !value.ResultTypeSpec.IsRef)
+            {
+                target = new PointerDereferenceExpression(target, CurrentPosition);
+            }
+
+            if (!_typeAnalyzer.CheckTypeMatching(target.ResultTypeSpec, value.ResultTypeSpec, out bool needCast))
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Cannot interchange a value of the specified type", CurrentPosition);
+                return new StubForErrorExpression(CurrentPosition);
+            }
+
+            if (needCast && (value.ResultTypeSpec.Type is IntegerTypeDesc or FloatTypeDesc))
+            {
+                value = ImplicitIntExtenssion(value, target.ResultTypeSpec);
+            }
+
+            return new ExchangeExpression(target, value, target.ResultTypeSpec, CurrentPosition);
+        }
+
+        public Expression ObjectInitializer(List<Expression> childExpressions)
+        {
+            for (int i = 0; i < childExpressions.Count; i++)
+            {
+                childExpressions[i] = AutoDereferenceIfPointer(childExpressions[i], true);
+            }
+
+            //небезопасное приведение, ну да похуй. Если будет косяк, пусть лучше здесь отъебнет
+            var type = (AnonymousObjectTypeDesc)_membersFinder.FindType(AnonymousObjectTypeDesc.TYPE_NAME);
+            return new ObjectInitializerExpression(childExpressions, type, CurrentPosition);
+        }
+
+        public Expression Division(Expression left, Expression right)
+        {
+            return ArithmeticOperation(left, right, BinaryOperation.Division, "/");
+        }
+
+        public Expression Multiple(Expression left, Expression right)
+        {
+            return ArithmeticOperation(left, right, BinaryOperation.Multiple, "*");
+        }
+
+        public Expression Sum(Expression left, Expression right)
+        {
+            return ArithmeticOperation(left, right, BinaryOperation.Sum, "+");
+        }
+
+        public Expression Sub(Expression left, Expression right)
+        {
+            return ArithmeticOperation(left, right, BinaryOperation.Sub, "-");
+        }
+
+        public Expression ArithmeticOperation(Expression left, Expression right, BinaryOperation operation, string operand)
+        {
+            CheckInitializable(left);
+            CheckInitializable(right);
+
+            if (CheckStubForError(left, right)) return new StubForErrorExpression(CurrentPosition);
+
+            var leftAccessor = AutoDereferenceIfPointer(left);
+            var rightAccessor = AutoDereferenceIfPointer(right);
+
+            if (leftAccessor.ResultTypeSpec.Type is FloatTypeDesc || rightAccessor.ResultTypeSpec.Type is FloatTypeDesc)
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Arithmetic operations with floating-point numbers are not supported yet", CurrentPosition);
+                return new StubForErrorExpression(CurrentPosition);
+            }
+
+            if (!_typeAnalyzer.SoftCheckTypeMatching(leftAccessor.ResultTypeSpec, rightAccessor.ResultTypeSpec))
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", $"The operands of the '{operand}' operation must be of matching types", CurrentPosition);
+                return new StubForErrorExpression(CurrentPosition);
+            }
+
+            var resultType = GetWiderType(leftAccessor.ResultTypeSpec, rightAccessor.ResultTypeSpec);
+            leftAccessor = ImplicitIntExtenssion(leftAccessor, resultType);
+            rightAccessor = ImplicitIntExtenssion(rightAccessor, resultType);
+
+            return new SimpleBinaryOperationExpression(operation, leftAccessor, rightAccessor, resultType, CurrentPosition);
+        }
+
+        public Expression Compare(Expression left, Expression right, CompareOperator compareOperator)
+        {
+            CheckInitializable(left);
+            CheckInitializable(right);
+
+            if (CheckStubForError(left, right)) return new StubForErrorExpression(CurrentPosition);
+
+            var uLongType = new TypeSpec(_membersFinder.ULongType);
+            var longType = new TypeSpec(_membersFinder.LongType);
+
+            var leftAccessor = AutoDereferenceIfPointer(left);
+            var rightAccessor = AutoDereferenceIfPointer(right);
+
+            var boolTypeSpec = new TypeSpec(TypeNameToTypeDesc("bool"));
+
+            if (leftAccessor.ResultTypeSpec.Type is FloatTypeDesc || rightAccessor.ResultTypeSpec.Type is FloatTypeDesc)
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Comparison of floating-point numbers is not supported yet", CurrentPosition);
+                return new StubForErrorExpression(CurrentPosition);
+            }
+
+            if (_typeAnalyzer.CheckTypeMatching(uLongType, leftAccessor.ResultTypeSpec, out _)
+                && _typeAnalyzer.CheckTypeMatching(uLongType, rightAccessor.ResultTypeSpec, out _))
+            {
+                //сравнение беззнаковых чисел
+                return new CompareOperationExpression(compareOperator, false, leftAccessor, rightAccessor, boolTypeSpec, CurrentPosition);
+            }
+            else if (_typeAnalyzer.CheckTypeMatching(longType, leftAccessor.ResultTypeSpec, out _)
+                && _typeAnalyzer.CheckTypeMatching(longType, rightAccessor.ResultTypeSpec, out _))
+            {
+                //сравнение знаковых чисел
+                return new CompareOperationExpression(compareOperator, true, leftAccessor, rightAccessor, boolTypeSpec, CurrentPosition);
+            }
+            else
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "The compared operands must be of an integer type", CurrentPosition);
+                return new StubForErrorExpression(CurrentPosition);
+            }
+        }
+
+        public Expression LogicalAnd(Expression left, Expression right)
+        {
+            CheckInitializable(left);
+            CheckInitializable(right);
+
+            if (CheckStubForError(left, right)) return new StubForErrorExpression(CurrentPosition);
+
+            var boolType = _membersFinder.FindType("bool");
+            if (left.ResultTypeSpec.Type != boolType || right.ResultTypeSpec.Type != boolType)
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "The operands of '&&' must be of type bool", CurrentPosition);
+                return new StubForErrorExpression(CurrentPosition);
+            }
+
+            var leftAccessor = AutoDereferenceIfPointer(left);
+            var rightAccessor = AutoDereferenceIfPointer(right);
+
+            return new SimpleBinaryOperationExpression(BinaryOperation.LogicalAnd, leftAccessor, rightAccessor, new TypeSpec(boolType), CurrentPosition);
+        }
+
+        //public Expr LogicalOr(Expr left, Expr right)
+        //{
+        //	var boolType = _membersFinder.FindType("bool");
+        //	if (left.Declaring.Type != boolType || right.Declaring.Type != boolType)
+        //		throw new NotImplementedException();
+
+        //	var leftAccessor = AutoDereferenceIfPointer(left);
+        //	var rightAccessor = AutoDereferenceIfPointer(right);
+
+        //	throw new NotImplementedException();
+        //}
+
+        private Expression BitOperationPrepeare(BinaryOperation operation, Expression left, Expression right)
+        {
+            CheckInitializable(left);
+            CheckInitializable(right);
+
+            if (CheckStubForError(left, right)) return new StubForErrorExpression(CurrentPosition);
+
+            var boolType = _membersFinder.FindType("bool");
+
+            bool isValidType = left.ResultTypeSpec.Type == boolType || left.ResultTypeSpec.Type is IntegerTypeDesc;
+
+            if (left.ResultTypeSpec.Type != right.ResultTypeSpec.Type || !isValidType)
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "The operands of the bit operation must be of matching integer types or bool", CurrentPosition);
+                return new StubForErrorExpression(CurrentPosition);
+            }
+
+            var leftExpr = AutoDereferenceIfPointer(left);
+            var rightExpr = AutoDereferenceIfPointer(right);
+
+            return new SimpleBinaryOperationExpression(operation, leftExpr, rightExpr, new TypeSpec(left.ResultTypeSpec.Type), CurrentPosition);
+        }
+
+        public Expression BitAnd(Expression leftExpr, Expression rightExpr)
+        {
+            return BitOperationPrepeare(BinaryOperation.BitAnd, leftExpr, rightExpr);
+        }
+
+        public Expression BitXor(Expression leftExpr, Expression rightExpr)
+        {
+            return BitOperationPrepeare(BinaryOperation.BitXor, leftExpr, rightExpr);
+        }
+
+        public Expression BitOr(Expression leftExpr, Expression rightExpr)
+        {
+            return BitOperationPrepeare(BinaryOperation.BitOr, leftExpr, rightExpr);
+        }
+
+        public Expression BitNot(Expression expr)
+        {
+            CheckInitializable(expr);
+
+            if (CheckStubForError(expr)) return new StubForErrorExpression(CurrentPosition);
+
+            var boolType = _membersFinder.FindType("bool");
+
+            if (expr.ResultTypeSpec.Type != boolType && expr.ResultTypeSpec.Type is not IntegerTypeDesc)
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "The '~' operator requires an integer or bool operand", CurrentPosition);
+                return new StubForErrorExpression(CurrentPosition);
+            }
+
+            var accessor = AutoDereferenceIfPointer(expr);
+
+            return new NotExpression(accessor, CurrentPosition);
+        }
+
+        public Expression CreateInt(BigInteger num)
+        {
+            return new NumConstExpression(new TypeSpec(_membersFinder.IntType), BaseTypes.Int, num, CurrentPosition);
+        }
+
+        public Expression CreateShort(BigInteger num)
+        {
+            return new NumConstExpression(new TypeSpec(TypeNameToTypeDesc("short")), BaseTypes.Short, num, CurrentPosition);
+        }
+
+        public Expression CreateByte(BigInteger num)
+        {
+            return new NumConstExpression(new TypeSpec(TypeNameToTypeDesc("byte")), BaseTypes.Byte, num, CurrentPosition);
+        }
+
+        public Expression CreateString(string str)
+        {
+            if (str[0] != '"' || str[str.Length - 1] != '"')
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Ivalid string", CurrentPosition);
+                return new StubForErrorExpression(CurrentPosition);
+            }
+
+            byte[] strBytes = Encoding.UTF8.GetBytes($"{str.Replace(@"\n", Environment.NewLine)[1..^1]}\0");
+            return new GlobalArrayExpression(strBytes, new TypeSpec(TypeNameToTypeDesc("byte"),
+                [Qualifier.BorrowReference, new ArrayQualifier((ulong)strBytes.LongLength)]), CurrentPosition);
+        }
+
+        public Expression CreateLocalVariable(string name, TypeSpec declaring)
+        {
+            CodeBlock block = _blocks.Peek();
+            if (block.Variables.ContainsKey(name))
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "A variable with that name is already declared in this block", CurrentPosition);
+                return new StubForErrorExpression(CurrentPosition);
+            }
+
+            Expression res = new VariableCreatingExpression(name, declaring, false, CurrentPosition);
+            block.Variables[name] = new(declaring, !declaring.IsRef && declaring.Type.IsBaseType);
+
+            if (declaring.IsOwnerRef)
+            {
+                res = new DoNotAutoDereferenceIfPointerExpression(res, res.Pos);
+            }
+            else if (declaring.IsBorrowRef)
+            {
+                res = new DoNotAutoDereferenceIfPointerExpression(res, true, res.Pos);
+            }
+
+            return res;
+        }
+
+        private void InitializeVariable(Expression expr)
+        {
+            if (expr is DoNotAutoDereferenceIfPointerExpression xyeta)
+            {
+                expr = xyeta.Expression;
+            }
+
+            if (expr is PointerDereferenceExpression ebanina)
+            {
+                expr = ebanina.Target;
+            }
+
+            if (expr is not IInitializableExpresion initializable || initializable.IsInitialized)
+                return;
+
+            if (expr is StructureFieldAccessExpression field)
+            {
+                _blocks.Peek().CurrentClassFields![field.Field.Name].IsInit = true;
+            }
+            else if (expr is VariableAccessExpression varAccess)
+            {
+                _blocks.Peek().Variables[varAccess.Name].IsInit = true;
+            }
+            else if (expr is VariableCreatingExpression varCreate)
+            {
+                _blocks.Peek().Variables[varCreate.Name].IsInit = true;
+            }
+        }
+
+        private bool ValidateReferenceQualifier(Expression expression, TypeSpec targetType)
+        {
+            if (expression is not DoNotAutoDereferenceIfPointerExpression referenceExpression)
+                return true;
+
+            if (!targetType.IsRef)
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB",
+                    "Квалификатор 'ref'/'refb' можно применять только к ссылкам", expression.Pos);
+                return false;
+            }
+
+            if (targetType.IsBorrowRef && !referenceExpression.IsBorrow)
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB",
+                    "Для заимствованной (refb) ссылки требуется квалификатор 'refb'", expression.Pos);
+                return false;
+            }
+
+            if (targetType.IsOwnerRef && referenceExpression.IsBorrow)
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB",
+                    "Для владеющей (ref) ссылки требуется квалификатор 'ref'", expression.Pos);
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool ValidateReferenceQualifiers(Expression[] arguments, Argument[] parameters)
+        {
+            int count = Math.Min(arguments.Length, parameters.Length);
+
+            for (int i = 0; i < count; i++)
+            {
+                if (!ValidateReferenceQualifier(arguments[i], parameters[i].Declaring))
+                    return false;
+            }
+
+            return true;
+        }
+
+        public Expression VariableAssing(Expression varExpr, Expression expr)
+        {
+            CheckInitializable(expr);
+            if (CheckStubForError(varExpr, expr)) return new StubForErrorExpression(CurrentPosition);
+
+            InitializeVariable(varExpr);
+
+            var unsafeMode = _blocks.Peek()?.IsUnsafe ?? false;
+            bool bothSourcesAreRef = varExpr.ResultTypeSpec.IsRef && expr.ResultTypeSpec.IsRef;
+
+            varExpr = AutoDereferenceIfPointer(varExpr);
+
+            if (varExpr is not DoNotAutoDereferenceIfPointerExpression)
+            {
+                expr = AutoDereferenceIfPointer(expr);
+            }
+
+            bool needCast = false;
+
+            if (!_typeAnalyzer.CheckTypeMatching(varExpr.ResultTypeSpec, expr.ResultTypeSpec, out needCast))
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Cannot assign a value of the specified type", CurrentPosition);
+                return new StubForErrorExpression(CurrentPosition);
+            }
+
+            if (bothSourcesAreRef && !varExpr.ResultTypeSpec.IsRef && !expr.ResultTypeSpec.IsRef)
+            {
+                if (!(varExpr.ResultTypeSpec.Type.IsBaseType && expr.ResultTypeSpec.Type.IsBaseType) && !unsafeMode)
+                {
+                    // TODO: эта поебота отъбывает если в поле класса присвоить переменную (поле было refb, перменная ref с типом кастомного класса)
+                    _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Reassignment of a reference for composite type without qualifier requires an unsafe context", CurrentPosition);
+                    return new StubForErrorExpression(CurrentPosition);
+                }
+            }
+
+            if (needCast && (expr.ResultTypeSpec.Type is IntegerTypeDesc or FloatTypeDesc))
+            {
+                expr = ImplicitIntExtenssion(expr, varExpr.ResultTypeSpec);
+            }
+
+            return new SimpleBinaryOperationExpression(BinaryOperation.Assing, varExpr, expr, varExpr.ResultTypeSpec, CurrentPosition);
+        }
+
+        public Expression VariableAccess(string name)
+        {
+            CodeBlock block = _blocks.Peek();
+            if (!block.Variables.TryGetValue(name, out var value))
+            {
+                var currentClass = block.CurrentClass?.TypeDesc;
+                if (currentClass == null)
+                {
+                    _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "No variable with that name was found", CurrentPosition);
+                    return new StubForErrorExpression(CurrentPosition);
+                }
+
+                if (block.CurrentClassFields == null || !block.CurrentClassFields.TryGetValue(name, out var field))
+                {
+                    _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "No variable or field with that name was found", CurrentPosition);
+                    return new StubForErrorExpression(CurrentPosition);
+                }
+
+                TypeSpec fieldDeclaring = field.Type.Declaring;
+
+                Expression thisGetting = new AppealToThisExpression(currentClass, CurrentPosition);
+                thisGetting = new PointerDereferenceExpression(thisGetting, CurrentPosition);
+
+                return new StructureFieldAccessExpression(field.Type, thisGetting, fieldDeclaring, field.IsInit, CurrentPosition);
+            }
+
+            return new VariableAccessExpression(name, value.Type, value.IsInit, CurrentPosition);
+        }
+
+        public bool CurrentClassHasRefFields()
+        {
+            var currentClass = _blocks.Peek().CurrentClass?.TypeDesc;
+            if (currentClass == null) return false;
+
+            return currentClass.Variables.Values.Any(v => v.Declaring.IsRef);
+        }
+
+        public Expression FieldAssing(string fieldName, Expression value)
+        {
+            CheckInitializable(value);
+
+            CodeBlock block = _blocks.Peek();
+            var currentClass = block.CurrentClass?.TypeDesc;
+            if (currentClass == null || block.CurrentClassFields == null || !block.CurrentClassFields.TryGetValue(fieldName, out var field))
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "No field with that name was found", CurrentPosition);
+                return new StubForErrorExpression(CurrentPosition);
+            }
+
+            TypeSpec fieldDeclaring = field.Type.Declaring;
+
+            Expression thisGetting = new AppealToThisExpression(currentClass, CurrentPosition);
+            thisGetting = new PointerDereferenceExpression(thisGetting, CurrentPosition);
+            Expression fieldAccess = new StructureFieldAccessExpression(field.Type, thisGetting, fieldDeclaring, field.IsInit, CurrentPosition);
+
+            if (fieldDeclaring.QualifiersExists && (fieldDeclaring.Qualifiers[0] is (ReferenceQualifier or BorrowReferenceQualifier)))
+            {
+                fieldAccess = new DoNotAutoDereferenceIfPointerExpression(fieldAccess, fieldAccess.Pos);
+            }
+
+            return VariableAssing(fieldAccess, value);
+        }
+
+        public Expression SetQualifier(Expression expr, Qualifier qualifier)
+        {
+            if (qualifier is not (ReferenceQualifier or BorrowReferenceQualifier))
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "REF005",
+                    "Уточняющим кваллификатором может быть только 'ref' или 'refb'.", CurrentPosition);
+                return new StubForErrorExpression(CurrentPosition);
+            }
+
+            if (CheckStubForError(expr)) return new StubForErrorExpression(CurrentPosition);
+
+            if (!expr.ResultTypeSpec.IsRef)
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "REF005",
+                    "Квалификатор 'ref'/'refb' можно применять только к ссылкам", CurrentPosition);
+                return new StubForErrorExpression(CurrentPosition);
+            }
+
+            bool isBorrowRef = qualifier is BorrowReferenceQualifier;
+            return new DoNotAutoDereferenceIfPointerExpression(expr, isBorrowRef, CurrentPosition);
+        }
+
+        public Expression TypeCast(Expression expr, TypeSpec toType)
+        {
+            CheckInitializable(expr);
+            if (CheckStubForError(expr)) return new StubForErrorExpression(CurrentPosition);
+
+            var unsafeMode = _blocks.Peek()?.IsUnsafe ?? false;
+
+            if (!unsafeMode)
+            {
+                if (toType.ArrayExists)
+                {
+                    _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Casting array types is prohibited in a safe context", CurrentPosition);
+                    return new StubForErrorExpression(CurrentPosition);
+                }
+
+                if (!_typeAnalyzer.SoftCheckTypeMatching(expr.ResultTypeSpec, toType))
+                {
+                    _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Implicit casting of heterogeneous types is prohibited in a safe context", CurrentPosition);
+                    return new StubForErrorExpression(CurrentPosition);
+                }
+            }
+
+            return BuildCastExpression(expr, toType);
+        }
+
+        private Expression BuildCastExpression(Expression expr, TypeSpec toType)
+        {
+            TypeSpec fromSpec = expr.ResultTypeSpec;
+
+            bool fromIsPointer = fromSpec.IsRef;
+            bool toIsPointer = toType.IsRef;
+            bool fromIsInt = fromSpec.Type is IntegerTypeDesc;
+            bool toIsInt = toType.Type is IntegerTypeDesc;
+            bool fromIsFloat = fromSpec.Type is FloatTypeDesc;
+            bool toIsFloat = toType.Type is FloatTypeDesc;
+
+            if (fromIsPointer && toIsPointer)
+                return new CastExpression(expr, toType, CurrentPosition);
+
+            if (fromIsInt && toIsPointer)
+                return new IntToPointerExpression(expr, toType, CurrentPosition);
+
+            if (fromIsPointer && toIsInt)
+                return new PointerToIntExpression(expr, toType, CurrentPosition);
+
+            if (fromIsInt && toIsFloat)
+                return new IntToFloatExtensionExpression(expr, IsSignedInteger(fromSpec), toType, CurrentPosition);
+
+            if (fromIsFloat && toIsInt)
+                return new FloatToIntExpression(expr, IsSignedInteger(toType), toType, CurrentPosition);
+
+            if (fromIsInt && toIsInt)
+            {
+                if (fromSpec.Type == toType.Type)
+                    return new CastExpression(expr, toType, CurrentPosition); // TODO: тут должно быть сообщение что приведение бессмысленно
+
+                if (_typeAnalyzer.CheckTypeMatching(toType, fromSpec, out _))
+                    return new IntToIntExtensionExpression(expr, IsSignedInteger(fromSpec), toType, CurrentPosition);
+
+                if (_typeAnalyzer.CheckTypeMatching(fromSpec, toType, out _))
+                    return new IntTruncExpression(expr, toType, CurrentPosition);
+
+            }
+
+            if (fromIsFloat && toIsFloat)
+            {
+                if (fromSpec.Type == toType.Type)
+                    return new CastExpression(expr, toType, CurrentPosition);
+
+                if (_typeAnalyzer.CheckTypeMatching(toType, fromSpec, out _))
+                    return new FloatToFloatExpression(expr, toType, CurrentPosition);
+
+                if (_typeAnalyzer.CheckTypeMatching(fromSpec, toType, out _))
+                    return new FloatTruncExpression(expr, toType, CurrentPosition);
+            }
+
+            return new ReinterpretCastExpression(expr, toType, CurrentPosition);
+        }
+
+        private bool IsSignedInteger(TypeSpec typeSpec)
+        {
+            var ulongType = _membersFinder.FindType("ulong");
+            return !_typeAnalyzer.CheckTypeMatching(typeSpec, new TypeSpec(ulongType), out _);
+        }
+
+        /// <summary>
+        /// Создает <see cref="Expression"/> для каста целого числа к переданному <see cref="TypeDesc"/>.
+        /// Подразумивается что <paramref name="expr"/> является целым числом, то есть может быть раширен до long, а
+        /// <paramref name="resultType"/> либо целоче число, либо число с плвающей точкой.
+        /// </summary>
+        /// <param name="expr">Выражение, которое нужно привести к типу <paramref name="resultType"/>. 
+        /// Должно иметь тип либо целого числа, либо числа с плавающей точкой</param>
+        /// <param name="resultType"></param>
+        /// <returns></returns>
+        private Expression ImplicitIntExtenssion(Expression expr, TypeSpec resultType)
+        {
+            CheckInitializable(expr);
+            if (expr.ResultTypeSpec.Type == resultType.Type) return expr;
+
+            var doubleType = _membersFinder.FindType("double");
+
+            if (expr.ResultTypeSpec.Type is FloatTypeDesc && resultType.Type is FloatTypeDesc)
+            {
+                return new FloatToFloatExpression(expr, resultType, CurrentPosition);
+            }
+
+            bool isSigned = IsSignedInteger(expr.ResultTypeSpec);
+            bool resultTypeIsFloat = _typeAnalyzer.CheckTypeMatching(resultType, new TypeSpec(doubleType), out _);
+
+            if (resultTypeIsFloat)
+            {
+                return new IntToFloatExtensionExpression(expr, isSigned, resultType, CurrentPosition);
+            }
+            else
+            {
+                return new IntToIntExtensionExpression(expr, isSigned, resultType, CurrentPosition);
+            }
+        }
+
+        private bool ValidateObjectInitializer(ObjectInitializerExpression expr, TypeSpec arrayType)
+        {
+            if (!arrayType.IsArray || (arrayType.Qualifiers[0] is not ArrayQualifier arrQualifier))
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Инициализатор объекта поддерживается только массивами!", CurrentPosition);
+                return false;
+            }
+
+            if (arrQualifier.Size != (uint)expr.Expressions.Count)
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Недопустимое количество значений в " +
+                    $"инициализаторе объекта! Размер массива {arrQualifier.Size}, " +
+                    $"количество объектов {expr.Expressions.Count}", CurrentPosition);
+                return false;
+            }
+
+            TypeSpec cellType = arrayType.RemoveFirtsQualifier();
+
+            for (int i = 0; i < expr.Expressions.Count; i++)
+            {
+                Expression childExpr = expr.Expressions[i];
+                if (!_typeAnalyzer.CheckTypeMatching(cellType, childExpr.ResultTypeSpec, out bool needCast))
+                {
+                    _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", $"Все типы в данном инициалзиторе " +
+                        $"объекта должны быть {cellType}, был передан {childExpr.ResultTypeSpec}", CurrentPosition);
+                    return false;
+                }
+
+                // TODO: тут нужно доделать неявное приведени чисел
+                if (needCast && (expr.ResultTypeSpec.Type is IntegerTypeDesc or FloatTypeDesc))
+                {
+                    expr.Expressions[i] = ImplicitIntExtenssion(expr, cellType);
+                }
+            }
+
+            return true;
+        }
+
+        private Expression AutoDereferenceIfPointer(Expression expr) => AutoDereferenceIfPointer(expr, false);
+
+        private Expression AutoDereferenceIfPointer(Expression expr, bool excludeNewRefs)
+        {
+            if (CheckStubForError(expr)) return new StubForErrorExpression(CurrentPosition);
+
+            if (!expr.ResultTypeSpec.IsRef || expr is DoNotAutoDereferenceIfPointerExpression) return expr;
+
+            if (excludeNewRefs && (expr is GetPointerToVarExpression || expr is CallConstructorExpression)) return expr;
+
+            return new PointerDereferenceExpression(expr, CurrentPosition);
+        }
+
+        private TypeSpec GetWiderType(TypeSpec first, TypeSpec second)
+        {
+            return _typeAnalyzer.CheckTypeMatching(first, second, out _) ? first : second;
+        }
+
+        private TypeDesc TypeNameToTypeDesc(string typeName)
+        {
+            return _membersFinder.FindType(typeName);
+        }
+
+        public void ReportError(string message)
+        {
+            _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", message, CurrentPosition);
+        }
+
+        private bool CheckStubForError(params Expression[] expressions)
+        {
+            return expressions.Any(x => x is StubForErrorExpression);
+        }
+
+        private void CheckInitializable(Expression? expr)
+        {
+            if (expr == null) return;
+            if (expr is IInitializableExpresion initializable && !initializable.IsInitialized)
+            {
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Переменная не инициализирована", CurrentPosition);
+            }
+        }
+
+        private void CheckInitializable(IEnumerable<Expression>? exprs)
+        {
+            if (exprs == null) return;
+            exprs.ForEach(x => CheckInitializable(x));
+        }
+
+        private VariableCreatingExpression CreateTempVar(TypeSpec type)
+        {
+            string baseName = $"temp_var_{type.Type.Name}";
+            string name = baseName;
+
+            var variables = _blocks.Peek().Variables;
+            int i = 0;
+            while (variables.ContainsKey(name))
+            {
+                name = $"{baseName}_{i}";
+                i++;
             }
 
             CodeBlock block = _blocks.Peek();
@@ -1434,5 +1398,5 @@ namespace EvolZero.Core.Analysis
             return tempVar;
         }
 
-	}
+    }
 }

@@ -9,6 +9,9 @@ namespace EvolZero.Core
 		private HashSet<string> _usings = [];
 
 		public TypeDesc IntType { get; }
+        public TypeDesc LongType { get; }
+        public TypeDesc UIntType { get; }
+        public TypeDesc ULongType { get; }
 
         public MembersFinder(MembersTable membersTable)
 		{
@@ -17,7 +20,19 @@ namespace EvolZero.Core
 			if (!_membersTable.Types.TryGetValue("int", out TypeDesc? intType))
 				throw new NotImplementedException();
 
-			IntType = intType;
+            if (!_membersTable.Types.TryGetValue("long", out TypeDesc? longType))
+                throw new NotImplementedException();
+
+            if (!_membersTable.Types.TryGetValue("uint", out TypeDesc? uintType))
+                throw new NotImplementedException();
+
+            if (!_membersTable.Types.TryGetValue("ulong", out TypeDesc? ulongType))
+                throw new NotImplementedException();
+
+            IntType = intType;
+			LongType = longType;
+            UIntType = uintType;
+            ULongType = ulongType;
         }
 
 		public void AddNamespace(string nameSpace)

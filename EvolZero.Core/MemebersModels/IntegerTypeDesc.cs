@@ -9,5 +9,5 @@ namespace EvolZero.Core.MemebersModels
 		public IntegerTypeDesc(string name, ITypeRef typeRef) : base(name, typeRef)
 		{
 		}
-	}
+    }
 }

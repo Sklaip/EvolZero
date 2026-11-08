@@ -254,8 +254,7 @@ namespace EvolZero.Parsing
 				var value = Visit(ctx.expression());
 				if (value == null) throw new NotImplementedException();
 
-				Qualifier? qaliffer = typeSpec.QualifiersExists ? typeSpec.Qualifiers[0] : null;
-				return _semanticAnalyzer.VariableAssing(varAccessing, value, qaliffer);
+				return _semanticAnalyzer.VariableAssing(varAccessing, value);
 			}
 
 			_semanticAnalyzer.CurrentPosition = lastPos;
@@ -268,12 +267,11 @@ namespace EvolZero.Parsing
 			return Visit(context.expression());
 		}
 
-		public override Expression VisitAssignStmt([NotNull] CEvolParser.AssignStmtContext ctx)
+		public override Expression VisitAssignExpr([NotNull] CEvolParser.AssignExprContext context)
 		{
 			var lastPos = _semanticAnalyzer.CurrentPosition;
-			SetCurrentPosition(ctx);
+			SetCurrentPosition(context);
 
-			var context = ctx.assignment();
 			var expressions = context.expression();
 			if (expressions.Length != 2)
 				throw new NotImplementedException();
@@ -281,18 +279,11 @@ namespace EvolZero.Parsing
 			var leftExpression = Visit(expressions[0]);
 			var rightExpression = Visit(expressions[1]);
 
-			var qualiffer = ParsingCommon.ParseQualifier(context.qualifier());
-
 			if (leftExpression == null || rightExpression == null) throw new NotImplementedException();
 
 			// TODO: где-то сделать проверку что это выражение - доступ к переменной, а не каккая-то хуета
-			Qualifier? qul = null;
-			if (qualiffer != null)
-			{
-				qul = QualifierWorkpiece.ToQualifier(qualiffer);
-			}
 
-			var res = _semanticAnalyzer.VariableAssing(leftExpression, rightExpression, qul);
+			var res = _semanticAnalyzer.VariableAssing(leftExpression, rightExpression);
 			_semanticAnalyzer.CurrentPosition = lastPos;
 
 			return res;
@@ -366,7 +357,7 @@ namespace EvolZero.Parsing
 			return res;
 		}
 
-		public override Expression VisitRefExpr([NotNull] CEvolParser.RefExprContext context)
+		public override Expression VisitQualifierExpr([NotNull] CEvolParser.QualifierExprContext context)
 		{
 			var lastPos = _semanticAnalyzer.CurrentPosition;
 			SetCurrentPosition(context);
@@ -374,8 +365,8 @@ namespace EvolZero.Parsing
 			var value = Visit(context.expression());
 			if (value == null) throw new NotImplementedException();
 
-			bool isBorrow = context.qualifier().GetText() == "refb";
-			var res = _semanticAnalyzer.SetRefQualifier(value, isBorrow);
+			Qualifier qualifier = new QualifierWorkpiece(context.qualifier().GetText()).ToQualifier();
+			var res = _semanticAnalyzer.SetQualifier(value, qualifier);
 
 			_semanticAnalyzer.CurrentPosition = lastPos;
 			return res;
