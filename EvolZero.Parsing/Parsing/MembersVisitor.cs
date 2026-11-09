@@ -9,7 +9,7 @@ using static EvolZero.Core.MemebersModels.Qualifier;
 
 namespace EvolZero.Parsing
 {
-	internal class MembersVisitor : CEvolParserBaseVisitor<object?>
+    public class MembersVisitor : CEvolParserBaseVisitor<object?>
 	{
 		public string CurrentNameSpace { get; private set; } = null!;
 		public Dictionary<string, ClassSignature> Classes = new();

@@ -1,0 +1,29 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+	<ItemGroup>
+		<None Remove="CEvolLexer.g4" />
+		<None Remove="CEvolParser.g4" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Antlr4 Include="CEvolLexer.g4" />
+		<Antlr4 Include="CEvolParser.g4" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Antlr4.Runtime.Standard" Version="4.13.1" />
+		<PackageReference Include="Antlr4BuildTasks" Version="12.14.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\EvolZero.Core\EvolZero.Core.csproj" />
+		<ProjectReference Include="..\EvolZero.Generation\EvolZero.Generation.csproj" />
+	</ItemGroup>
+
+</Project>

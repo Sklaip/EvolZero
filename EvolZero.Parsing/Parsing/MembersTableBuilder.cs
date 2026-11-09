@@ -5,7 +5,7 @@ using EvolZero.Parsing.Models;
 
 namespace EvolZero.Parsing
 {
-	internal class MembersTableBuilder
+	public class MembersTableBuilder
 	{
 		private string _currentNameSpace { get; }
 		private HashSet<string> _usings { get; }

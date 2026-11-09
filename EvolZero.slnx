@@ -10,5 +10,7 @@
   </Project>
   <Project Path="EvolZero.Core/EvolZero.Core.csproj" Id="05db3616-dac8-475e-8c67-6c85baccd7f2" />
   <Project Path="EvolZero.Generation/EvolZero.Generation.csproj" Id="e3c5b6c3-f634-46cb-9280-d555bee7376d" />
+  <Project Path="EvolZero.LSP/EvolZero.LSP.csproj" Id="c1e073ab-e546-41d5-872d-0724f39c7869" />
+  <Project Path="EvolZero.Parsing/EvolZero.Parsing.csproj" Id="7156cba7-89ef-4eff-bded-c0217d659cd4" />
   <Project Path="Tests/Tests.csproj" />
 </Solution>

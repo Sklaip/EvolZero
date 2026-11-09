@@ -5,7 +5,7 @@ using System.Text;
 
 namespace EvolZero.Parsing.Models
 {
-	internal class QualifierWorkpiece
+    public class QualifierWorkpiece
 	{
 		public string Kind { get; set; }
 		public ulong ArraySize { get; set; }

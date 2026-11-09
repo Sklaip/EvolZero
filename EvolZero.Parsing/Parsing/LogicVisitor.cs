@@ -10,12 +10,11 @@ using EvolZero.Core.MemebersModels;
 using EvolZero.Parsing.Models;
 using System.Numerics;
 using static CEvolParser;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 
 namespace EvolZero.Parsing
 {
-	internal class LogicVisitor : CEvolParserBaseVisitor<Expression?>
+    public class LogicVisitor : CEvolParserBaseVisitor<Expression?>
 	{
 		private readonly MembersFinder _membersFinder;
 		private readonly string _currentFile;
