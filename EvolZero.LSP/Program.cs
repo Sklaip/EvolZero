@@ -87,6 +87,7 @@ namespace EvolZero.LSP
                                         Section = "terminal",
                                     }
                                 );
+                                services.AddSingleton<AnalysisService>();
                             }
                         )
                        .OnInitialize(
@@ -160,6 +161,16 @@ namespace EvolZero.LSP
                                 ).ConfigureAwait(false);
                             }
                         )
+                       .OnInitialize(async (server, request, token) =>
+                       {
+                           var rootPath = request.RootPath;
+
+                           if (!string.IsNullOrEmpty(rootPath))
+                           {
+                               var analysisService = server.Services.GetService<AnalysisService>();
+                               analysisService?.InitializeProject(rootPath);
+                           }
+                       })
             ).ConfigureAwait(false);
 
             await server.WaitForExit.ConfigureAwait(false);

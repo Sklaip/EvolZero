@@ -1,29 +1,26 @@
 ﻿using Antlr4.Runtime;
-using EvolZero.Core.Analysis.Semantic;
+using EvolZero.Core;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using OmniSharp.Extensions.LanguageServer.Protocol;
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Xml.Linq;
-using static Antlr4.Runtime.Atn.SemanticContext;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+using OmmniSemanticTokenType = OmniSharp.Extensions.LanguageServer.Protocol.Models.SemanticTokenType;
+using SemanticTokenType = EvolZero.Core.SemanticTokenType;
+
 
 namespace EvolZero.LSP
 {
     public class SemanticTokensHandler : SemanticTokensHandlerBase
     {
         private readonly ILogger _logger;
+        private readonly AnalysisService _analysisService;
 
-        public SemanticTokensHandler(ILogger<SemanticTokensHandler> logger)
+        public SemanticTokensHandler(ILogger<SemanticTokensHandler> logger, AnalysisService analysisService)
         {
             _logger = logger;
+            _analysisService = analysisService;
         }
 
         public override async Task<SemanticTokens?> Handle(SemanticTokensParams request, CancellationToken cancellationToken)
@@ -71,48 +68,50 @@ namespace EvolZero.LSP
         protected override async Task Tokenize(SemanticTokensBuilder builder, ITextDocumentIdentifierParams identifier,
             CancellationToken cancellationToken)
         {
-            // 1. Читаем текст файла
-            var filePath = DocumentUri.GetFileSystemPath(identifier);
-            var content = await File.ReadAllTextAsync(filePath, cancellationToken).ConfigureAwait(false);
             await Task.Yield();
 
-            // 2. Создаем потоки ANTLR для вашего лексера (предположим, ваш лексер называется CevolLexer)
-            //var inputStream = Antlr4.Runtime.CharStreams.fromString(content);
-            //var lexer = new CevolLexer(inputStream);
-            //var tokens = lexer.GetAllTokens();
+            var positions = _analysisService.GetPositions(identifier.TextDocument.Uri);
 
-            ICharStream stream = CharStreams.fromString(content);
-            var lexer = new CEvolLexer(stream);
-
-            // 3. Проходим по всем токенам от ANTLR и передаем их в builder
-            foreach (var token in lexer.GetAllTokens())
+            foreach (var pos in positions)
             {
-                // ANTLR считает строки с 1, а LSP с 0 -> поэтому line - 1
-                var line = token.Line - 1;
-                var column = token.Column;
-                var length = token.Text.Length;
-
-                // Превращаем тип токена ANTLR в индекс типа из легенды LSP
-                int tokenTypeIndex = MapAntlrTokenTypeToLsp(token.Type);
-
-                // Передаем токен в редактор
-                builder.Push(line, column, length, tokenTypeIndex, 0);
+                //var tokenType = MapTokenType(pos.tokenType);
+                builder.Push(pos.pos.Line - 1, pos.pos.Symbol, pos.pos.EndSymbol - pos.pos.Symbol + 1, (int)pos.tokenType, 0);
             }
+
         }
 
         // Метод маппинга типов токенов ANTLR на индексы в легенде SemanticTokens
-        private int MapAntlrTokenTypeToLsp(int antlrTokenType)
+        private OmmniSemanticTokenType MapTokenType(SemanticTokenType tokenType)
         {
             // Здесь вы сопоставляете константы из CevolLexer (например, CevolLexer.KEYWORD, CevolLexer.IDENTIFIER)
             // с числовыми индексами типов в вашей легенде (например, 0 - keyword, 1 - variable и т.д.)
-            return antlrTokenType switch
+            return tokenType switch
             {
-                CEvolLexer.STRING => 1,
-                CEvolLexer.LINE_COMMENT => 4,
-                CEvolLexer.NUMBER => 3,
-                CEvolLexer.IDENTIFIER => 2,
-                _ => 0
-            };
+                SemanticTokenType.Comment => OmmniSemanticTokenType.Comment,
+                SemanticTokenType.Keyword => OmmniSemanticTokenType.Keyword,
+                SemanticTokenType.String => OmmniSemanticTokenType.String,
+                SemanticTokenType.Number => OmmniSemanticTokenType.Number,
+                SemanticTokenType.Regexp => OmmniSemanticTokenType.Regexp,
+                SemanticTokenType.Operator => OmmniSemanticTokenType.Operator,
+                SemanticTokenType.Namespace => OmmniSemanticTokenType.Namespace,
+                SemanticTokenType.Type => OmmniSemanticTokenType.Type,
+                SemanticTokenType.Struct => OmmniSemanticTokenType.Struct,
+                SemanticTokenType.Class => OmmniSemanticTokenType.Class,
+                SemanticTokenType.Interface => OmmniSemanticTokenType.Interface,
+                SemanticTokenType.Enum => OmmniSemanticTokenType.Enum,
+                SemanticTokenType.TypeParameter => OmmniSemanticTokenType.TypeParameter,
+                SemanticTokenType.Function => OmmniSemanticTokenType.Function,
+                SemanticTokenType.Method => OmmniSemanticTokenType.Method,
+                SemanticTokenType.Property => OmmniSemanticTokenType.Property,
+                SemanticTokenType.Macro => OmmniSemanticTokenType.Macro,
+                SemanticTokenType.Variable => OmmniSemanticTokenType.Variable,
+                SemanticTokenType.Parameter => OmmniSemanticTokenType.Parameter,
+                SemanticTokenType.Label => OmmniSemanticTokenType.Label,
+                SemanticTokenType.Modifier => OmmniSemanticTokenType.Modifier,
+                SemanticTokenType.Event => OmmniSemanticTokenType.Event,
+                SemanticTokenType.EnumMember => OmmniSemanticTokenType.EnumMember,
+                _ => OmmniSemanticTokenType.Keyword
+            }; ;
         }
 
         protected override Task<SemanticTokensDocument> GetSemanticTokensDocument(ITextDocumentIdentifierParams @params,
@@ -134,6 +133,22 @@ namespace EvolZero.LSP
         protected override SemanticTokensRegistrationOptions CreateRegistrationOptions(SemanticTokensCapability capability,
             ClientCapabilities clientCapabilities)
         {
+
+            //return new SemanticTokensRegistrationOptions
+            //{
+            //    DocumentSelector = TextDocumentSelector.ForLanguage("cevol"),
+            //    Legend = new SemanticTokensLegend
+            //    {
+            //        TokenModifiers = capability.TokenModifiers,
+            //        TokenTypes = capability.TokenTypes
+            //    },
+            //    Full = new SemanticTokensCapabilityRequestFull
+            //    {
+            //        Delta = true
+            //    },
+            //    Range = true
+            //};
+
             return new SemanticTokensRegistrationOptions
             {
                 DocumentSelector = TextDocumentSelector.ForLanguage("cevol"),
@@ -142,12 +157,32 @@ namespace EvolZero.LSP
                     // 1. Определяем ваш собственный фиксированный список типов токенов.
                     // Порядок элементов здесь СТРОГО должен соответствовать индексам, 
                     // которые возвращает ваш метод MapAntlrTokenTypeToLsp!
-                    TokenTypes = new Container<SemanticTokenType>(
-                        SemanticTokenType.Keyword, // 0
-                        SemanticTokenType.String, // 1 ++
-                        SemanticTokenType.Variable, // 2
-                        SemanticTokenType.Number, // 3 ++
-                        SemanticTokenType.Comment // 4 ++
+                    TokenTypes = new Container<OmmniSemanticTokenType>(
+                        OmmniSemanticTokenType.Comment,
+                        OmmniSemanticTokenType.Keyword,
+                          OmmniSemanticTokenType.String,
+                          OmmniSemanticTokenType.Number,
+                          OmmniSemanticTokenType.Regexp,
+                          OmmniSemanticTokenType.Operator,
+                          OmmniSemanticTokenType.Namespace,
+                          OmmniSemanticTokenType.Type,
+                          OmmniSemanticTokenType.Struct,
+                          OmmniSemanticTokenType.Class,
+                         OmmniSemanticTokenType.Interface,
+                         OmmniSemanticTokenType.Enum,
+                          OmmniSemanticTokenType.TypeParameter,
+                          OmmniSemanticTokenType.Function,
+                          OmmniSemanticTokenType.Method,
+                          OmmniSemanticTokenType.Property,
+                          OmmniSemanticTokenType.Macro,
+                          OmmniSemanticTokenType.Variable,
+                          OmmniSemanticTokenType.Parameter,
+                          OmmniSemanticTokenType.Label,
+                          OmmniSemanticTokenType.Modifier,
+                          OmmniSemanticTokenType.Event,
+                          OmmniSemanticTokenType.EnumMember,
+                          new OmmniSemanticTokenType("field"),
+                          new OmmniSemanticTokenType("punctuation")
                     ),
 
                     // 2. Модификаторы токенов (можно оставить стандартные из capabilities или задать свои)
@@ -160,24 +195,5 @@ namespace EvolZero.LSP
                 Range = true
             };
         }
-
-        //protected override SemanticTokensRegistrationOptions CreateRegistrationOptions(SemanticTokensCapability capability,
-        //    ClientCapabilities clientCapabilities)
-        //{
-        //    return new SemanticTokensRegistrationOptions
-        //    {
-        //        DocumentSelector = TextDocumentSelector.ForLanguage("cevol"),
-        //        Legend = new SemanticTokensLegend
-        //        {
-        //            TokenModifiers = capability.TokenModifiers,
-        //            TokenTypes = capability.TokenTypes
-        //        },
-        //        Full = new SemanticTokensCapabilityRequestFull
-        //        {
-        //            Delta = true
-        //        },
-        //        Range = true
-        //    };
-        //}
     }
 }

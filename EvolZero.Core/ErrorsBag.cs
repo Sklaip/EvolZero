@@ -6,7 +6,7 @@ namespace EvolZero.Core
 {
 	public class ErrorsBag
 	{
-		struct Error
+		public struct Error
 		{
 			public string Layer;
 			public string ErrorCode;
@@ -36,7 +36,10 @@ namespace EvolZero.Core
 			});
 		}
 
-		public string BuildErrorsMessage()
+		public IReadOnlyList<Error> GetErrors() => _errors;
+
+
+        public string BuildErrorsMessage()
 		{
 			if (_errors.Count == 0)
 				return string.Empty;

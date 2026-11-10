@@ -11,13 +11,14 @@ namespace EvolZero.Parsing
 		private HashSet<string> _usings { get; }
 		private Dictionary<string, ClassSignature> _classes = new();
 		private Dictionary<string, List<FuncSignature>> _singleFunctions = new();
-		private readonly CodeGenerator _codeGenerator;
+		private readonly ICodeGenerator _codeGenerator;
 		private Dictionary<string, TypeDesc> _parsedClasses = new();
 		private Dictionary<string, FuncDesc[]> _parsedSingleFunctions = new Dictionary<string, FuncDesc[]>();
 
 		private IReadOnlyDictionary<string, TypeDesc> _existsClasses = null!;
 
-		public MembersTableBuilder(string currentNamespcae, HashSet<string> usings, Dictionary<string, ClassSignature> classes, Dictionary<string, List<FuncSignature>> singleFunctions, CodeGenerator codeGenerator)
+		public MembersTableBuilder(string currentNamespcae, HashSet<string> usings, Dictionary<string, ClassSignature> classes, 
+			Dictionary<string, List<FuncSignature>> singleFunctions, ICodeGenerator codeGenerator)
 		{
 			_currentNameSpace = currentNamespcae;
 			_usings = usings;
@@ -45,7 +46,7 @@ namespace EvolZero.Parsing
 			return type;
 		}
 
-		private void ConstructorsAnalyze(List<ConstructorSignature> constructorsList, CodeGenerator codeGenerator, TypeDesc currentClass)
+		private void ConstructorsAnalyze(List<ConstructorSignature> constructorsList, ICodeGenerator codeGenerator, TypeDesc currentClass)
 		{
 			foreach (var ctor in constructorsList)
 			{
@@ -88,7 +89,7 @@ namespace EvolZero.Parsing
 			}
 		}
 
-		private void DestructorsAnalyze(List<DestructorSignature> destructorsList, CodeGenerator codeGenerator, TypeDesc currentClass)
+		private void DestructorsAnalyze(List<DestructorSignature> destructorsList, ICodeGenerator codeGenerator, TypeDesc currentClass)
 		{
 			foreach (var dtor in destructorsList)
 			{
@@ -221,7 +222,7 @@ namespace EvolZero.Parsing
 		}
 
 		// TODO: это куда-то вынести, код дублирует с SemanticAnalyzer
-		private ITypeRef QualifierToTypeRef(Qualifier qualifier, CodeGenerator codeGenerator)
+		private ITypeRef QualifierToTypeRef(Qualifier qualifier, ICodeGenerator codeGenerator)
 		{
 			switch (qualifier)
 			{

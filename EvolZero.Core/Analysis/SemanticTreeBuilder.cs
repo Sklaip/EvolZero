@@ -431,7 +431,7 @@ namespace EvolZero.Core.Analysis
 
                 if (currentClass == null)
                 {
-                    _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "No variable with that name was found", CurrentPosition);
+                    _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", $"Функция с именем {name} не существует в данном контексте.", CurrentPosition);
                     return new StubForErrorExpression(CurrentPosition);
                 }
 
@@ -443,7 +443,7 @@ namespace EvolZero.Core.Analysis
 
             if (funcDesc == null)
             {
-                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Function overload with specified arguments could not be found", CurrentPosition);
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", $"Отсутствует перегрузка функции {name} с требуемыми аргументами.", CurrentPosition);
                 return new StubForErrorExpression(CurrentPosition);
             }
 
@@ -470,18 +470,20 @@ namespace EvolZero.Core.Analysis
             var arguments = args.Select(x => AutoDereferenceIfPointer(x, true)).ToArray();
 
             // TODO: проверить instanceGetting на валидность
-            var func = _membersFinder.FindFunction(instanceGetting.ResultTypeSpec.Type, name);
-            if (func == null)
+            var funcs = _membersFinder.FindFunction(instanceGetting.ResultTypeSpec.Type, name);
+            if (funcs == null)
             {
-                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "A method with that name was not found", CurrentPosition);
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", 
+                    $"Метод класса {instanceGetting.ResultTypeSpec.Type.Name} с именем {name} не существует в данном контексте.", CurrentPosition);
                 return new StubForErrorExpression(CurrentPosition);
             }
 
-            var funcDesc = _typeAnalyzer.FindSuitableFunction(func, arguments.Select(x => x.ResultTypeSpec), out TypeSpec?[] casts);
+            var funcDesc = _typeAnalyzer.FindSuitableFunction(funcs, arguments.Select(x => x.ResultTypeSpec), out TypeSpec?[] casts);
 
             if (funcDesc == null)
             {
-                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Function overload with specified arguments could not be found", CurrentPosition);
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", 
+                    $"У класса {instanceGetting.ResultTypeSpec.Type.Name} отсутствует перегрузка метода {name} с требуемыми аргументами.", CurrentPosition);
                 return new StubForErrorExpression(CurrentPosition);
             }
 
@@ -1096,13 +1098,13 @@ namespace EvolZero.Core.Analysis
                 var currentClass = block.CurrentClass?.TypeDesc;
                 if (currentClass == null)
                 {
-                    _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "No variable with that name was found", CurrentPosition);
+                    _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", $"Переменная с именем {name} не объявлена.", CurrentPosition);
                     return new StubForErrorExpression(CurrentPosition);
                 }
 
                 if (block.CurrentClassFields == null || !block.CurrentClassFields.TryGetValue(name, out var field))
                 {
-                    _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "No variable or field with that name was found", CurrentPosition);
+                    _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Переменная или поле с именем {name} не объявлена.", CurrentPosition);
                     return new StubForErrorExpression(CurrentPosition);
                 }
 

@@ -109,13 +109,13 @@ namespace EvolZero
                 {
                     // TODO: сюда передавать позицию в исходниках и сделать нормалььный текст ошибки, код
                     errorsBag.AddError("BasicSemanticsValidator", "code", 
-                        $"Класс {item.Type.Name} содержит сам себя в поле {item.FiledName}", new PositionInSources("", 0, 0));
+                        $"Класс {item.Type.Name} содержит сам себя в поле {item.FiledName}", new PositionInSources("", 0, 0, 0));
                 }
             }
 
             foreach (var unit in units)
             {
-                var logicVisitor = new LogicVisitor(finder, errorsBag, unit.FilePath);
+                var logicVisitor = new LogicVisitor(finder, null, errorsBag, unit.FilePath);
                 logicVisitor.Visit(unit.Tree);
                 var statement = logicVisitor.ResultStatement;
 
