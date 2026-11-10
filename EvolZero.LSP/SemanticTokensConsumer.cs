@@ -14,13 +14,17 @@ namespace EvolZero.LSP
                 positions = new List<(PositionInSources pos, SemanticTokenType tokenType)>();
                 _positions[pos.SourceFile] = positions;
             }
-
             positions.Add((pos, tokenType));
         }
 
         public IReadOnlyList<(PositionInSources pos, SemanticTokenType tokenType)> GetPositions(string file)
         {
-            if (_positions.TryGetValue(file, out var positions)) return positions;
+            if (_positions.TryGetValue(file, out var positions))
+            {
+                // TODO: поставить флаг чтобы постоянно не вызывать сортировку и сделать через Sort
+                return positions.OrderBy(x => x.pos.Line).ThenBy(x => x.pos.Symbol).ToList();
+            }
+
             return new List<(PositionInSources pos, SemanticTokenType tokenType)>();
         }
     }
