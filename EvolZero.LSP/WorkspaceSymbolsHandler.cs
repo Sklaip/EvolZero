@@ -8,13 +8,13 @@ using Range = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
 
 namespace EvolZero.LSP
 {
-    internal class MyWorkspaceSymbolsHandler : IWorkspaceSymbolsHandler
+    internal class WorkspaceSymbolsHandler : IWorkspaceSymbolsHandler
     {
         private readonly IServerWorkDoneManager _serverWorkDoneManager;
         private readonly IProgressManager _progressManager;
-        private readonly ILogger<MyWorkspaceSymbolsHandler> _logger;
+        private readonly ILogger<WorkspaceSymbolsHandler> _logger;
 
-        public MyWorkspaceSymbolsHandler(IServerWorkDoneManager serverWorkDoneManager, IProgressManager progressManager, ILogger<MyWorkspaceSymbolsHandler> logger)
+        public WorkspaceSymbolsHandler(IServerWorkDoneManager serverWorkDoneManager, IProgressManager progressManager, ILogger<WorkspaceSymbolsHandler> logger)
         {
             _serverWorkDoneManager = serverWorkDoneManager;
             _progressManager = progressManager;

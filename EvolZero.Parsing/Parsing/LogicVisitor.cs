@@ -143,7 +143,7 @@ namespace EvolZero.Parsing
             {
                 PushAccessModifierToken(context.accessModifier());
                 PushTypeSpecTokens(context.typeSpec());
-                PushToken([context.IDENTIFIER()], [SemanticTokenType.Field]);
+                PushToken([context.IDENTIFIER()], [SemanticTokenType.Property]);
             }
 
             var expr = context.expression();
@@ -384,7 +384,7 @@ namespace EvolZero.Parsing
                 string paramName = context.IDENTIFIER(i).GetText();
 
                 if (_tokensCunsumer != null)
-                    PushToken([context.IDENTIFIER(i)], [SemanticTokenType.Parameter]);
+                    PushToken([context.IDENTIFIER(i)], [SemanticTokenType.Variable]);
 
                 if (paramDecl == null) continue;
                 parameters.Add((paramDecl.Value, paramName));
@@ -519,7 +519,7 @@ namespace EvolZero.Parsing
             if (context.LPAREN() == null)
             {
                 if (_tokensCunsumer != null)
-                    PushToken([context.IDENTIFIER()], [SemanticTokenType.Field]);
+                    PushToken([context.IDENTIFIER()], [SemanticTokenType.Property]);
 
                 var res = _semanticAnalyzer.ClassFieldAccess(expr, memberName);
 
@@ -648,7 +648,7 @@ namespace EvolZero.Parsing
             SetCurrentPosition(context);
 
             if (_tokensCunsumer != null)
-                PushToken([context.RETURN()], [SemanticTokenType.Keyword]);
+                PushToken([context.RETURN()], [SemanticTokenType.Operator]);
 
             var result = Visit(context.expression());
             if (result == null) throw new NotImplementedException();
@@ -667,7 +667,7 @@ namespace EvolZero.Parsing
             var ctx = context.ifStatement();
 
             if (_tokensCunsumer != null)
-                PushToken([ctx.IF()], [SemanticTokenType.Keyword]);
+                PushToken([ctx.IF()], [SemanticTokenType.Operator]);
 
             var condition = Visit(ctx.expression());
             if (condition == null) throw new NotImplementedException();
@@ -698,7 +698,7 @@ namespace EvolZero.Parsing
             SetCurrentPosition(ctx);
 
             if (_tokensCunsumer != null)
-                PushToken([ctx.ELSEIF()], [SemanticTokenType.Keyword]);
+                PushToken([ctx.ELSEIF()], [SemanticTokenType.Operator]);
 
             var elseIfCondition = Visit(ctx.expression());
             if (elseIfCondition == null) throw new NotImplementedException();
@@ -717,7 +717,7 @@ namespace EvolZero.Parsing
             SetCurrentPosition(ctx);
 
             if (_tokensCunsumer != null)
-                PushToken([ctx.ELSE()], [SemanticTokenType.Keyword]);
+                PushToken([ctx.ELSE()], [SemanticTokenType.Operator]);
 
             _semanticAnalyzer.EnterToElseBlock(ifBlock);
             Visit(ctx.block());
@@ -734,7 +734,7 @@ namespace EvolZero.Parsing
             var ctx = context.whileStatement();
 
             if (_tokensCunsumer != null)
-                PushToken([ctx.WHILE()], [SemanticTokenType.Keyword]);
+                PushToken([ctx.WHILE()], [SemanticTokenType.Operator]);
 
             var condition = Visit(ctx.expression());
             if (condition == null) throw new NotImplementedException();

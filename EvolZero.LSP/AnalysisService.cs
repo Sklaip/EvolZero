@@ -16,57 +16,43 @@ namespace EvolZero.LSP
     public class AnalysisService
     {
         // Потокобезопасное хранилище ошибок для каждого открытого файла
-        private readonly ConcurrentDictionary<DocumentUri, List<Diagnostic>> _diagnosticsCache = new();
+        private readonly ConcurrentDictionary<DocumentUri, string> _filesChache = new();
         private readonly SemanticTokensConsumer _tokensConsumer = new();
         private string _projectRoot;
 
-        public void AnalyzeDocument(DocumentUri uri, string text)
-        {
-            var diagnostics = new List<Diagnostic>();
-
-            // Здесь вызывается ваш парсер (например, ANTLR)
-            // Если находим ошибку, добавляем её:
-            // diagnostics.Add(new Diagnostic { ... });
-
-            // Сохраняем в кэш
-            _diagnosticsCache[uri] = diagnostics;
-        }
-
-        public void ClearDocument(DocumentUri uri)
-        {
-            _diagnosticsCache.TryRemove(uri, out _);
-        }
-
-        public void InitializeProject(string rootPath)
+        public async Task InitializeProject(string rootPath)
         {
             _projectRoot = rootPath;
 
-            // Находим все файлы проекта с расширением .cevol (или вашим)
             var allFiles = Directory.GetFiles(_projectRoot, "*.cev", SearchOption.AllDirectories);
 
             foreach (var filePath in allFiles)
             {
                 var text = File.ReadAllText(filePath);
                 var uri = DocumentUri.FromFileSystemPath(filePath);
+                string content = await File.ReadAllTextAsync(filePath);
 
+                _filesChache[uri] = content;
             }
         }
 
-        public List<Diagnostic> FileChanged(DocumentUri uri, string content)
+        public async Task<List<Diagnostic>> FileChanged(DocumentUri uri, string? fileContent)
         {
-            var errors = Execute(new Dictionary<DocumentUri, string>()
-            {
-                [uri] = content
-            });
-            var diagnostics = errors.Select(x => new Diagnostic()
-            {
-                Range = new Range(new Position(x.Pos.Line - 1, x.Pos.Symbol), new Position(x.Pos.Line - 1, x.Pos.EndSymbol)),
-                Severity = DiagnosticSeverity.Error,
-                Message = $"{x.ErrorCode} [{x.Layer}]: {x.Comment}",
-                Source = "MyCustomLang"
-            }).ToList();
+            if (string.IsNullOrWhiteSpace(fileContent))
+                fileContent = await File.ReadAllTextAsync(uri.ToUri().LocalPath);
 
-            _diagnosticsCache[uri] = diagnostics;
+            _filesChache[uri] = fileContent;
+            _tokensConsumer.Clear(uri.ToString());
+
+            var errors = Execute();
+            var diagnostics = errors.Where(x => x.Pos.SourceFile == uri.ToString())
+                .Select(x => new Diagnostic()
+                {
+                    Range = new Range(new Position(x.Pos.Line - 1, x.Pos.Symbol), new Position(x.Pos.Line - 1, x.Pos.EndSymbol)),
+                    Severity = DiagnosticSeverity.Error,
+                    Message = $"{x.ErrorCode} [{x.Layer}]: {x.Comment}",
+                    Source = x.Layer
+                }).ToList();
 
             return diagnostics;
         }
@@ -81,6 +67,7 @@ namespace EvolZero.LSP
             public string FilePath { get; set; } = string.Empty;
             public string Content { get; set; } = string.Empty;
             public IParseTree Tree { get; set; } = null!;
+            public CEvolLexer Lexer { get; set; } = null!;
             public MembersTableBuilder TableBuilder { get; set; } = null!;
             public string Namespace { get; set; } = null!;
         }
@@ -119,12 +106,12 @@ namespace EvolZero.LSP
             return new MembersTable([], types);
         }
 
-        public IReadOnlyList<ErrorsBag.Error> Execute(Dictionary<DocumentUri, string> inputFiles)
+        public IReadOnlyList<ErrorsBag.Error> Execute()
         {
             var sourcesMap = new Dictionary<string, string>();
             var units = new List<FileUnit>();
 
-            foreach (var file in inputFiles)
+            foreach (var file in _filesChache)
             {
                 var fileContent = file.Value;
                 string filePath = file.Key.ToString();
@@ -132,7 +119,26 @@ namespace EvolZero.LSP
 
                 ICharStream stream = CharStreams.fromString(fileContent);
                 var lexer = new CEvolLexer(stream);
-                ITokenStream tokenStream = new CommonTokenStream(lexer);
+
+                CommonTokenStream tokenStream = new CommonTokenStream(lexer);
+                tokenStream.Fill();
+
+                // TODO: хуй знает, это какой-то костыль для вывода комментариев. Возможно по-другмоу сделать
+                var commentPositions = tokenStream.GetTokens()
+                    .Where(t => t.Type == CEvolLexer.LINE_COMMENT)
+                    .Select(t => new
+                    {
+                        t.Line,
+                        t.Column,
+                        End = t.Column + t.Text.Length - 1
+                    });
+
+                foreach (var comment in commentPositions)
+                {
+                    _tokensConsumer.Push(new PositionInSources(filePath, comment.Line,
+                        comment.Column, comment.End), Core.SemanticTokenType.Comment);
+                }
+
                 var parser = new CEvolParser(tokenStream);
 
                 IParseTree tree = parser.program();
@@ -141,7 +147,8 @@ namespace EvolZero.LSP
                 {
                     FilePath = filePath,
                     Content = fileContent,
-                    Tree = tree
+                    Tree = tree,
+                    Lexer = lexer
                 });
             }
 
@@ -201,6 +208,7 @@ namespace EvolZero.LSP
                 var statement = logicVisitor.ResultStatement;
 
                 program.AddStatement(statement);
+
             }
 
             if (errorsBag.HasErrors)

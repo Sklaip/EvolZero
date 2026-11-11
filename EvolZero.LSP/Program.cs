@@ -58,7 +58,7 @@ namespace EvolZero.LSP
                        .WithHandler<TextDocumentHandler>()
                        .WithHandler<DidChangeWatchedFilesHandler>()
                        .WithHandler<FoldingRangeHandler>()
-                       .WithHandler<MyWorkspaceSymbolsHandler>()
+                       .WithHandler<WorkspaceSymbolsHandler>()
                        .WithHandler<MyDocumentSymbolHandler>()
                        .WithHandler<SemanticTokensHandler>()
                        .WithServices(x => x.AddLogging(b => b.SetMinimumLevel(LogLevel.Trace)))
@@ -168,7 +168,7 @@ namespace EvolZero.LSP
                            if (!string.IsNullOrEmpty(rootPath))
                            {
                                var analysisService = server.Services.GetService<AnalysisService>();
-                               analysisService?.InitializeProject(rootPath);
+                               await analysisService!.InitializeProject(rootPath);
                            }
                        })
             ).ConfigureAwait(false);

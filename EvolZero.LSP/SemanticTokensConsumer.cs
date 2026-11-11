@@ -27,5 +27,13 @@ namespace EvolZero.LSP
 
             return new List<(PositionInSources pos, SemanticTokenType tokenType)>();
         }
+
+        public void Clear(string file)
+        {
+            if (_positions.TryGetValue(file, out var positionsList))
+            {
+                positionsList.Clear();
+            }
+        }
     }
 }

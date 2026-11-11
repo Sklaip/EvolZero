@@ -41,30 +41,6 @@ namespace EvolZero.LSP
             return result;
         }
 
-        //protected override async Task Tokenize(SemanticTokensBuilder builder, ITextDocumentIdentifierParams identifier,
-        //    CancellationToken cancellationToken)
-        //{
-        //    using var typesEnumerator = RotateEnum(SemanticTokenType.Defaults).GetEnumerator();
-        //    using var modifiersEnumerator = RotateEnum(SemanticTokenModifier.Defaults).GetEnumerator();
-        //    // you would normally get this from a common source that is managed by current open editor, current active editor, etc.
-        //    var content = await File.ReadAllTextAsync(DocumentUri.GetFileSystemPath(identifier), cancellationToken).ConfigureAwait(false);
-        //    await Task.Yield();
-
-        //    foreach (var (line, text) in content.Split('\n').Select((text, line) => (line, text)))
-        //    {
-        //        var parts = text.TrimEnd().Split(';', ' ', '.', '"', '(', ')');
-        //        var index = 0;
-        //        foreach (var part in parts)
-        //        {
-        //            typesEnumerator.MoveNext();
-        //            modifiersEnumerator.MoveNext();
-        //            if (string.IsNullOrWhiteSpace(part)) continue;
-        //            index = text.IndexOf(part, index, StringComparison.Ordinal);
-        //            builder.Push(line, index, part.Length, typesEnumerator.Current, modifiersEnumerator.Current);
-        //        }
-        //    }
-        //}
-
         protected override async Task Tokenize(SemanticTokensBuilder builder, ITextDocumentIdentifierParams identifier,
             CancellationToken cancellationToken)
         {
@@ -77,7 +53,7 @@ namespace EvolZero.LSP
                 //var tokenType = MapTokenType(pos.tokenType);
                 builder.Push(pos.pos.Line - 1, pos.pos.Symbol, pos.pos.EndSymbol - pos.pos.Symbol + 1, (int)pos.tokenType, 0);
 
-                if(pos.pos.Line == 146)
+                if(pos.pos.Line == 10)
                 {
                     Console.WriteLine($"{pos.pos.Line}, {pos.pos.Symbol}, {pos.pos.EndSymbol}, {pos.tokenType}");
                 }
@@ -85,7 +61,6 @@ namespace EvolZero.LSP
 
         }
 
-        // Метод маппинга типов токенов ANTLR на индексы в легенде SemanticTokens
         private OmmniSemanticTokenType MapTokenType(SemanticTokenType tokenType)
         {
             // Здесь вы сопоставляете константы из CevolLexer (например, CevolLexer.KEYWORD, CevolLexer.IDENTIFIER)
