@@ -18,14 +18,13 @@ namespace EvolZero.LSP
         private readonly TextDocumentSelector _textDocumentSelector = TextDocumentSelector.ForLanguage("cevol");
 
 
-        public TextDocumentHandler(ILogger<TextDocumentHandler> logger, Foo foo, AnalysisService analysisService,
+        public TextDocumentHandler(ILogger<TextDocumentHandler> logger, AnalysisService analysisService,
             ILanguageServerConfiguration configuration, ILanguageServerFacade languageServerFacade)
         {
             _logger = logger;
             _analysisService = analysisService;
             _configuration = configuration;
             _languageServerFacade = languageServerFacade;
-            foo.SayFoo();
         }
 
         public TextDocumentSyncKind Change { get; } = TextDocumentSyncKind.Full;

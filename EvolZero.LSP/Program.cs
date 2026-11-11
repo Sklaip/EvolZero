@@ -1,24 +1,15 @@
-﻿using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using OmniSharp.Extensions.LanguageServer.Server;
-using System;
 using System.Net;
 using System.Net.Sockets;
-using System.Text.Json.Nodes;
-using System.Threading.Tasks;
 
 namespace EvolZero.LSP
 {
     internal class Program
     {
-        private static void Main(string[] args)
-        {
-            MainAsync(args).Wait();
-        }
-
-        private static async Task MainAsync(string[] args)
+        private static async Task Main(string[] args)
         {
             // Debugger.Launch();
             // while (!Debugger.IsAttached)
@@ -66,17 +57,6 @@ namespace EvolZero.LSP
                             services =>
                             {
                                 services.AddSingleton(
-                                    provider =>
-                                    {
-                                        var loggerFactory = provider.GetService<ILoggerFactory>();
-                                        var logger = loggerFactory.CreateLogger<Foo>();
-
-                                        logger.LogInformation("Configuring");
-
-                                        return new Foo(logger);
-                                    }
-                                );
-                                services.AddSingleton(
                                     new ConfigurationItem
                                     {
                                         Section = "typescript",
@@ -113,54 +93,6 @@ namespace EvolZero.LSP
                                 );
                             }
                         )
-                       .OnInitialized(
-                            async (server, request, response, token) =>
-                            {
-                                workDone.OnNext(
-                                    new WorkDoneProgressReport
-                                    {
-                                        Percentage = 40,
-                                        Message = "loading almost done",
-                                    }
-                                );
-
-                                //await Task.Delay(2000).ConfigureAwait(false);
-
-                                workDone.OnNext(
-                                    new WorkDoneProgressReport
-                                    {
-                                        Message = "loading done",
-                                        Percentage = 100,
-                                    }
-                                );
-                                workDone.OnCompleted();
-                            }
-                        )
-                       .OnStarted(
-                            async (languageServer, token) =>
-                            {
-                                using var manager = await languageServer.WorkDoneManager
-                                    .Create(new WorkDoneProgressBegin { Title = "Doing some work..." })
-                                    .ConfigureAwait(false);
-
-                                //manager.OnNext(new WorkDoneProgressReport { Message = "doing things..." });
-                                //await Task.Delay(10000).ConfigureAwait(false);
-                                //manager.OnNext(new WorkDoneProgressReport { Message = "doing things... 1234" });
-                                //await Task.Delay(10000).ConfigureAwait(false);
-                                //manager.OnNext(new WorkDoneProgressReport { Message = "doing things... 56789" });
-
-                                var logger = languageServer.Services.GetService<ILogger<Foo>>();
-                                var configuration = await languageServer.Configuration.GetConfiguration(
-                                    new ConfigurationItem
-                                    {
-                                        Section = "typescript",
-                                    }, new ConfigurationItem
-                                    {
-                                        Section = "terminal",
-                                    }
-                                ).ConfigureAwait(false);
-                            }
-                        )
                        .OnInitialize(async (server, request, token) =>
                        {
                            var rootPath = request.RootPath;
@@ -174,22 +106,6 @@ namespace EvolZero.LSP
             ).ConfigureAwait(false);
 
             await server.WaitForExit.ConfigureAwait(false);
-        }
-    }
-
-    internal class Foo
-    {
-        private readonly ILogger<Foo> _logger;
-
-        public Foo(ILogger<Foo> logger)
-        {
-            logger.LogInformation("inside ctor");
-            _logger = logger;
-        }
-
-        public void SayFoo()
-        {
-            _logger.LogInformation("Fooooo!");
         }
     }
 }

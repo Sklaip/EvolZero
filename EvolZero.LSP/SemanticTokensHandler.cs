@@ -52,11 +52,6 @@ namespace EvolZero.LSP
             {
                 //var tokenType = MapTokenType(pos.tokenType);
                 builder.Push(pos.pos.Line - 1, pos.pos.Symbol, pos.pos.EndSymbol - pos.pos.Symbol + 1, (int)pos.tokenType, 0);
-
-                if(pos.pos.Line == 10)
-                {
-                    Console.WriteLine($"{pos.pos.Line}, {pos.pos.Symbol}, {pos.pos.EndSymbol}, {pos.tokenType}");
-                }
             }
 
         }

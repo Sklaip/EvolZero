@@ -172,8 +172,11 @@ namespace EvolZero.Parsing
 
             if (_tokensCunsumer != null && funcName != null)
             {
+                PushExtraModifiersTokens(context.extraModifier());
+                PushAccessModifierToken(context.accessModifier());
                 PushTypeSpecTokens(context.typeSpec());
                 PushToken([context.IDENTIFIER()], [SemanticTokenType.Function]);
+                PushLifetimesTokens(context.lifetimesDecl());
             }
 
             if (funcName == null) throw new NotImplementedException();
@@ -188,6 +191,22 @@ namespace EvolZero.Parsing
             return null;
         }
 
+        public override Expression? VisitAbstractFunctionDecl([NotNull] AbstractFunctionDeclContext context)
+        {
+            if (_tokensCunsumer == null) return null;
+
+            var prms = context.@params();
+
+            PushExtraModifiersTokens(context.extraModifier());
+            PushAccessModifierToken(context.accessModifier());
+            PushTypeSpecTokens(context.typeSpec());
+            PushToken([context.IDENTIFIER()], [SemanticTokenType.Function]);
+            if (prms != null) ParseParams(prms);
+            // TODO: PushLifetimesTokens(context.lifetimesDecl());
+
+            return null;
+        }
+
         public override Expression? VisitConstructorDecl([NotNull] CEvolParser.ConstructorDeclContext context)
         {
             var lastPos = _semanticAnalyzer.CurrentPosition;
@@ -195,8 +214,10 @@ namespace EvolZero.Parsing
 
             if (_tokensCunsumer != null)
             {
+                PushExtraModifiersTokens(context.extraModifier());
                 PushAccessModifierToken(context.accessModifier());
                 PushToken([context.CONSTRUCTOR()], [SemanticTokenType.Keyword]);
+                PushLifetimesTokens(context.lifetimesDecl());
             }
 
             var prms = context.@params();
@@ -230,7 +251,11 @@ namespace EvolZero.Parsing
             SetCurrentPosition(context);
 
             if (_tokensCunsumer != null)
+            {
+                PushExtraModifiersTokens(context.extraModifier());
+                PushAccessModifierToken(context.accessModifier());
                 PushToken([context.DESTRUCTOR()], [SemanticTokenType.Keyword]);
+            }
 
             _semanticAnalyzer.EnterToDestructor();
 
@@ -580,6 +605,66 @@ namespace EvolZero.Parsing
                     PushToken([context.PRIVATE()], [SemanticTokenType.Keyword]);
                 }
             }
+        }
+
+        private void PushExtraModifiersTokens(ExtraModifierContext[]? contexts)
+        {
+            if (contexts == null) return;
+            foreach (var context in contexts)
+            {
+                if (context == null) continue;
+
+                if (context.STATIC() != null)
+                {
+                    PushToken([context.STATIC()], [SemanticTokenType.Keyword]);
+                }
+                else if (context.READONLY() != null)
+                {
+                    PushToken([context.READONLY()], [SemanticTokenType.Keyword]);
+                }
+                else if (context.EXTERN() != null)
+                {
+                    PushToken([context.EXTERN()], [SemanticTokenType.Keyword]);
+                }
+                else if (context.INFARGS() != null)
+                {
+                    PushToken([context.INFARGS()], [SemanticTokenType.Keyword]);
+                }
+            }
+        }
+
+        public void PushLifetimesTokens(LifetimesDeclContext? context)
+        {
+            if (_tokensCunsumer == null || context == null) return;
+
+            PushToken([context.LIFETIMES()], [SemanticTokenType.Keyword]);
+
+            var args = context.lifetimesArgs()?.lifetimeDecl();
+            if (args == null) return;
+
+            foreach (var arg in args)
+            {
+                var members = arg.lifetimeMember();
+                if (members == null) continue;
+
+                foreach (var member in members)
+                {
+                    if (member.RETURN() != null)
+                    {
+                        PushToken([member.RETURN()], [SemanticTokenType.Operator]);
+                    }
+                    else if (member.THIS() != null)
+                    {
+                        PushToken([member.THIS()], [SemanticTokenType.Keyword]);
+                    }
+                    else if (member.IDENTIFIER() != null)
+                    {
+                        PushToken([member.IDENTIFIER()], [SemanticTokenType.Variable]);
+                    }
+                }
+            }
+
+            return;
         }
 
         private TypeSpec? ParseTypeSpec([NotNull] CEvolParser.TypeSpecContext context)
