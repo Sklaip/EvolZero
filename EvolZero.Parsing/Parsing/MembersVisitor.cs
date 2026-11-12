@@ -1,4 +1,5 @@
-﻿using Antlr4.Runtime.Misc;
+﻿using Antlr4.Runtime;
+using Antlr4.Runtime.Misc;
 using EvolZero.Core;
 using EvolZero.Core.Analysis.Semantic;
 using EvolZero.Core.MemebersModels;
@@ -20,8 +21,16 @@ namespace EvolZero.Parsing
 		private Dictionary<string, List<FuncSignature>>? _currentClassFunctions = null;
 		private List<ConstructorSignature>? _currentClassConstructors = null;
 		private List<DestructorSignature>? _currentClassDestructors = null;
+        private readonly ErrorsBag _errorsBag;
+        private readonly string _currentFile;
 
-		public override object? VisitNamespaceDecl([NotNull] CEvolParser.NamespaceDeclContext context)
+        public MembersVisitor(ErrorsBag errorsBag, string currentFile)
+        {
+            _errorsBag = errorsBag;
+            _currentFile = currentFile;
+        }
+
+        public override object? VisitNamespaceDecl([NotNull] CEvolParser.NamespaceDeclContext context)
 		{
 			CurrentNameSpace = context.IDENTIFIER().GetText();
 			if (CurrentNameSpace == null)
@@ -48,8 +57,15 @@ namespace EvolZero.Parsing
 
 			var typeName = context.IDENTIFIER().ToString();
 			var fullTypeName = $"{CurrentNameSpace}.{typeName}";
-			if (typeName == null || Classes.ContainsKey(fullTypeName))
-				throw new NotImplementedException();
+
+			if (typeName == null) return null;
+
+			if (Classes.ContainsKey(fullTypeName))
+			{
+                _errorsBag.AddError(
+					"Semantic", "M001", $"Класс {fullTypeName} уже существует.", GetPosition(context));
+
+            }
 
 			foreach (var fieldDecl in context.fieldDecl())
 			{
@@ -268,5 +284,11 @@ namespace EvolZero.Parsing
 			return new TypeDeclaring(typeName, qualifiers.ToArray(), []);
 		}
 
-	}
+        private PositionInSources GetPosition(ParserRuleContext context)
+        {
+			var pos = context.Start;
+            return new PositionInSources(_currentFile, pos.Line, pos.Column, pos.StopIndex);
+        }
+
+    }
 }

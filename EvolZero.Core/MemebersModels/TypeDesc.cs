@@ -35,6 +35,7 @@ namespace EvolZero.Core.MemebersModels
 			Variables = [];
 			Functions = [];
 			Constructors = [];
+			Destructors = [];
 			IsBaseType = true;
 			TypeRef = typeRef;
 		}

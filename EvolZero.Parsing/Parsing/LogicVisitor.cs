@@ -11,13 +11,11 @@ using EvolZero.Parsing.Models;
 using System.Numerics;
 using static CEvolParser;
 
-
 namespace EvolZero.Parsing
 {
     public class LogicVisitor : CEvolParserBaseVisitor<Expression?>
     {
         private readonly MembersFinder _membersFinder;
-        private readonly ISemanticTokensConsumer _tokensCunsumer;
         private readonly string _currentFile;
         private readonly SemanticTreeBuilder _semanticAnalyzer;
         private readonly TypeAnalyzer _typeAnalyzer;
@@ -28,12 +26,11 @@ namespace EvolZero.Parsing
         private bool _currentClassConstructorHandled = false;
         private List<(string Name, FieldDeclContext Init)> _currentClassFieldInitializers = new();
 
-        public LogicVisitor(MembersFinder membersFinder, ISemanticTokensConsumer tokensCunsumer, ErrorsBag errorsBag, string currentFile)
+        public LogicVisitor(MembersFinder membersFinder, ErrorsBag errorsBag, string currentFile)
         {
             _typeAnalyzer = new TypeAnalyzer(membersFinder);
             _semanticAnalyzer = new SemanticTreeBuilder(membersFinder, _typeAnalyzer, errorsBag);
             _membersFinder = membersFinder;
-            _tokensCunsumer = tokensCunsumer;
             _currentFile = currentFile;
         }
 
@@ -52,9 +49,6 @@ namespace EvolZero.Parsing
             var lastPos = _semanticAnalyzer.CurrentPosition;
             SetCurrentPosition(context);
 
-            if (_tokensCunsumer != null)
-                PushToken([context.NAMESPACE(), context.IDENTIFIER()], [SemanticTokenType.Keyword, SemanticTokenType.Namespace]);
-
             string name = context.IDENTIFIER().GetText();
             if (name == null) throw new NotImplementedException();
 
@@ -72,9 +66,6 @@ namespace EvolZero.Parsing
             var lastPos = _semanticAnalyzer.CurrentPosition;
             SetCurrentPosition(context);
 
-            if (_tokensCunsumer != null)
-                PushToken([context.USING(), context.IDENTIFIER()], [SemanticTokenType.Keyword, SemanticTokenType.Namespace]);
-
             string name = context.IDENTIFIER().GetText();
             if (name == null) throw new NotImplementedException();
 
@@ -88,9 +79,6 @@ namespace EvolZero.Parsing
         {
             var lastPos = _semanticAnalyzer.CurrentPosition;
             SetCurrentPosition(context);
-
-            if (_tokensCunsumer != null)
-                PushToken([context.CLASS(), context.IDENTIFIER()], [SemanticTokenType.Keyword, SemanticTokenType.Class]);
 
             _semanticAnalyzer.EnterToClass(context.IDENTIFIER().GetText());
 
@@ -129,7 +117,7 @@ namespace EvolZero.Parsing
             foreach (var (name, initExpr) in _currentClassFieldInitializers)
             {
                 SetCurrentPosition(initExpr);
-                var value = Visit(initExpr);
+                var value = VisitField(initExpr);
                 if (value == null) continue;
 
                 var assign = _semanticAnalyzer.FieldAssing(name, value);
@@ -137,19 +125,17 @@ namespace EvolZero.Parsing
             }
         }
 
-        public override Expression? VisitFieldDecl([NotNull] CEvolParser.FieldDeclContext context)
+        public Expression? VisitField(FieldDeclContext context)
         {
-            if (_tokensCunsumer != null)
-            {
-                PushAccessModifierToken(context.accessModifier());
-                PushTypeSpecTokens(context.typeSpec());
-                PushToken([context.IDENTIFIER()], [SemanticTokenType.Property]);
-            }
-
             var expr = context.expression();
             if (expr == null) return null;
 
             return Visit(expr);
+        }
+
+        public override Expression? VisitFieldDecl([NotNull] CEvolParser.FieldDeclContext context)
+        {
+            return null;
         }
 
         public override Expression? VisitFunctionDecl([NotNull] CEvolParser.FunctionDeclContext context)
@@ -158,7 +144,6 @@ namespace EvolZero.Parsing
             SetCurrentPosition(context);
 
             var prms = context.@params();
-
             List<(TypeSpec Type, string Name)> parameters = null!;
 
             if (prms != null)
@@ -169,16 +154,6 @@ namespace EvolZero.Parsing
             if (parameters == null) parameters = [];
 
             string? funcName = context.IDENTIFIER().ToString();
-
-            if (_tokensCunsumer != null && funcName != null)
-            {
-                PushExtraModifiersTokens(context.extraModifier());
-                PushAccessModifierToken(context.accessModifier());
-                PushTypeSpecTokens(context.typeSpec());
-                PushToken([context.IDENTIFIER()], [SemanticTokenType.Function]);
-                PushLifetimesTokens(context.lifetimesDecl());
-            }
-
             if (funcName == null) throw new NotImplementedException();
 
             _semanticAnalyzer.EnterToFunction(funcName, parameters);
@@ -193,17 +168,6 @@ namespace EvolZero.Parsing
 
         public override Expression? VisitAbstractFunctionDecl([NotNull] AbstractFunctionDeclContext context)
         {
-            if (_tokensCunsumer == null) return null;
-
-            var prms = context.@params();
-
-            PushExtraModifiersTokens(context.extraModifier());
-            PushAccessModifierToken(context.accessModifier());
-            PushTypeSpecTokens(context.typeSpec());
-            PushToken([context.IDENTIFIER()], [SemanticTokenType.Function]);
-            if (prms != null) ParseParams(prms);
-            // TODO: PushLifetimesTokens(context.lifetimesDecl());
-
             return null;
         }
 
@@ -212,16 +176,7 @@ namespace EvolZero.Parsing
             var lastPos = _semanticAnalyzer.CurrentPosition;
             SetCurrentPosition(context);
 
-            if (_tokensCunsumer != null)
-            {
-                PushExtraModifiersTokens(context.extraModifier());
-                PushAccessModifierToken(context.accessModifier());
-                PushToken([context.CONSTRUCTOR()], [SemanticTokenType.Keyword]);
-                PushLifetimesTokens(context.lifetimesDecl());
-            }
-
             var prms = context.@params();
-
             List<(TypeSpec Type, string Name)> parameters = null!;
 
             if (prms != null)
@@ -249,13 +204,6 @@ namespace EvolZero.Parsing
         {
             var lastPos = _semanticAnalyzer.CurrentPosition;
             SetCurrentPosition(context);
-
-            if (_tokensCunsumer != null)
-            {
-                PushExtraModifiersTokens(context.extraModifier());
-                PushAccessModifierToken(context.accessModifier());
-                PushToken([context.DESTRUCTOR()], [SemanticTokenType.Keyword]);
-            }
 
             _semanticAnalyzer.EnterToDestructor();
 
@@ -303,14 +251,7 @@ namespace EvolZero.Parsing
             }
 
             var typeSpec = typeSpec_.Value;
-
             var varName = ctx.IDENTIFIER().ToString();
-
-            if (_tokensCunsumer != null && varName != null)
-            {
-                PushTypeSpecTokens(ctx.typeSpec());
-                PushToken([ctx.IDENTIFIER()], [SemanticTokenType.Variable]);
-            }
 
             if (varName == null) throw new NotImplementedException();
 
@@ -343,9 +284,6 @@ namespace EvolZero.Parsing
             if (expressions.Length != 2)
                 throw new NotImplementedException();
 
-            if (_tokensCunsumer != null)
-                PushToken([context.ASSIGN()], [SemanticTokenType.Operator]);
-
             var leftExpression = Visit(expressions[0]);
             var rightExpression = Visit(expressions[1]);
 
@@ -368,9 +306,6 @@ namespace EvolZero.Parsing
             if (funcName == null) throw new NotImplementedException();
             var args = context.args();
 
-            if (_tokensCunsumer != null)
-                PushToken([context.IDENTIFIER()], [SemanticTokenType.Function]);
-
             var arguments = args != null ? ParseArgs(context.args()) : Array.Empty<Expression>();
 
             var res = _semanticAnalyzer.CallFunction(funcName, arguments);
@@ -383,7 +318,7 @@ namespace EvolZero.Parsing
         {
             var ars = context?.expression();
             if (ars == null) return Array.Empty<Expression>();
-            //return ars.Select(x => (IValueAccessor)Visit(x)).ToArray();
+
             Expression[] result = new Expression[ars.Length];
 
             for (int i = 0; i < ars.Length; i++)
@@ -408,9 +343,6 @@ namespace EvolZero.Parsing
                 TypeSpec? paramDecl = ParseTypeSpec(context.typeSpec(i));
                 string paramName = context.IDENTIFIER(i).GetText();
 
-                if (_tokensCunsumer != null)
-                    PushToken([context.IDENTIFIER(i)], [SemanticTokenType.Variable]);
-
                 if (paramDecl == null) continue;
                 parameters.Add((paramDecl.Value, paramName));
             }
@@ -426,9 +358,6 @@ namespace EvolZero.Parsing
             var value = Visit(context.expression());
             if (value == null) throw new NotImplementedException();
 
-            if (_tokensCunsumer != null)
-                PushToken([context.LOC()], [SemanticTokenType.Keyword]);
-
             var res = _semanticAnalyzer.GetPointerToVar(value);
 
             _semanticAnalyzer.CurrentPosition = lastPos;
@@ -439,9 +368,6 @@ namespace EvolZero.Parsing
         {
             var lastPos = _semanticAnalyzer.CurrentPosition;
             SetCurrentPosition(context);
-
-            if (_tokensCunsumer != null)
-                PushQualifierToken(context.qualifier());
 
             var value = Visit(context.expression());
             if (value == null) throw new NotImplementedException();
@@ -455,18 +381,12 @@ namespace EvolZero.Parsing
 
         public override Expression? VisitNewExpr([NotNull] NewExprContext context)
         {
-            if (_tokensCunsumer != null)
-                PushToken([context.NEW()], [SemanticTokenType.Keyword]);
-
             return VisitObjectInstantiation(context, context.typeSpec(),
                 context.args(), context.LPAREN(), context.objectInitializer(), true);
         }
 
         public override Expression? VisitValExpr([NotNull] ValExprContext context)
         {
-            if (_tokensCunsumer != null)
-                PushToken([context.VAL()], [SemanticTokenType.Keyword]);
-
             return VisitObjectInstantiation(context, context.typeSpec(), context.args(),
                 context.LPAREN(), context.objectInitializer(), false);
         }
@@ -543,9 +463,6 @@ namespace EvolZero.Parsing
 
             if (context.LPAREN() == null)
             {
-                if (_tokensCunsumer != null)
-                    PushToken([context.IDENTIFIER()], [SemanticTokenType.Property]);
-
                 var res = _semanticAnalyzer.ClassFieldAccess(expr, memberName);
 
                 _semanticAnalyzer.CurrentPosition = lastPos;
@@ -553,9 +470,6 @@ namespace EvolZero.Parsing
             }
             else
             {
-                if (_tokensCunsumer != null)
-                    PushToken([context.IDENTIFIER()], [SemanticTokenType.Method]);
-
                 var arguments = ParseArgs(context.args());
                 SetCurrentPosition(context.IDENTIFIER().Symbol);
                 var res = _semanticAnalyzer.CallClassMethod(memberName, expr, arguments);
@@ -565,117 +479,12 @@ namespace EvolZero.Parsing
             }
         }
 
-        private void PushTypeSpecTokens(TypeSpecContext? context)
-        {
-            if (context == null) return;
-            PushToken([context.IDENTIFIER()], [SemanticTokenType.Type]);
-
-            var qualifers = context.qualifier();
-            if (qualifers == null) return;
-
-            foreach (var qualifier in qualifers)
-            {
-                PushQualifierToken(qualifier);
-            }
-        }
-
-        private void PushQualifierToken(QualifierContext? context)
-        {
-            if (context == null) return;
-            if (context.REF() != null)
-            {
-                PushToken([context.REF()], [SemanticTokenType.Keyword]);
-            }
-            else if (context.REFB() != null)
-            {
-                PushToken([context.REFB()], [SemanticTokenType.Keyword]);
-            }
-        }
-
-        private void PushAccessModifierToken(AccessModifierContext? context)
-        {
-            if (context != null)
-            {
-                if (context.PUBLIC() != null)
-                {
-                    PushToken([context.PUBLIC()], [SemanticTokenType.Keyword]);
-                }
-                else if (context.PRIVATE() != null)
-                {
-                    PushToken([context.PRIVATE()], [SemanticTokenType.Keyword]);
-                }
-            }
-        }
-
-        private void PushExtraModifiersTokens(ExtraModifierContext[]? contexts)
-        {
-            if (contexts == null) return;
-            foreach (var context in contexts)
-            {
-                if (context == null) continue;
-
-                if (context.STATIC() != null)
-                {
-                    PushToken([context.STATIC()], [SemanticTokenType.Keyword]);
-                }
-                else if (context.READONLY() != null)
-                {
-                    PushToken([context.READONLY()], [SemanticTokenType.Keyword]);
-                }
-                else if (context.EXTERN() != null)
-                {
-                    PushToken([context.EXTERN()], [SemanticTokenType.Keyword]);
-                }
-                else if (context.INFARGS() != null)
-                {
-                    PushToken([context.INFARGS()], [SemanticTokenType.Keyword]);
-                }
-            }
-        }
-
-        public void PushLifetimesTokens(LifetimesDeclContext? context)
-        {
-            if (_tokensCunsumer == null || context == null) return;
-
-            PushToken([context.LIFETIMES()], [SemanticTokenType.Keyword]);
-
-            var args = context.lifetimesArgs()?.lifetimeDecl();
-            if (args == null) return;
-
-            foreach (var arg in args)
-            {
-                var members = arg.lifetimeMember();
-                if (members == null) continue;
-
-                foreach (var member in members)
-                {
-                    if (member.RETURN() != null)
-                    {
-                        PushToken([member.RETURN()], [SemanticTokenType.Operator]);
-                    }
-                    else if (member.THIS() != null)
-                    {
-                        PushToken([member.THIS()], [SemanticTokenType.Keyword]);
-                    }
-                    else if (member.IDENTIFIER() != null)
-                    {
-                        PushToken([member.IDENTIFIER()], [SemanticTokenType.Variable]);
-                    }
-                }
-            }
-
-            return;
-        }
-
         private TypeSpec? ParseTypeSpec([NotNull] CEvolParser.TypeSpecContext context)
         {
             // TODO: поля классов парсить здесь повторно смысла нет. Надо как-то это все кэшировать
             var typeName = context.IDENTIFIER().GetText();
             if (string.IsNullOrEmpty(typeName))
                 throw new NotImplementedException();
-
-            if (_tokensCunsumer != null)
-                PushTypeSpecTokens(context);
 
             var qualifiers = ParsingCommon.ParseQualifiers(context);
 
@@ -697,9 +506,6 @@ namespace EvolZero.Parsing
             var value = context.NUMBER().GetText();
             var num = BigInteger.Parse(value);
 
-            if (_tokensCunsumer != null)
-                PushToken([context.NUMBER()], [SemanticTokenType.Number]);
-
             if (context.MINUS() != null) num *= -1;
 
             if (num >= 0 && num <= 255)
@@ -720,9 +526,6 @@ namespace EvolZero.Parsing
 
         public override Expression? VisitStringExpr([NotNull] CEvolParser.StringExprContext context)
         {
-            if (_tokensCunsumer != null)
-                PushToken([context.STRING()], [SemanticTokenType.String]);
-
             var str = context.STRING().GetText();
             return _semanticAnalyzer.CreateString(str);
         }
@@ -731,9 +534,6 @@ namespace EvolZero.Parsing
         {
             var lastPos = _semanticAnalyzer.CurrentPosition;
             SetCurrentPosition(context);
-
-            if (_tokensCunsumer != null)
-                PushToken([context.RETURN()], [SemanticTokenType.Operator]);
 
             var result = Visit(context.expression());
             if (result == null) throw new NotImplementedException();
@@ -750,9 +550,6 @@ namespace EvolZero.Parsing
             SetCurrentPosition(context);
 
             var ctx = context.ifStatement();
-
-            if (_tokensCunsumer != null)
-                PushToken([ctx.IF()], [SemanticTokenType.Operator]);
 
             var condition = Visit(ctx.expression());
             if (condition == null) throw new NotImplementedException();
@@ -782,9 +579,6 @@ namespace EvolZero.Parsing
             var lastPos = _semanticAnalyzer.CurrentPosition;
             SetCurrentPosition(ctx);
 
-            if (_tokensCunsumer != null)
-                PushToken([ctx.ELSEIF()], [SemanticTokenType.Operator]);
-
             var elseIfCondition = Visit(ctx.expression());
             if (elseIfCondition == null) throw new NotImplementedException();
 
@@ -801,9 +595,6 @@ namespace EvolZero.Parsing
             var lastPos = _semanticAnalyzer.CurrentPosition;
             SetCurrentPosition(ctx);
 
-            if (_tokensCunsumer != null)
-                PushToken([ctx.ELSE()], [SemanticTokenType.Operator]);
-
             _semanticAnalyzer.EnterToElseBlock(ifBlock);
             Visit(ctx.block());
 
@@ -817,9 +608,6 @@ namespace EvolZero.Parsing
             SetCurrentPosition(context);
 
             var ctx = context.whileStatement();
-
-            if (_tokensCunsumer != null)
-                PushToken([ctx.WHILE()], [SemanticTokenType.Operator]);
 
             var condition = Visit(ctx.expression());
             if (condition == null) throw new NotImplementedException();
@@ -836,9 +624,6 @@ namespace EvolZero.Parsing
         {
             var lastPos = _semanticAnalyzer.CurrentPosition;
             SetCurrentPosition(context);
-
-            if (_tokensCunsumer != null)
-                PushToken([context.unsafeStatement().UNSAFE()], [SemanticTokenType.Keyword]);
 
             _semanticAnalyzer.EnterUnsafeBlock();
             Visit(context.unsafeStatement().block());
@@ -874,9 +659,6 @@ namespace EvolZero.Parsing
 
             var varName = context.IDENTIFIER().ToString();
             if (varName == null) throw new NotImplementedException();
-
-            if (_tokensCunsumer != null)
-                PushToken([context.IDENTIFIER()], [SemanticTokenType.Variable]);
 
             var res = _semanticAnalyzer.VariableAccess(varName);
 
@@ -1047,16 +829,5 @@ namespace EvolZero.Parsing
         {
             _semanticAnalyzer.CurrentPosition = new PositionInSources(_currentFile, context.Line, context.Column, context.StopIndex);
         }
-
-        private void PushToken(ITerminalNode[] nodes, SemanticTokenType[] types)
-        {
-            for (int i = 0; i < nodes.Length; i++)
-            {
-                var sym = nodes[i].Symbol;
-                var position = new PositionInSources(_currentFile, sym.Line, sym.Column, sym.Column + sym.Text.Length - 1);
-                _tokensCunsumer!.Push(position, types[i]);
-            }
-        }
-
     }
 }

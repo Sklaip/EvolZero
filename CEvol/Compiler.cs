@@ -70,9 +70,11 @@ namespace EvolZero
             var globalMembersTable = BuildBaseMembersTable(codeGenerator);
             var globalTypesList = new Dictionary<string, TypeDesc>(globalMembersTable.Types);
 
+            var errorsBag = new ErrorsBag(sourcesMap);
+
             foreach (var unit in units)
             {
-                var visitor = new MembersVisitor();
+                var visitor = new MembersVisitor(errorsBag, unit.FilePath);
                 visitor.Visit(unit.Tree);
 
                 var membersTableBuilder = new MembersTableBuilder(visitor.CurrentNameSpace,
@@ -98,7 +100,6 @@ namespace EvolZero
                 }
             }
 
-            var errorsBag = new ErrorsBag(sourcesMap);
             var program = new ProgramStatement(default);
 
 
@@ -115,7 +116,7 @@ namespace EvolZero
 
             foreach (var unit in units)
             {
-                var logicVisitor = new LogicVisitor(finder, null, errorsBag, unit.FilePath);
+                var logicVisitor = new LogicVisitor(finder, errorsBag, unit.FilePath);
                 logicVisitor.Visit(unit.Tree);
                 var statement = logicVisitor.ResultStatement;
 

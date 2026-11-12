@@ -6,6 +6,7 @@ using EvolZero.Core.Analysis.Semantic;
 using EvolZero.Core.LogicModels.Statements;
 using EvolZero.Core.MemebersModels;
 using EvolZero.Parsing;
+using EvolZero.Parsing.Parsing;
 using OmniSharp.Extensions.LanguageServer.Protocol;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using System.Collections.Concurrent;
@@ -111,6 +112,8 @@ namespace EvolZero.LSP
             var sourcesMap = new Dictionary<string, string>();
             var units = new List<FileUnit>();
 
+            var errorsBag = new ErrorsBag(sourcesMap);
+
             foreach (var file in _filesChache)
             {
                 var fileContent = file.Value;
@@ -141,6 +144,9 @@ namespace EvolZero.LSP
 
                 var parser = new CEvolParser(tokenStream);
 
+                parser.RemoveErrorListeners();
+                parser.AddErrorListener(new SyntaxErrorsConsumer(errorsBag, filePath));
+
                 IParseTree tree = parser.program();
 
                 units.Add(new FileUnit
@@ -152,15 +158,26 @@ namespace EvolZero.LSP
                 });
             }
 
-            var codeGenerator = new CodeGeneratorStub();
+            foreach (var unit in units)
+            {
+                var visitor = new SemanticTokensVisitor(_tokensConsumer, unit.FilePath);
+                visitor.Visit(unit.Tree);
+            }
 
+            // если есть синтаксические ошибки то зразу же их возвращаем
+            if (errorsBag.HasErrors)
+            {
+                return errorsBag.GetErrors();
+            }
+
+            var codeGenerator = new CodeGeneratorStub();
 
             var globalMembersTable = BuildBaseMembersTable(codeGenerator);
             var globalTypesList = new Dictionary<string, TypeDesc>(globalMembersTable.Types);
 
             foreach (var unit in units)
             {
-                var visitor = new MembersVisitor();
+                var visitor = new MembersVisitor(errorsBag, unit.FilePath);
                 visitor.Visit(unit.Tree);
 
                 var membersTableBuilder = new MembersTableBuilder(visitor.CurrentNameSpace,
@@ -186,9 +203,7 @@ namespace EvolZero.LSP
                 }
             }
 
-            var errorsBag = new ErrorsBag(sourcesMap);
             var program = new ProgramStatement(default);
-
 
             var cycles = globalMembersTable.CheckCyclicalDependence();
             if (cycles.Count > 0)
@@ -203,7 +218,7 @@ namespace EvolZero.LSP
 
             foreach (var unit in units)
             {
-                var logicVisitor = new LogicVisitor(finder, _tokensConsumer, errorsBag, unit.FilePath);
+                var logicVisitor = new LogicVisitor(finder, errorsBag, unit.FilePath);
                 logicVisitor.Visit(unit.Tree);
                 var statement = logicVisitor.ResultStatement;
 

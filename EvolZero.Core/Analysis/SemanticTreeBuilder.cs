@@ -101,33 +101,47 @@ namespace EvolZero.Core.Analysis
             var currentClass = block.CurrentClass;
 
             FuncDesc? funcDesc = null;
-            if (currentClass != null)
+            bool errorOccured = true;
+            try
             {
-                var functions = _membersFinder.FindFunction(currentClass.TypeDesc, funcName);
-                if (functions == null)
+                if (currentClass != null)
                 {
-                    _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "A function with that name was not found", CurrentPosition);
+                    var functions = _membersFinder.FindFunction(currentClass.TypeDesc, funcName);
+                    if (functions == null)
+                    {
+                        _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "A function with that name was not found", CurrentPosition);
+                        return;
+                    }
+
+                    funcDesc = _typeAnalyzer.FindSuitableFunction(functions, parameters.Select(x => x.Type), out _);
+                }
+                else
+                {
+                    var functions = _membersFinder.FindFunction(funcName);
+                    if (functions == null)
+                    {
+                        _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "A function with that name was not found", CurrentPosition);
+                        return;
+                    }
+
+                    funcDesc = _typeAnalyzer.FindSuitableFunction(functions, parameters.Select(x => x.Type), out _);
+                }
+
+                if (funcDesc == null)
+                {
+                    _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Function overload with specified arguments could not be found", CurrentPosition);
                     return;
                 }
 
-                funcDesc = _typeAnalyzer.FindSuitableFunction(functions, parameters.Select(x => x.Type), out _);
+                errorOccured = false;
             }
-            else
+            finally
             {
-                var functions = _membersFinder.FindFunction(funcName);
-                if (functions == null)
+                if (errorOccured)
                 {
-                    _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "A function with that name was not found", CurrentPosition);
-                    return;
+                    var stubStm = new FunctionStatement(null!, [], CurrentPosition);
+                    _blocks.Push(new CodeBlock(stubStm, [], [], [], stubStm, currentClass));
                 }
-
-                funcDesc = _typeAnalyzer.FindSuitableFunction(functions, parameters.Select(x => x.Type), out _);
-            }
-
-            if (funcDesc == null)
-            {
-                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Function overload with specified arguments could not be found", CurrentPosition);
-                return;
             }
 
             var childs = new List<ILogicModel>();
@@ -152,21 +166,35 @@ namespace EvolZero.Core.Analysis
             CodeBlock block = _blocks.Peek();
             var currentClass = block.CurrentClass;
 
-            if (currentClass == null)
-            {
-                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Declaring a constructor outside of a class is not allowed", CurrentPosition);
-                return;
-            }
-
             ConstructorDesc? ctorDesc = null;
-            var constructors = _membersFinder.FindConstructors(currentClass.TypeDesc);
-
-            ctorDesc = _typeAnalyzer.FindSuitableConstructor(constructors, parameters.Select(x => x.Type));
-
-            if (ctorDesc == null)
+            bool errorOccured = true;
+            try
             {
-                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Constructor with specified arguments could not be found", CurrentPosition);
-                return;
+                if (currentClass == null)
+                {
+                    _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Declaring a constructor outside of a class is not allowed", CurrentPosition);
+                    return;
+                }
+
+                var constructors = _membersFinder.FindConstructors(currentClass.TypeDesc);
+
+                ctorDesc = _typeAnalyzer.FindSuitableConstructor(constructors, parameters.Select(x => x.Type));
+
+                if (ctorDesc == null)
+                {
+                    _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Constructor with specified arguments could not be found", CurrentPosition);
+                    return;
+                }
+
+                errorOccured = false;
+            }
+            finally
+            {
+                if (errorOccured)
+                {
+                    var stubStm = new ConstructorStatement(null!, [], new TypeSpec(_membersFinder.FindType("void")), CurrentPosition);
+                    _blocks.Push(new CodeBlock(stubStm, [], [], [], stubStm, currentClass));
+                }
             }
 
             var childs = new List<ILogicModel>();
@@ -191,21 +219,35 @@ namespace EvolZero.Core.Analysis
             CodeBlock block = _blocks.Peek();
             var currentClass = block.CurrentClass;
 
-            if (currentClass == null)
-            {
-                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Declaring a constructor outside of a class is not allowed", CurrentPosition);
-                return;
-            }
-
             DestructorDesc? dtorDesc = null;
-            var destructors = _membersFinder.FindDesctructors(currentClass.TypeDesc);
+            bool errorOccured = true;
 
-            dtorDesc = _typeAnalyzer.FindSuitableDestructor(destructors);
-
-            if (dtorDesc == null)
+            try
             {
-                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Destructor with specified arguments could not be found", CurrentPosition);
-                return;
+                if (currentClass == null)
+                {
+                    _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Declaring a constructor outside of a class is not allowed", CurrentPosition);
+                    return;
+                }
+
+                var destructors = _membersFinder.FindDesctructors(currentClass.TypeDesc);
+                dtorDesc = _typeAnalyzer.FindSuitableDestructor(destructors);
+
+                if (dtorDesc == null)
+                {
+                    _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Destructor with specified arguments could not be found", CurrentPosition);
+                    return;
+                }
+
+                errorOccured = false;
+            }
+            finally
+            {
+                if (errorOccured)
+                {
+                    var stubStm = new DestructorStatement(null!, [], new TypeSpec(_membersFinder.FindType("void")), CurrentPosition);
+                    _blocks.Push(new CodeBlock(stubStm, [], [], [], stubStm, currentClass));
+                }
             }
 
             var childs = new List<ILogicModel>();
@@ -246,17 +288,17 @@ namespace EvolZero.Core.Analysis
 
         public void EnterToElseIfBlock(Statement ifStatement, Expression condition)
         {
-            if (ifStatement is not IfStatement parent)
+            var parent = ifStatement as IfStatement;
+            if (parent == null)
             {
                 _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Блок else if должен соответствовать блоку if", CurrentPosition);
-                return;
             }
 
             var childs = new List<ILogicModel>();
             var statement = new IfStatement(childs, condition, CurrentPosition);
 
             CodeBlock block = _blocks.Peek();
-            parent.AddElseIf(statement);
+            parent?.AddElseIf(statement);
 
             var currentFunction = block.CurrentFunction;
             if (currentFunction == null) throw new NotImplementedException();
@@ -277,10 +319,10 @@ namespace EvolZero.Core.Analysis
 
         public void EnterToElseBlock(Statement ifStatement)
         {
-            if (ifStatement is not IfStatement parent)
+            var parent = ifStatement as IfStatement;
+            if (parent == null)
             {
                 _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Блок else if должен соответствовать блоку if", CurrentPosition);
-                return;
             }
 
             var childs = new List<ILogicModel>();
@@ -288,13 +330,13 @@ namespace EvolZero.Core.Analysis
 
             CodeBlock block = _blocks.Peek();
 
-            if (parent.ElseStatement != null)
+            if (parent?.ElseStatement != null)
             {
                 _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Блоку if должен соответствовать один блок else", CurrentPosition);
-                return;
             }
 
-            parent.ElseStatement = statement;
+            if (parent != null)
+                parent.ElseStatement = statement;
 
             var currentFunction = block.CurrentFunction;
             if (currentFunction == null) throw new NotImplementedException();
@@ -473,7 +515,7 @@ namespace EvolZero.Core.Analysis
             var funcs = _membersFinder.FindFunction(instanceGetting.ResultTypeSpec.Type, name);
             if (funcs == null)
             {
-                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", 
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB",
                     $"Метод класса {instanceGetting.ResultTypeSpec.Type.Name} с именем {name} не существует в данном контексте.", CurrentPosition);
                 return new StubForErrorExpression(CurrentPosition);
             }
@@ -482,7 +524,7 @@ namespace EvolZero.Core.Analysis
 
             if (funcDesc == null)
             {
-                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", 
+                _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB",
                     $"У класса {instanceGetting.ResultTypeSpec.Type.Name} отсутствует перегрузка метода {name} с требуемыми аргументами.", CurrentPosition);
                 return new StubForErrorExpression(CurrentPosition);
             }
@@ -1104,7 +1146,7 @@ namespace EvolZero.Core.Analysis
 
                 if (block.CurrentClassFields == null || !block.CurrentClassFields.TryGetValue(name, out var field))
                 {
-                    _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Переменная или поле с именем {name} не объявлена.", CurrentPosition);
+                    _errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", $"Переменная или поле с именем {name} не объявлена.", CurrentPosition);
                     return new StubForErrorExpression(CurrentPosition);
                 }
 
