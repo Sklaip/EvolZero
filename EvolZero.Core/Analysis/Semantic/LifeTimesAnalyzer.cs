@@ -623,7 +623,7 @@ namespace EvolZero.Core.Analysis.Semantic
 
             if (target == null || value == null) return null;
 
-            if (!target.Expr.ResultTypeSpec.IsRef || !value.Expr.ResultTypeSpec.IsRef) return target;
+            if (!NeedCheck(target.Expr) || !NeedCheck(value.Expr)) return target;
 
             if (target.VarData == null)
             {
@@ -642,7 +642,7 @@ namespace EvolZero.Core.Analysis.Semantic
                 }
             }
 
-            var varIsOwner = target.Expr.ResultTypeSpec.IsOwnerRef;
+            var varIsOwner = IsOwning(target.Expr);
 
             if (target.VarData == null)
                 throw new NotImplementedException(); // такой хуйни быть не должно
@@ -669,23 +669,23 @@ namespace EvolZero.Core.Analysis.Semantic
 
             var returnLifetime = DefineReturnLifetime(_currentFunc!.Lifetimes);
             var returnedExpr = returnedLifetime?.Expr;
-            if (returnedExpr != null)
+            if (returnedExpr != null && NeedCheck(_currentFunc.ReturnType))
             {
-                if (_currentFunc.ReturnType.IsOwnerRef && !returnedExpr.ResultTypeSpec.IsOwnerRef)
+                if (IsOwning(_currentFunc.ReturnType) && !IsOwning(returnedExpr))
                 {
                     AddLifetimeError("LT005", "Возвращаемая ссылка должна быть владеющей (ref)", returnedExpr.Pos);
                     return null;
                 }
 
-                if (_currentFunc.ReturnType.IsRef && !_currentFunc.ReturnType.IsOwnerRef && returnedLifetime!.VarData != null
+                if (!IsOwning(_currentFunc.ReturnType) && returnedLifetime!.VarData != null
                     && !CheckLifetimes(returnedLifetime.VarData.Lifetime, returnLifetime))
                 {
                     // TODO: тут нормальный текст ошибки написать
-                    AddLifetimeError("LT005", "Возвращаемая ссылка должна быть владеющей (ref)", returnedExpr.Pos);
+                    AddLifetimeError("LT005", "Недопустимое время жизни возвращаемого значения.", returnedExpr.Pos);
                     return null;
                 }
 
-                if (_currentFunc.ReturnType.IsOwnerRef && (returnedExpr is StructureFieldAccessExpression or ArrayCellAccessExpression))
+                if (IsOwning(_currentFunc.ReturnType) && (returnedExpr is StructureFieldAccessExpression or ArrayCellAccessExpression))
                 {
                     AddLifetimeError("LT004", "Нельзя снимать владеющую (ref) ссылку с поля класса", returnedExpr.Pos);
                     return null;
@@ -756,7 +756,7 @@ namespace EvolZero.Core.Analysis.Semantic
 
         private void AssignHandler(ValueMeta target, ValueMeta value)
         {
-            if (!target.Expr.ResultTypeSpec.IsRef || !value.Expr.ResultTypeSpec.IsRef) return;
+            if (!NeedCheck(target.Expr) || !NeedCheck(value.Expr)) return;
 
             if (target.VarData == null)
             {
@@ -775,7 +775,7 @@ namespace EvolZero.Core.Analysis.Semantic
                 }
             }
 
-            var varIsOwner = target.Expr.ResultTypeSpec.IsOwnerRef;
+            var varIsOwner = IsOwning(target.Expr);
 
             if (varIsOwner)
             {
@@ -812,13 +812,12 @@ namespace EvolZero.Core.Analysis.Semantic
                 return;
             }
 
-            if (!argument.IsRef) return;
+            if (!NeedCheck(argument)) return;
 
-            if (argument.IsRef && !value.Expr.ResultTypeSpec.IsRef)
+            if (!NeedCheck(value.Expr))
                 throw new NotImplementedException(); // рассмотреть эти ситуации. Вроде на уровне семантического древа такого быть не может
 
-            if (argument.IsBorrowRef &&
-                value.IsAnonymous || (value.IsStrippedViaExchange && value.Expr.ResultTypeSpec.IsOwnerRef))
+            if (argument.IsBorrowRef && value.IsAnonymous || (value.IsStrippedViaExchange && IsOwning(value.Expr)))
             {
                 AddLifetimeError("LT009", "Анонимные ссылки (например, результат 'new') можно присваивать только во владеющие (ref) ссылки", value.Expr.Pos);
                 return;
@@ -832,9 +831,7 @@ namespace EvolZero.Core.Analysis.Semantic
                 return;
             }
 
-            var varIsOwner = argument.IsOwnerRef;
-
-            if (varIsOwner)
+            if (IsOwning(argument))
             {
                 if (!CheckOwnerRef(value)) return;
 
@@ -850,7 +847,7 @@ namespace EvolZero.Core.Analysis.Semantic
 
         private void AssignBorrowRef(ValueMeta target, ValueMeta value)
         {
-            if (value.IsAnonymous || (value.IsStrippedViaExchange && value.Expr.ResultTypeSpec.IsOwnerRef))
+            if (value.IsAnonymous || (value.IsStrippedViaExchange && IsOwning(value.Expr)))
             {
                 AddLifetimeError("LT009", "Анонимные ссылки (например, результат 'new') можно присваивать только во владеющие (ref) ссылки", value.Expr.Pos);
                 return;
@@ -865,7 +862,7 @@ namespace EvolZero.Core.Analysis.Semantic
 
         private bool CheckOwnerRef(ValueMeta value)
         {
-            if (!value.Expr.ResultTypeSpec.IsOwnerRef)
+            if (!IsOwning(value.Expr))
             {
                 AddLifetimeError("LT003", "Нельзя присвоить заимствованную (refb) ссылку во владеющую (ref) ссылку", value.Expr.Pos);
                 return false;
@@ -895,7 +892,7 @@ namespace EvolZero.Core.Analysis.Semantic
                 return;
             }
 
-            if (!pointer.VarData.IsInitialized || pointer.VarData.IsDestructed || !pointer.Expr.ResultTypeSpec.IsOwnerRef)
+            if (!pointer.VarData.IsInitialized || pointer.VarData.IsDestructed || !IsOwning(pointer.Expr))
                 return;
 
             var expr = _lifetimesConsumer.PointerLifetimeEnd(pointer.Expr);
@@ -1036,6 +1033,33 @@ namespace EvolZero.Core.Analysis.Semantic
                 return Lifetime.ForThis();
 
             return Lifetime.ForReturn();
+        }
+
+        private bool NeedCheck(Expression expr) => NeedCheck(expr.ResultTypeSpec);
+
+        private bool NeedCheck(TypeSpec typeSpec)
+        {
+            if (typeSpec.IsRef) return true;
+            if (!typeSpec.Type.IsBaseType)
+                return true; // Значимые типы, которые не являются базовыми тоже проверяем
+
+            return false;
+        }
+
+        private bool IsOwning(Expression expr) => IsOwning(expr.ResultTypeSpec);
+
+        private bool IsOwning(TypeSpec typeSpec)
+        {
+            if (typeSpec.IsOwnerRef) return true;
+            if (!typeSpec.IsRef)
+                return true; // Если это не ссылка, то относимся к значению так же, как к владеющей ссылке
+
+            return false;
+        }
+
+        private bool IsBorrow(Expression expr)
+        {
+            return expr.ResultTypeSpec.IsBorrowRef;
         }
 
         public void ErrorLT002(PositionInSources pos)

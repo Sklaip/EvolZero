@@ -70,12 +70,14 @@ namespace EvolZero.Core.Analysis
 
         public void GiveAwayOwnership(Expression expr, VarMeta? var, bool refersToCurrentBlock)
         {
+            if(!expr.ResultTypeSpec.IsRef) return;
             if (!_blocks.TryPeek(out var currentIf) || refersToCurrentBlock) return;
             currentIf.GivenRefs.Add((expr, var, currentIf.CurrentSubStatement));
         }
 
         public ILogicModel? PointerLifetimeEnd(Expression pointerExpr)
         {
+            if (!pointerExpr.ResultTypeSpec.IsRef) return null;
             if (!pointerExpr.ResultTypeSpec.Type.IsBaseType)
             {
                 return GetDestructionCode(pointerExpr);
