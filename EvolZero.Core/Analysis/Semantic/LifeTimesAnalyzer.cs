@@ -467,7 +467,6 @@ namespace EvolZero.Core.Analysis.Semantic
             if (varMeta.IsDestructed)
             {
                 _errorsBag.AddError(LIFETIMES_LAYER, "LT001", $"Нет доступа к деинициализированной ссылке '{expr.Name}'", expr.Pos);
-                return null;
             }
 
             varMeta.IsInitialized = expr.IsInitialized;
@@ -766,7 +765,7 @@ namespace EvolZero.Core.Analysis.Semantic
             if (!value.IsAnonymous)
             {
                 if (value.VarData!.IsDestructed || !value.VarData.IsInitialized)
-                    throw new NotImplementedException(); // ссылка была деинициализированна. Вообще сюда оно попадть не должно, оно должно отбрасываться на других проверках
+                    return; // ссылка была деинициализированна. Сюда оно может попасть если на предыдущих этапах уже случилась ошибка
 
                 if (!CheckLifetimes(value.VarData, target.VarData))
                 {

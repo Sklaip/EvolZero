@@ -33,38 +33,6 @@ namespace EvolZero.Core.MemebersModels
 		public override string ToString() => "ref";
 	}
 
-	public sealed class ArrayQualifier : Qualifier
-	{
-		public readonly ulong Size;
-
-		public ArrayQualifier(ulong size)
-		{
-			Size = size;
-		}
-
-		public override ITypeRef GetTypeRef(IPlatformTypesProvider typesProvider, IEnumerable<Qualifier> nextQualifiers, ITypeRef baseType)
-		{
-			var nextQualifer = nextQualifiers.FirstOrDefault();
-
-			if (nextQualifer != null)
-			{
-				baseType = nextQualifer.GetTypeRef(typesProvider, nextQualifiers.Skip(1), baseType);
-			}
-
-			return typesProvider.MakeArray(baseType, Size);
-		}
-
-		public override bool Equals(Qualifier other)
-		{
-			if (other is not ArrayQualifier arrayQualifier) return false;
-			return Size == arrayQualifier.Size;
-		}
-
-		public override int GetHashCode() => typeof(ArrayQualifier).GetHashCode();
-
-		public override string ToString() => $"[{Size}]";
-	}
-
 	public sealed class BorrowReferenceQualifier : Qualifier
 	{
 		public override ITypeRef GetTypeRef(IPlatformTypesProvider typesProvider, IEnumerable<Qualifier> nextQualifiers, ITypeRef baseType)
@@ -79,4 +47,36 @@ namespace EvolZero.Core.MemebersModels
 
 		public override string ToString() => "refb";
 	}
+
+    public sealed class ArrayQualifier : Qualifier
+    {
+        public readonly ulong Size;
+
+        public ArrayQualifier(ulong size)
+        {
+            Size = size;
+        }
+
+        public override ITypeRef GetTypeRef(IPlatformTypesProvider typesProvider, IEnumerable<Qualifier> nextQualifiers, ITypeRef baseType)
+        {
+            var nextQualifer = nextQualifiers.FirstOrDefault();
+
+            if (nextQualifer != null)
+            {
+                baseType = nextQualifer.GetTypeRef(typesProvider, nextQualifiers.Skip(1), baseType);
+            }
+
+            return typesProvider.MakeArray(baseType, Size);
+        }
+
+        public override bool Equals(Qualifier other)
+        {
+            if (other is not ArrayQualifier arrayQualifier) return false;
+            return Size == arrayQualifier.Size;
+        }
+
+        public override int GetHashCode() => typeof(ArrayQualifier).GetHashCode();
+
+        public override string ToString() => $"[{Size}]";
+    }
 }
