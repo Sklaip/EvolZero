@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Text;
 
 namespace EvolZero.Core.MemebersModels
@@ -79,4 +80,19 @@ namespace EvolZero.Core.MemebersModels
 
         public override string ToString() => $"[{Size}]";
     }
+
+	public sealed class OwnQualifier : Qualifier
+	{
+		public override bool Equals(Qualifier other) => other is OwnQualifier;
+
+		public override int GetHashCode() => typeof(OwnQualifier).GetHashCode();
+
+		public override ITypeRef GetTypeRef(IPlatformTypesProvider typesProvider, IEnumerable<Qualifier> nextQualifiers, ITypeRef baseType)
+		{
+			throw new NotImplementedException();
+		}
+
+		public override string ToString() => "own";
+	}
+
 }
