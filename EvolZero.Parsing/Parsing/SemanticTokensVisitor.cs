@@ -278,7 +278,9 @@ namespace EvolZero.Parsing
                 PushToken([context.REF()], [SemanticTokenType.Keyword]);
             else if (context.REFB() != null)
                 PushToken([context.REFB()], [SemanticTokenType.Keyword]);
-        }
+			else if (context.OWN() != null)
+				PushToken([context.OWN()], [SemanticTokenType.Keyword]);
+		}
 
         private void PushAccessModifierToken(AccessModifierContext? context)
         {

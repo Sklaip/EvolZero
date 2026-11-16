@@ -5,7 +5,7 @@ using System.Text;
 
 namespace EvolZero.Parsing.Models
 {
-    public class QualifierWorkpiece
+	public class QualifierWorkpiece
 	{
 		public string Kind { get; set; }
 		public ulong ArraySize { get; set; }
@@ -28,6 +28,7 @@ namespace EvolZero.Parsing.Models
 				case "ref": return new ReferenceQualifier();
 				case "array": return new ArrayQualifier(ArraySize);
 				case "refb": return new BorrowReferenceQualifier();
+				case "own": return new OwnQualifier();
 				default: throw new NotImplementedException();
 			}
 		}
@@ -39,6 +40,7 @@ namespace EvolZero.Parsing.Models
 				case "ref": return new ReferenceQualifier();
 				case "array": return new ArrayQualifier(workpiece.ArraySize);
 				case "refb": return new BorrowReferenceQualifier();
+				case "own": return new OwnQualifier();
 				default: throw new NotImplementedException();
 			}
 		}

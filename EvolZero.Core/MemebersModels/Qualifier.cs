@@ -89,7 +89,7 @@ namespace EvolZero.Core.MemebersModels
 
 		public override ITypeRef GetTypeRef(IPlatformTypesProvider typesProvider, IEnumerable<Qualifier> nextQualifiers, ITypeRef baseType)
 		{
-			throw new NotImplementedException();
+			return baseType;
 		}
 
 		public override string ToString() => "own";

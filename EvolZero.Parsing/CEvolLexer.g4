@@ -19,6 +19,7 @@ CONSTRUCTOR : 'ctor';
 DESTRUCTOR : 'dtor';
 REF : 'ref';
 REFB : 'refb';
+OWN : 'own';
 
 // Операторы и знаки
 ASSIGN   : '=';

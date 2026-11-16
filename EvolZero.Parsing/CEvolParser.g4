@@ -14,7 +14,7 @@ accessModifier : PUBLIC | PRIVATE ;
 
 // Дополнительные модификаторы: static, readonly (в любом количестве и порядке)
 extraModifier : STATIC | READONLY | EXTERN | INFARGS;
-qualifier : REF | REFB | arraySpec;
+qualifier : REF | REFB | arraySpec | OWN;
 
 // --- Типы данных ---
 arraySpec : LBRACK expression? RBRACK ;
