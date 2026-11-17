@@ -605,7 +605,7 @@ namespace EvolZero.Core.Analysis
             }
             else
             {
-                var tempVar = CreateTempVar(type);
+                var tempVar = CreateTempVar(new TypeSpec(type.Type, [Qualifier.OwnerValue, .. type.Qualifiers]));
                 return CallValueConstructor(type.Type, tempVar, args);
             }
 

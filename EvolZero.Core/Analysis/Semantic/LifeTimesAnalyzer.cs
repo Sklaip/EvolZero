@@ -807,7 +807,7 @@ namespace EvolZero.Core.Analysis.Semantic
             if (value.VarData?.IsDestructed == true)
             {
                 _errorsBag.AddError(LIFETIMES_LAYER, "LT001",
-                    $"Нет доступа к деинициализированной ссылке переданной в аргумент", value.Expr.Pos); // TODO: выводить чо за именно аргумент
+                    $"Нет доступа к деинициализированной ссылке", value.Expr.Pos); // TODO: выводить чо за именно аргумент
                 return;
             }
 
@@ -816,7 +816,7 @@ namespace EvolZero.Core.Analysis.Semantic
             if (!NeedCheck(value.Expr))
                 throw new NotImplementedException(); // рассмотреть эти ситуации. Вроде на уровне семантического древа такого быть не может
 
-            if (argument.IsBorrowRef && value.IsAnonymous || (value.IsStrippedViaExchange && IsOwning(value.Expr)))
+            if (IsBorrow(argument) && value.IsAnonymous || (value.IsStrippedViaExchange && IsOwning(value.Expr)))
             {
                 AddLifetimeError("LT009", "Анонимные ссылки (например, результат 'new') можно присваивать только во владеющие (ref) ссылки", value.Expr.Pos);
                 return;
@@ -1015,7 +1015,7 @@ namespace EvolZero.Core.Analysis.Semantic
 
         private Lifetime DefineArgumentLifetime(Argument argument, LifetimeDecl[] lifetimes)
         {
-            var baseLifetime = argument.Declaring.IsBorrowRef ? Lifetime.ForRefbArgument() : Lifetime.ForArgument();
+            var baseLifetime = IsBorrow(argument.Declaring) ? Lifetime.ForRefbArgument() : Lifetime.ForArgument();
             var lifetime = lifetimes.FirstOrDefault(x => x.LeftKey.KeyType == LifetimeDecl.KeyType.Var && x.LeftKey.VarName == argument.Name);
             if (argument.Declaring.IsRef && lifetime != null)
             {
@@ -1050,15 +1050,18 @@ namespace EvolZero.Core.Analysis.Semantic
         private bool IsOwning(TypeSpec typeSpec)
         {
             if (typeSpec.IsOwnerRef) return true;
-            if (!typeSpec.IsRef)
-                return true; // Если это не ссылка, то относимся к значению так же, как к владеющей ссылке
+			if (typeSpec.IsValueOwner) return true;
 
             return false;
         }
 
-        private bool IsBorrow(Expression expr)
+		private bool IsBorrow(Expression expr) => IsBorrow(expr.ResultTypeSpec);
+		private bool IsBorrow(TypeSpec typeSpec)
         {
-            return expr.ResultTypeSpec.IsBorrowRef;
+			if (!typeSpec.IsRef)
+				return true; // Если это не ссылка, то относимся к значению так же, как к заимствованной ссылке
+
+			return typeSpec.IsBorrowRef;
         }
 
         public void ErrorLT002(PositionInSources pos)

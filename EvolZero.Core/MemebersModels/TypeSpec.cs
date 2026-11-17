@@ -9,6 +9,7 @@
 		public bool IsRef => QualifiersExists && Qualifiers[0] is ReferenceQualifier or BorrowReferenceQualifier;
 		public bool IsBorrowRef => QualifiersExists && Qualifiers[0] is BorrowReferenceQualifier;
 		public bool IsOwnerRef => QualifiersExists && Qualifiers[0] is ReferenceQualifier;
+		public bool IsValueOwner => QualifiersExists && Qualifiers[0] is OwnQualifier;
 		public bool IsArray => QualifiersExists && Qualifiers[0] is ArrayQualifier;
 		public bool ArrayExists => Qualifiers.Any(x => x is ArrayQualifier);
 
@@ -32,13 +33,26 @@
 		public bool QualifiersEquals(Qualifier[] qualifiers)
 		{
 			if (qualifiers == null || Qualifiers == null) return false;
-			if (Qualifiers.Length != qualifiers.Length) return false;
 
-			for (int i = 0; i < Qualifiers.Length; i++)
+
+			Qualifier[] first;
+			Qualifier[] second;
+
+			if (Qualifiers.Length >= qualifiers.Length)
 			{
-				Qualifier qualifier = Qualifiers[i];
+				first = Qualifiers;
+				second = qualifiers;
+			}
+			else
+			{
+				first = qualifiers;
+				second = Qualifiers;
+			}
 
-				if (!qualifier.Equals(qualifiers[i])) return false;
+			for (int i = 0; i < first.Length; i++)
+			{
+				Qualifier qualifier = first[i];
+				if (!qualifier.Equals(i < second.Length ? second[i] : null)) return false;
 			}
 
 			return true;

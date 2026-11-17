@@ -67,7 +67,10 @@ namespace EvolZero
             }
 
             var codeGenerator = BuildCodeGenerator(moduleName);
-            var globalMembersTable = BuildBaseMembersTable(codeGenerator);
+			var typesProvider = new PlatformTypesProvider(codeGenerator);
+
+
+			var globalMembersTable = BuildBaseMembersTable(codeGenerator);
             var globalTypesList = new Dictionary<string, TypeDesc>(globalMembersTable.Types);
 
             var errorsBag = new ErrorsBag(sourcesMap);
@@ -77,8 +80,8 @@ namespace EvolZero
                 var visitor = new MembersVisitor(errorsBag, unit.FilePath);
                 visitor.Visit(unit.Tree);
 
-                var membersTableBuilder = new MembersTableBuilder(visitor.CurrentNameSpace,
-                    visitor.Usings, visitor.Classes, visitor.SingleFunctions, codeGenerator);
+                var membersTableBuilder = new MembersTableBuilder(visitor.CurrentNameSpace,visitor.Usings, 
+					visitor.Classes, visitor.SingleFunctions, codeGenerator, typesProvider);
 
                 membersTableBuilder.PrepareTable(globalTypesList);
                 unit.TableBuilder = membersTableBuilder;

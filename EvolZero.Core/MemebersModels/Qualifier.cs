@@ -9,8 +9,9 @@ namespace EvolZero.Core.MemebersModels
 	{
 		public static readonly Qualifier Reference = new ReferenceQualifier();
 		public static readonly Qualifier BorrowReference = new BorrowReferenceQualifier();
+		public static readonly Qualifier OwnerValue = new OwnQualifier();
 
-		public abstract bool Equals(Qualifier other);
+		public abstract bool Equals(Qualifier? other);
 
 		public override bool Equals(object? obj) => obj is Qualifier q && Equals(q);
 
@@ -26,7 +27,7 @@ namespace EvolZero.Core.MemebersModels
 			return typesProvider.PointerType;
 		}
 
-		public override bool Equals(Qualifier other) =>
+		public override bool Equals(Qualifier? other) =>
 			other is ReferenceQualifier or BorrowReferenceQualifier;
 
 		public override int GetHashCode() => typeof(ReferenceQualifier).GetHashCode();
@@ -41,7 +42,7 @@ namespace EvolZero.Core.MemebersModels
 			return typesProvider.PointerType;
 		}
 
-		public override bool Equals(Qualifier other) =>
+		public override bool Equals(Qualifier? other) =>
 			other is ReferenceQualifier or BorrowReferenceQualifier;
 
 		public override int GetHashCode() => typeof(ReferenceQualifier).GetHashCode();
@@ -70,7 +71,7 @@ namespace EvolZero.Core.MemebersModels
             return typesProvider.MakeArray(baseType, Size);
         }
 
-        public override bool Equals(Qualifier other)
+        public override bool Equals(Qualifier? other)
         {
             if (other is not ArrayQualifier arrayQualifier) return false;
             return Size == arrayQualifier.Size;
@@ -83,7 +84,7 @@ namespace EvolZero.Core.MemebersModels
 
 	public sealed class OwnQualifier : Qualifier
 	{
-		public override bool Equals(Qualifier other) => other is OwnQualifier;
+		public override bool Equals(Qualifier? other) => other == null || (other is OwnQualifier);
 
 		public override int GetHashCode() => typeof(OwnQualifier).GetHashCode();
 

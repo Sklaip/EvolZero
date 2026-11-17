@@ -16,15 +16,17 @@ namespace EvolZero.Parsing
 		private Dictionary<string, FuncDesc[]> _parsedSingleFunctions = new Dictionary<string, FuncDesc[]>();
 
 		private IReadOnlyDictionary<string, TypeDesc> _existsClasses = null!;
+		private IPlatformTypesProvider _typesProvider;
 
-		public MembersTableBuilder(string currentNamespcae, HashSet<string> usings, Dictionary<string, ClassSignature> classes, 
-			Dictionary<string, List<FuncSignature>> singleFunctions, ICodeGenerator codeGenerator)
+		public MembersTableBuilder(string currentNamespcae, HashSet<string> usings, Dictionary<string, ClassSignature> classes,
+			Dictionary<string, List<FuncSignature>> singleFunctions, ICodeGenerator codeGenerator, IPlatformTypesProvider typesProvider)
 		{
 			_currentNameSpace = currentNamespcae;
 			_usings = usings;
 			_classes = classes;
 			_singleFunctions = singleFunctions;
 			_codeGenerator = codeGenerator;
+			_typesProvider = typesProvider;
 		}
 
 		private TypeDesc FindTypeForDeclaring(TypeDeclaring typeDecl)
@@ -141,17 +143,13 @@ namespace EvolZero.Parsing
 
 					IFuncRefData funcRefs;
 					bool infArgs = func.modifiers.Contains("infargs"); // TODO: енумом модификаторы сделать что ли, или флагами
-					if (func.ReturnType.Qualifiers == null || func.ReturnType.Qualifiers.Length < 1)
-					{
-						funcRefs = _codeGenerator.CreateFunctionSiganture(funcName, returnType.TypeRef, agrumentsRefs, infArgs);
-					}
-					else
-					{
-						funcRefs = _codeGenerator.CreateFunctionSiganture(funcName, QualifierToTypeRef(returnTypeQualifers[0], _codeGenerator), agrumentsRefs, infArgs);
-					}
+					var resutlTypeSpec = new TypeSpec(returnType, returnTypeQualifers);
+					var rusltTypeRef = resutlTypeSpec.GetRealTypeRef(_typesProvider);
 
-					var funcDesc = new FuncDesc(new TypeSpec(returnType, returnTypeQualifers), func.Name,
-						arguments.ToArray(), funcRefs, infArgs, func.Access, func.Lifetimes?.ToArray() ?? [], currentClass);
+					funcRefs = _codeGenerator.CreateFunctionSiganture(funcName, rusltTypeRef, agrumentsRefs, infArgs);
+
+					var funcDesc = new FuncDesc(resutlTypeSpec, func.Name, arguments.ToArray(), funcRefs, 
+						infArgs, func.Access, func.Lifetimes?.ToArray() ?? [], currentClass);
 					funcList.Add(funcDesc);
 				}
 
@@ -195,17 +193,10 @@ namespace EvolZero.Parsing
 					var qualifers = QualifierWorkpiece.ToQualifiers(field.Type.Qualifiers);
 
 					//if (!fieldType.IsBaseType && (qualifers == null || qualifers.Length < 1)) throw new NotImplementedException(); // TODO: сделать возможность пихать класс в класс по значению
+					var typeSpec = new TypeSpec(fieldType, qualifers);
+					currentClassTypeDesc.Variables.Add(field.Name, new VariableDesc(typeSpec, field.Name, fieldNum, field.Access));
 
-					currentClassTypeDesc.Variables.Add(field.Name, new VariableDesc(new TypeSpec(fieldType, qualifers), field.Name, fieldNum, field.Access));
-
-					if (qualifers == null || qualifers.Length < 1)
-					{
-						filedTypes.Add(fieldType.TypeRef);
-					}
-					else
-					{
-						filedTypes.Add(QualifierToTypeRef(qualifers[0], _codeGenerator));
-					}
+					filedTypes.Add(typeSpec.GetRealTypeRef(_typesProvider));
 
 					fieldNum++;
 				}
@@ -220,21 +211,6 @@ namespace EvolZero.Parsing
 				DestructorsAnalyze(currentClass.Dtors, _codeGenerator, currentClassTypeDesc);
 			}
 		}
-
-		// TODO: это куда-то вынести, код дублирует с SemanticAnalyzer
-		private ITypeRef QualifierToTypeRef(Qualifier qualifier, ICodeGenerator codeGenerator)
-		{
-			switch (qualifier)
-			{
-				case ReferenceQualifier:
-				case ArrayQualifier:
-				case BorrowReferenceQualifier:
-					return codeGenerator.PointerType;
-				default:
-					throw new NotImplementedException();
-			}
-		}
-
 
 		public MembersTable Build()
 		{

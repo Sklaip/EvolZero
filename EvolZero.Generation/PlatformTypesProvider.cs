@@ -2,7 +2,7 @@
 
 namespace EvolZero.Generation
 {
-	internal class PlatformTypesProvider : IPlatformTypesProvider
+	public class PlatformTypesProvider : IPlatformTypesProvider
 	{
 		private readonly CodeGenerator _codeGenerator;
 

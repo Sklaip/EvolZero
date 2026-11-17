@@ -181,7 +181,7 @@ namespace EvolZero.LSP
                 visitor.Visit(unit.Tree);
 
                 var membersTableBuilder = new MembersTableBuilder(visitor.CurrentNameSpace,
-                    visitor.Usings, visitor.Classes, visitor.SingleFunctions, codeGenerator);
+                    visitor.Usings, visitor.Classes, visitor.SingleFunctions, codeGenerator, new TypesProviderStub());
 
                 membersTableBuilder.PrepareTable(globalTypesList);
                 unit.TableBuilder = membersTableBuilder;
