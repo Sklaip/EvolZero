@@ -4,6 +4,10 @@
 	{
 		public readonly TypeDesc Type;
 		public readonly Qualifier[] Qualifiers;
+		public readonly string[] GenericParams;
+		public readonly TypeSpec[] ConfiguredGenericParams;
+
+		public bool IsGeneric => GenericParams.Length > 0;
 
 		public bool QualifiersExists => Qualifiers != null && Qualifiers.Length > 0;
 		public bool IsRef => QualifiersExists && Qualifiers[0] is ReferenceQualifier or BorrowReferenceQualifier;
@@ -22,12 +26,16 @@
 		{
 			Type = type;
 			Qualifiers = Array.Empty<Qualifier>();
+			GenericParams = [];
+			ConfiguredGenericParams = []; 
 		}
 
 		public TypeSpec(TypeDesc type, Qualifier[] qualifiers)
 		{
 			Type = type;
 			Qualifiers = qualifiers;
+			GenericParams = [];
+			ConfiguredGenericParams = [];
 		}
 
 		public bool QualifiersEquals(Qualifier[] qualifiers)
@@ -61,6 +69,19 @@
 		public bool QualifiersEquals(TypeSpec other)
 		{
 			return QualifiersEquals(other.Qualifiers);
+		}
+
+		public bool GenerictEquals(TypeSpec other)
+		{
+			if(IsGeneric != other.IsGeneric || ConfiguredGenericParams.Length != other.ConfiguredGenericParams.Length) 
+				return false;
+
+			for (int i = 0; i < other.ConfiguredGenericParams.Length; i++)
+			{
+				if (!other.ConfiguredGenericParams[i].Equals(ConfiguredGenericParams[i])) return false;
+			}
+
+			return true;
 		}
 
 		public bool Equals(TypeSpec other)
