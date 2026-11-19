@@ -19,10 +19,11 @@ qualifier : REF | REFB | arraySpec | OWN;
 // --- Типы данных ---
 arraySpec : LBRACK expression? RBRACK ;
 typeSpec : (qualifier)* IDENTIFIER arraySpec* ;
+genericSpec : LT typeSpec (COMMA typeSpec)* GT ;
 
 
 // --- Объявления ---
-classDecl : CLASS IDENTIFIER LBRACE (fieldDecl | functionDecl | abstractFunctionDecl | constructorDecl | desctructorDecl)* RBRACE ;
+classDecl : CLASS IDENTIFIER genericSpec? LBRACE (fieldDecl | functionDecl | abstractFunctionDecl | constructorDecl | desctructorDecl)* RBRACE ;
 fieldDecl : accessModifier? extraModifier* typeSpec IDENTIFIER (ASSIGN expression)? SEMICOLON ;
 
 functionDecl : accessModifier? extraModifier* typeSpec IDENTIFIER LPAREN params? RPAREN lifetimesDecl? block ;

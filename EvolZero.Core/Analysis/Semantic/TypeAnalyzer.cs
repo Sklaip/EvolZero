@@ -151,7 +151,7 @@ namespace EvolZero.Core.Analysis.Semantic
 			notDirectMatch = false;
 
 			if (!to.QualifiersEquals(from) && !TryCastArrayRefToTypeRef(to, from)) return false;
-
+			if (!to.GenericEquals(from)) return false;
 			if (to.Type == from.Type) return true;
 
 			notDirectMatch = true;
