@@ -488,10 +488,10 @@ namespace EvolZero.Parsing
 
             var qualifiers = ParsingCommon.ParseQualifiers(context);
 
-            var typeDesc = _membersFinder.TryFindType(typeName);
-            if (typeDesc == null)
+			var typeDesc = _semanticAnalyzer.GetActualType(typeName);
+
+			if (typeDesc == null)
             {
-                _semanticAnalyzer.ReportError($"The type '{typeName}' was not found"); // TODO: че-то хуета какая-то, тут ошибки не должны генериться
                 return null;
             }
 

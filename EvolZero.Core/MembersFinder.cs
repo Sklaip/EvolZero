@@ -7,33 +7,34 @@ namespace EvolZero.Core
 		private readonly MembersTable _membersTable;
 		private HashSet<string> _namespaces = [];
 		private HashSet<string> _usings = [];
+		private string? _currentClassName = null;
 
 		public TypeDesc IntType { get; }
-        public TypeDesc LongType { get; }
-        public TypeDesc UIntType { get; }
-        public TypeDesc ULongType { get; }
+		public TypeDesc LongType { get; }
+		public TypeDesc UIntType { get; }
+		public TypeDesc ULongType { get; }
 
-        public MembersFinder(MembersTable membersTable)
+		public MembersFinder(MembersTable membersTable)
 		{
 			_membersTable = membersTable;
 
 			if (!_membersTable.Types.TryGetValue("int", out TypeDesc? intType))
 				throw new NotImplementedException();
 
-            if (!_membersTable.Types.TryGetValue("long", out TypeDesc? longType))
-                throw new NotImplementedException();
+			if (!_membersTable.Types.TryGetValue("long", out TypeDesc? longType))
+				throw new NotImplementedException();
 
-            if (!_membersTable.Types.TryGetValue("uint", out TypeDesc? uintType))
-                throw new NotImplementedException();
+			if (!_membersTable.Types.TryGetValue("uint", out TypeDesc? uintType))
+				throw new NotImplementedException();
 
-            if (!_membersTable.Types.TryGetValue("ulong", out TypeDesc? ulongType))
-                throw new NotImplementedException();
+			if (!_membersTable.Types.TryGetValue("ulong", out TypeDesc? ulongType))
+				throw new NotImplementedException();
 
-            IntType = intType;
+			IntType = intType;
 			LongType = longType;
-            UIntType = uintType;
-            ULongType = ulongType;
-        }
+			UIntType = uintType;
+			ULongType = ulongType;
+		}
 
 		public void AddNamespace(string nameSpace)
 		{
@@ -53,12 +54,36 @@ namespace EvolZero.Core
 			_usings.Clear();
 		}
 
+		public void SetCurrentType(TypeDesc? type)
+		{
+			_currentClassName = type?.Name;
+		}
+
+		public void ClearCurrentType()
+		{
+			_currentClassName = null;
+		}
+
 		public TypeDesc FindType(string name)
 		{
 			return TryFindType(name) ?? throw new NotImplementedException();
 		}
 
 		public TypeDesc? TryFindType(string name)
+		{
+			// сначала пытаемся найти сам тип
+			var type = TryFindTypeByName(name);
+
+			// если не нашли, то ищем среди дженериков текущего класса
+			if (type == null)
+			{
+				type = TryFindTypeByName($"{_currentClassName}${name}");
+			}
+
+			return type;
+		}
+
+		private TypeDesc? TryFindTypeByName(string name)
 		{
 			if (_membersTable.Types.TryGetValue(name, out TypeDesc? typeDesc))
 				return typeDesc;

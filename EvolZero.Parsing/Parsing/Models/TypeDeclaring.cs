@@ -18,5 +18,5 @@ namespace EvolZero.Parsing.Models
     public record VariableSignature(string Name, TypeDeclaring Type, AccessModifier Access);
 
     public record ClassSignature(string Name, List<ConstructorSignature> Ctors, List<DestructorSignature> Dtors, 
-		Dictionary<string, List<FuncSignature>> Functions, Dictionary<string, VariableSignature> Fields);
+		Dictionary<string, List<FuncSignature>> Functions, Dictionary<string, VariableSignature> Fields, List<string> GenericParams);
 }

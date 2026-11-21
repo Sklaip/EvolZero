@@ -23,7 +23,7 @@
 		{
 			Type = type;
 			Qualifiers = Array.Empty<Qualifier>();
-			ConfiguredGenericParams = []; 
+			ConfiguredGenericParams = [];
 		}
 
 		public TypeSpec(TypeDesc type, Qualifier[] qualifiers)
@@ -68,7 +68,7 @@
 
 		public bool GenericEquals(TypeSpec other)
 		{
-			if(Type.IsGeneric != other.Type.IsGeneric || ConfiguredGenericParams.Length != other.ConfiguredGenericParams.Length) 
+			if (Type.IsGeneric != other.Type.IsGeneric || ConfiguredGenericParams.Length != other.ConfiguredGenericParams.Length)
 				return false;
 
 			for (int i = 0; i < other.ConfiguredGenericParams.Length; i++)
@@ -81,7 +81,7 @@
 
 		public bool Equals(TypeSpec other)
 		{
-			return Type == other.Type && QualifiersEquals(other);
+			return Type == other.Type && QualifiersEquals(other) && GenericEquals(other);
 		}
 
 		public override bool Equals(object? obj)
@@ -102,7 +102,20 @@
 				}
 			}
 
+			if (ConfiguredGenericParams != null)
+			{
+				foreach (var p in ConfiguredGenericParams)
+				{
+					hashCode.Add(p);
+				}
+			}
+
 			return hashCode.ToHashCode();
+		}
+
+		public ITypeRef GetTypeRef()
+		{
+			return Type.TypeRef;
 		}
 
 		public ITypeRef GetRealTypeRef(IPlatformTypesProvider typesProvider)

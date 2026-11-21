@@ -9,6 +9,10 @@ namespace EvolZero.Core.LogicModels.Statements
 		public FunctionStatement(FuncDesc functionSignature, IReadOnlyList<ILogicModel> childs, PositionInSources pos) : base(childs, pos)
 		{
 			FunctionSignature = functionSignature;
+			if(FunctionSignature == null)
+			{
+
+			}
 		}
 
 		public TypeSpec ReturnType => FunctionSignature.ReturnType;

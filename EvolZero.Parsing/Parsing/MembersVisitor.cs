@@ -1,16 +1,13 @@
 ﻿using Antlr4.Runtime;
 using Antlr4.Runtime.Misc;
 using EvolZero.Core;
-using EvolZero.Core.Analysis.Semantic;
 using EvolZero.Core.MemebersModels;
-using EvolZero.Generation;
 using EvolZero.Parsing.Models;
 using static CEvolParser;
-using static EvolZero.Core.MemebersModels.Qualifier;
 
 namespace EvolZero.Parsing
 {
-    public class MembersVisitor : CEvolParserBaseVisitor<object?>
+	public class MembersVisitor : CEvolParserBaseVisitor<object?>
 	{
 		public string CurrentNameSpace { get; private set; } = null!;
 		public Dictionary<string, ClassSignature> Classes = new();
@@ -21,16 +18,16 @@ namespace EvolZero.Parsing
 		private Dictionary<string, List<FuncSignature>>? _currentClassFunctions = null;
 		private List<ConstructorSignature>? _currentClassConstructors = null;
 		private List<DestructorSignature>? _currentClassDestructors = null;
-        private readonly ErrorsBag _errorsBag;
-        private readonly string _currentFile;
+		private readonly ErrorsBag _errorsBag;
+		private readonly string _currentFile;
 
-        public MembersVisitor(ErrorsBag errorsBag, string currentFile)
-        {
-            _errorsBag = errorsBag;
-            _currentFile = currentFile;
-        }
+		public MembersVisitor(ErrorsBag errorsBag, string currentFile)
+		{
+			_errorsBag = errorsBag;
+			_currentFile = currentFile;
+		}
 
-        public override object? VisitNamespaceDecl([NotNull] CEvolParser.NamespaceDeclContext context)
+		public override object? VisitNamespaceDecl([NotNull] CEvolParser.NamespaceDeclContext context)
 		{
 			CurrentNameSpace = context.IDENTIFIER().GetText();
 			if (CurrentNameSpace == null)
@@ -62,10 +59,10 @@ namespace EvolZero.Parsing
 
 			if (Classes.ContainsKey(fullTypeName))
 			{
-                _errorsBag.AddError(
+				_errorsBag.AddError(
 					"Semantic", "M001", $"Класс {fullTypeName} уже существует.", GetPosition(context));
 
-            }
+			}
 
 			foreach (var fieldDecl in context.fieldDecl())
 			{
@@ -82,8 +79,20 @@ namespace EvolZero.Parsing
 				Visit(funcDecl);
 			}
 
+			List<string> genericsParams = new();
+			if (context.genericSpec() != null)
+			{
+				foreach (var genericParam in context.genericSpec().typeSpec())
+				{
+					// TODO: тут проверять чтобы никаких лишних кваллификтаоров не написали
+					string? name = genericParam.IDENTIFIER()?.ToString();
+					if (name == null) throw new NotImplementedException();
+					genericsParams.Add(name);
+				}
+			}
+
 			var currentClassDesc = new ClassSignature(fullTypeName, _currentClassConstructors,
-				_currentClassDestructors, _currentClassFunctions, _currentClassVariables);
+				_currentClassDestructors, _currentClassFunctions, _currentClassVariables, genericsParams);
 			Classes[fullTypeName] = currentClassDesc;
 
 			_currentClassVariables = null;
@@ -284,11 +293,11 @@ namespace EvolZero.Parsing
 			return new TypeDeclaring(typeName, qualifiers.ToArray(), []);
 		}
 
-        private PositionInSources GetPosition(ParserRuleContext context)
-        {
+		private PositionInSources GetPosition(ParserRuleContext context)
+		{
 			var pos = context.Start;
-            return new PositionInSources(_currentFile, pos.Line, pos.Column, pos.StopIndex);
-        }
+			return new PositionInSources(_currentFile, pos.Line, pos.Column, pos.StopIndex);
+		}
 
-    }
+	}
 }

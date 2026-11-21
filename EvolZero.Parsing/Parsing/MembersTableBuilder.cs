@@ -29,20 +29,36 @@ namespace EvolZero.Parsing
 			_typesProvider = typesProvider;
 		}
 
-		private TypeDesc FindTypeForDeclaring(TypeDeclaring typeDecl)
+		private TypeDesc FindTypeForDeclaring(TypeDeclaring typeDecl, string? currentClassName)
 		{
-			if (!_parsedClasses.TryGetValue(typeDecl.TypeName, out TypeDesc? type)
-				&& !_parsedClasses.TryGetValue($"{_currentNameSpace}.{typeDecl.TypeName}", out type))
+			var typeDesc = FindTypeDesc(typeDecl.TypeName);
+
+			if (typeDesc == null && currentClassName != null)
 			{
-				if (_existsClasses.TryGetValue($"{typeDecl.TypeName}", out type)) return type;
+				typeDesc = FindTypeDesc($"{currentClassName}${typeDecl.TypeName}");
+			}
+
+			// этого типа не существует
+			if (typeDesc == null) 
+				throw new NotImplementedException();
+
+			return typeDesc;
+		}
+
+		private TypeDesc? FindTypeDesc(string name)
+		{
+			if (!_parsedClasses.TryGetValue(name, out TypeDesc? type)
+				&& !_parsedClasses.TryGetValue($"{_currentNameSpace}.{name}", out type))
+			{
+				if (_existsClasses.TryGetValue($"{name}", out type)) return type;
 
 				foreach (var use in _usings)
 				{
-					if (_existsClasses.TryGetValue($"{use}.{typeDecl.TypeName}", out type)) return type;
+					if (_existsClasses.TryGetValue($"{use}.{name}", out type)) return type;
 				}
 
 				// этого типа не существует
-				throw new NotImplementedException();
+				return null;
 			}
 
 			return type;
@@ -62,7 +78,7 @@ namespace EvolZero.Parsing
 				{
 					foreach ((TypeDeclaring Type, string Name) funcArgument in ctor.Arguments)
 					{
-						TypeDesc argumentType = FindTypeForDeclaring(funcArgument.Type);
+						TypeDesc argumentType = FindTypeForDeclaring(funcArgument.Type, currentClass.Name);
 						var declaring = new TypeSpec(argumentType, QualifierWorkpiece.ToQualifiers(funcArgument.Type.Qualifiers));
 						arguments.Add(new Argument(declaring, funcArgument.Name));
 						agrumentsRefs.Add(declaring.QualifiersExists ? codeGenerator.PointerType : argumentType.TypeRef);
@@ -76,10 +92,10 @@ namespace EvolZero.Parsing
 				LifetimeDecl[] lifetimes;
 				if (ctor.Lifetimes == null)
 				{
-					lifetimes = arguments.Where(x => x.Declaring.IsOwnerRef).Select(x => 
+					lifetimes = arguments.Where(x => x.Declaring.IsOwnerRef).Select(x =>
 						new LifetimeDecl(
 							new LifetimeDecl.Key(LifetimeDecl.KeyType.Var, x.Name),
-							new LifetimeDecl.Key(LifetimeDecl.KeyType.This, null)							
+							new LifetimeDecl.Key(LifetimeDecl.KeyType.This, null)
 						)).ToArray();
 				}
 				else
@@ -113,7 +129,7 @@ namespace EvolZero.Parsing
 
 				foreach (var func in rawFunctionsList[funcsKey])
 				{
-					TypeDesc returnType = FindTypeForDeclaring(func.ReturnType);
+					TypeDesc returnType = FindTypeForDeclaring(func.ReturnType, currentClass?.Name);
 					var returnTypeQualifers = QualifierWorkpiece.ToQualifiers(func.ReturnType.Qualifiers);
 
 					var arguments = new List<Argument>();
@@ -134,7 +150,7 @@ namespace EvolZero.Parsing
 					{
 						foreach ((TypeDeclaring Type, string Name) funcArgument in func.Arguments)
 						{
-							TypeDesc argumentType = FindTypeForDeclaring(funcArgument.Type);
+							TypeDesc argumentType = FindTypeForDeclaring(funcArgument.Type, currentClass?.Name);
 							var declaring = new TypeSpec(argumentType, QualifierWorkpiece.ToQualifiers(funcArgument.Type.Qualifiers));
 							arguments.Add(new Argument(declaring, funcArgument.Name));
 							agrumentsRefs.Add(declaring.QualifiersExists ? _codeGenerator.PointerType : argumentType.TypeRef);
@@ -148,7 +164,7 @@ namespace EvolZero.Parsing
 
 					funcRefs = _codeGenerator.CreateFunctionSiganture(funcName, rusltTypeRef, agrumentsRefs, infArgs);
 
-					var funcDesc = new FuncDesc(resutlTypeSpec, func.Name, arguments.ToArray(), funcRefs, 
+					var funcDesc = new FuncDesc(resutlTypeSpec, func.Name, arguments.ToArray(), funcRefs,
 						infArgs, func.Access, func.Lifetimes?.ToArray() ?? [], currentClass);
 					funcList.Add(funcDesc);
 				}
@@ -171,25 +187,35 @@ namespace EvolZero.Parsing
 				}
 
 				var classStructure = _codeGenerator.CreateStructure(currentClass.Name);
-
 				var classDesc = new TypeDesc(currentClass.Name, classStructure, [], [], [], []);
+
 				_parsedClasses.Add(currentClass.Name, classDesc);
 				generalTypesList.Add(currentClass.Name, classDesc);
+
+				foreach (var param in currentClass.GenericParams)
+				{
+					var genericParamName = $"{currentClass.Name}${param}";
+					var genericParam = new GenericParamDesc(genericParamName, null!, [], [], [], []);
+
+					_parsedClasses.Add(genericParamName, genericParam);
+					generalTypesList.Add(genericParamName, genericParam);
+				}
 			}
 
 			_existsClasses = generalTypesList;
 		}
 
-        private void BuildClassesList()
+		private void BuildClassesList()
 		{
 			foreach (var currentClass in _classes.Values)
 			{
 				var currentClassTypeDesc = _parsedClasses[currentClass.Name];
+
 				var filedTypes = new List<ITypeRef>();
 				uint fieldNum = 0;
 				foreach (var field in currentClass.Fields.Values)
 				{
-					TypeDesc fieldType = FindTypeForDeclaring(field.Type);
+					TypeDesc fieldType = FindTypeForDeclaring(field.Type, currentClass.Name);
 					var qualifers = QualifierWorkpiece.ToQualifiers(field.Type.Qualifiers);
 
 					//if (!fieldType.IsBaseType && (qualifers == null || qualifers.Length < 1)) throw new NotImplementedException(); // TODO: сделать возможность пихать класс в класс по значению

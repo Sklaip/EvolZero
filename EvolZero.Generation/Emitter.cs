@@ -301,7 +301,7 @@ namespace EvolZero.Generation
 
 		protected override IValueAccessor PointerDereference(PointerDereferenceExpression expr)
 		{
-			return _codeGenerator.PointerDereference(HandleExpression(expr.Target), expr.ResultTypeSpec.Type.TypeRef);
+			return _codeGenerator.PointerDereference(HandleExpression(expr.Target), expr.ResultTypeSpec.GetTypeRef());
 		}
 
 		protected override IValueAccessor StructureFiledAccess(StructureFieldAccessExpression expr)
@@ -316,7 +316,7 @@ namespace EvolZero.Generation
 			}
 
 			var instanceGetting = HandleExpression(structureGetting);
-			var structureType = expr.StructureGetting.ResultTypeSpec.Type.TypeRef;
+			var structureType = expr.StructureGetting.ResultTypeSpec.GetTypeRef();
 			var fieldTypeRef = GetActualTypeRef(expr.ResultTypeSpec);
 
 			if (byRef)
@@ -362,13 +362,13 @@ namespace EvolZero.Generation
 		protected override IValueAccessor IntToIntExtensionHandle(IntToIntExtensionExpression expr)
 		{
 			var accessor = HandleExpression(expr.NumGetting);
-			return _codeGenerator.IntToIntExtension(accessor, expr.IsSigned, expr.ResultTypeSpec.Type.TypeRef);
+			return _codeGenerator.IntToIntExtension(accessor, expr.IsSigned, expr.ResultTypeSpec.GetTypeRef());
 		}
 
 		protected override IValueAccessor IntToFloatExtensionHandle(IntToFloatExtensionExpression expr)
 		{
 			var accessor = HandleExpression(expr.NumGetting);
-			return _codeGenerator.IntToFloatExtension(accessor, expr.IsSigned, expr.ResultTypeSpec.Type.TypeRef);
+			return _codeGenerator.IntToFloatExtension(accessor, expr.IsSigned, expr.ResultTypeSpec.GetTypeRef());
 		}
 
 		protected override IValueAccessor IntTruncHandle(IntTruncExpression expr)
@@ -458,7 +458,7 @@ namespace EvolZero.Generation
         private ITypeRef GetActualTypeRef(TypeSpec varDeclaring)
 		{
 			if (varDeclaring.QualifiersExists) return varDeclaring.GetRealTypeRef(_typesProvider);
-			return varDeclaring.Type.TypeRef;
+			return varDeclaring.GetTypeRef();
 		}
 	}
 }

@@ -80,7 +80,7 @@ namespace EvolZero
                 var visitor = new MembersVisitor(errorsBag, unit.FilePath);
                 visitor.Visit(unit.Tree);
 
-                var membersTableBuilder = new MembersTableBuilder(visitor.CurrentNameSpace,visitor.Usings, 
+                var membersTableBuilder = new MembersTableBuilder(visitor.CurrentNameSpace, visitor.Usings, 
 					visitor.Classes, visitor.SingleFunctions, codeGenerator, typesProvider);
 
                 membersTableBuilder.PrepareTable(globalTypesList);

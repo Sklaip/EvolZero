@@ -15,18 +15,25 @@ namespace EvolZero.Core.MemebersModels
 		public readonly List<TypeDesc> CanExpandedTo = [];
 		public readonly List<GenericParamDesc> GenericParams = [];
 
-		public readonly ITypeRef TypeRef;
+		private ITypeRef? _typeRef;
+		public ITypeRef TypeRef
+		{
+			get => _typeRef ?? throw new InvalidOperationException("TypeRef has not been initialized.");
+			set
+			{
+				if (_typeRef != null) throw new InvalidOperationException("Value elready exists.");
+			}
+		}
 
 		public readonly bool IsBaseType = false;
 		public bool IsGeneric { get => GenericParams.Count > 0; }
 
-		public TypeDesc(string name, ITypeRef typeRef, Dictionary<string, VariableDesc> variables,
+		public TypeDesc(string name, Dictionary<string, VariableDesc> variables,
 			Dictionary<string, FuncDesc[]> functions, List<ConstructorDesc> constructors, List<DestructorDesc> destructors)
 		{
 			Name = name;
 			Variables = variables;
 			Functions = functions;
-			TypeRef = typeRef;
 			Constructors = constructors;
 			Destructors = destructors;
 		}
