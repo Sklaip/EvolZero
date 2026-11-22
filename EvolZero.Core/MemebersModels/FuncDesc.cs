@@ -19,13 +19,12 @@ namespace EvolZero.Core.MemebersModels
 		/// </summary>
 		public readonly TypeDesc? DeclaringType;
 
-		public FuncDesc(TypeSpec returnType, string name, Argument[] arguments, IFuncRefData refData,
-			bool isInfArgs, AccessModifier access, LifetimeDecl[] lifetimes, TypeDesc? declaringType)
+		public FuncDesc(TypeSpec returnType, string name, Argument[] arguments, bool isInfArgs, 
+			AccessModifier access, LifetimeDecl[] lifetimes, TypeDesc? declaringType)
 		{
 			ReturnType = returnType;
 			Name = name;
 			Arguments = arguments;
-			RefData = refData;
 			IsInfArgs = isInfArgs;
 			Access = access;
 			Lifetimes = lifetimes;

@@ -3,9 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace EvolZero.LSP
+namespace EvolZero.Core
 {
-	internal class TypeRefStub : ITypeRef
+	public class TypeRefStub : ITypeRef
 	{
 	}
 }

@@ -192,10 +192,11 @@ namespace EvolZero.Parsing
 				_parsedClasses.Add(currentClass.Name, classDesc);
 				generalTypesList.Add(currentClass.Name, classDesc);
 
-				foreach (var param in currentClass.GenericParams)
+				for (int i = 0; i < currentClass.GenericParams.Count; i++)
 				{
+					string? param = currentClass.GenericParams[i];
 					var genericParamName = $"{currentClass.Name}${param}";
-					var genericParam = new GenericParamDesc(genericParamName, null!, [], [], [], []);
+					var genericParam = new GenericParamDesc(genericParamName, null!, [], [], [], [], param, i);
 
 					_parsedClasses.Add(genericParamName, genericParam);
 					generalTypesList.Add(genericParamName, genericParam);

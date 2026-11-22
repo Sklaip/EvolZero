@@ -5,62 +5,28 @@ namespace EvolZero.Core
 	public class MembersRefsManager
 	{
 		private readonly IPlatformTypesProvider _typesProvider;
-		private Dictionary<TypeSpec, ITypeRef> _typesList = [];
+		private static readonly TypeRefStub _stub = new();
 
-		private class TypeFace
-		{
-			public readonly TypeDesc Type;
-			public readonly TypeSpec[] GenericParams;
+		/// <summary>
+		/// <see cref="ITypeRef"/> мы храним не на каждый TypeSpec, 
+		/// а только на уникальную связку Type и списка generic параметров
+		/// </summary>
+		private Dictionary<TypeSpec, ITypeRef> _typesList;
 
-			public bool GenericEquals(TypeFace other)
-			{
-				if (Type.IsGeneric != other.Type.IsGeneric || GenericParams.Length != other.GenericParams.Length)
-					return false;
-
-				for (int i = 0; i < other.GenericParams.Length; i++)
-				{
-					if (!other.GenericParams[i].Equals(GenericParams[i])) return false;
-				}
-
-				return true;
-			}
-
-			public bool Equals(TypeFace other)
-			{
-				return Type == other.Type && GenericEquals(other);
-			}
-
-			public override bool Equals(object? obj)
-			{
-				return obj is TypeFace && Equals((TypeFace)obj);
-			}
-
-			public override int GetHashCode()
-			{
-				var hashCode = new HashCode();
-				hashCode.Add(Type);
-
-				if (GenericParams != null)
-				{
-					foreach (var p in GenericParams)
-					{
-						hashCode.Add(p);
-					}
-				}
-
-				return hashCode.ToHashCode();
-			}
-		}
-
-
-		public MembersRefsManager(IPlatformTypesProvider typesProvider)
+		public MembersRefsManager(IPlatformTypesProvider typesProvider, Dictionary<TypeSpec, ITypeRef> baseTypes)
 		{
 			_typesProvider = typesProvider;
+			_typesList = baseTypes;
+		}
+
+		public void AddTypeSpec(TypeSpec typeSpec)
+		{
+			_typesList.TryAdd(GetKey(typeSpec), _stub);
 		}
 
 		public ITypeRef GetTypeRef(TypeSpec typeSpec)
 		{
-			return typeSpec.Type.TypeRef;
+			return _typesList[GetKey(typeSpec)];
 		}
 
 		public ITypeRef GetRealTypeRef(TypeSpec typeSpec)
@@ -72,6 +38,63 @@ namespace EvolZero.Core
 				return typeSpec.Qualifiers[0].GetTypeRef(_typesProvider, typeSpec.Qualifiers.Skip(1), baseType);
 
 			return typeSpec.Qualifiers[0].GetTypeRef(_typesProvider, [], baseType);
+		}
+
+		public void BuildSigantures(ICodeGenerator codeGenerator)
+		{
+			foreach (var (type, typeRef) in _typesList.ToArray())
+			{
+				CreateTypeBody(codeGenerator, type);
+			}
+		}
+
+		private ITypeRef CreateTypeBody(ICodeGenerator codeGenerator, TypeSpec typeSpec)
+		{
+			ITypeRef typeRef;
+			if (!typeSpec.Type.IsGeneric)
+			{
+				typeRef = codeGenerator.CreateStructure(typeSpec.Type.Name);
+			}
+			else
+			{
+				var genericParams = typeSpec.ConfiguredGenericParams;
+				string genericNameEnding = string.Join("__", genericParams.Select((x, i) => $"gp{i}{x.ToString("_")}"));
+				typeRef = codeGenerator.CreateStructure($"{typeSpec.Type.Name}__{genericNameEnding}");
+			}
+
+			_typesList[typeSpec] = typeRef;
+
+			var fieldsTypesRefs = new List<ITypeRef>();
+
+			var fields = typeSpec.Type.Variables.Values.OrderBy(x => x.Order);
+			foreach (var field in fields)
+			{
+				var fieldDeclaring = field.Declaring;
+				if (fieldDeclaring.Type is GenericParamDesc gpd)
+				{
+					fieldDeclaring = typeSpec.ConfiguredGenericParams[gpd.ParamIndex];
+				}
+
+				var simpleTypeSpec = GetKey(fieldDeclaring);
+				var fieldTypeRef = _typesList[simpleTypeSpec];
+
+				if (fieldTypeRef is TypeRefStub)
+				{
+					// Тело этого типа еще не создано, вызываем создание
+					fieldTypeRef = CreateTypeBody(codeGenerator, simpleTypeSpec);
+				}
+
+				fieldsTypesRefs.Add(GetRealTypeRef(field.Declaring));
+			}
+
+			codeGenerator.FillStructureBody(typeRef, fieldsTypesRefs);
+
+			return typeRef;
+		}
+
+		private TypeSpec GetKey(TypeSpec source)
+		{
+			return new TypeSpec(source.Type, [], source.ConfiguredGenericParams);
 		}
 	}
 }

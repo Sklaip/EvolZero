@@ -33,6 +33,13 @@
 			ConfiguredGenericParams = [];
 		}
 
+		public TypeSpec(TypeDesc type, Qualifier[] qualifiers, TypeSpec[] configuredGenericParams)
+		{
+			Type = type;
+			Qualifiers = qualifiers;
+			ConfiguredGenericParams = configuredGenericParams;
+		}
+
 		public bool QualifiersEquals(Qualifier[] qualifiers)
 		{
 			if (qualifiers == null || Qualifiers == null) return false;
@@ -134,7 +141,7 @@
 			return new TypeSpec(Type, Qualifiers.Skip(1).ToArray());
 		}
 
-		public override string ToString()
+		public string ToString(string separator)
 		{
 			if (!QualifiersExists) return Type.Name;
 
@@ -166,7 +173,9 @@
 				}
 			}
 
-			return string.Join(" ", items.Select(x => x.Text));
+			return string.Join(separator, items.Select(x => x.Text));
 		}
+
+		public override string ToString() => ToString(" ");
 	}
 }
