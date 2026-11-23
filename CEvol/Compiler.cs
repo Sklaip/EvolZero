@@ -69,9 +69,11 @@ namespace EvolZero
             var codeGenerator = BuildCodeGenerator(moduleName);
 			var typesProvider = new PlatformTypesProvider(codeGenerator);
 
+			var baseTypesRefs = new Dictionary<TypeDesc, ITypeRef>();
 
-			var globalMembersTable = BuildBaseMembersTable(codeGenerator);
+			var globalMembersTable = BuildBaseMembersTable(codeGenerator, baseTypesRefs);
             var globalTypesList = new Dictionary<string, TypeDesc>(globalMembersTable.Types);
+
 
             var errorsBag = new ErrorsBag(sourcesMap);
 
@@ -81,7 +83,7 @@ namespace EvolZero
                 visitor.Visit(unit.Tree);
 
                 var membersTableBuilder = new MembersTableBuilder(visitor.CurrentNameSpace, visitor.Usings, 
-					visitor.Classes, visitor.SingleFunctions, codeGenerator, typesProvider);
+					visitor.Classes, visitor.SingleFunctions, typesProvider);
 
                 membersTableBuilder.PrepareTable(globalTypesList);
                 unit.TableBuilder = membersTableBuilder;
@@ -117,9 +119,11 @@ namespace EvolZero
                 }
             }
 
-            foreach (var unit in units)
+			var refsManager = new MembersRefsManager(typesProvider, globalMembersTable, baseTypesRefs);
+
+			foreach (var unit in units)
             {
-                var logicVisitor = new LogicVisitor(finder, errorsBag, unit.FilePath);
+                var logicVisitor = new LogicVisitor(finder, refsManager, errorsBag, unit.FilePath);
                 logicVisitor.Visit(unit.Tree);
                 var statement = logicVisitor.ResultStatement;
 
@@ -140,7 +144,7 @@ namespace EvolZero
 
             if (!errorsBag.HasErrors)
             {
-                var emitter = new Emitter(codeGenerator);
+				var emitter = new Emitter(codeGenerator, refsManager);
                 emitter.Build(program);
 
                 Compile(emitter.CodeGenerator, outputFile);
@@ -151,36 +155,48 @@ namespace EvolZero
             }
         }
 
-        private MembersTable BuildBaseMembersTable(CodeGenerator codeGenerator)
+        private MembersTable BuildBaseMembersTable(CodeGenerator codeGenerator, Dictionary<TypeDesc, ITypeRef> baseTypesRefs)
         {
             var types = new Dictionary<string, TypeDesc>();
-            types["void"] = new TypeDesc("void", codeGenerator.GetType(BaseTypes.Void));
-            types["bool"] = new TypeDesc("bool", codeGenerator.GetType(BaseTypes.Bool));
-            types["byte"] = new IntegerTypeDesc("byte", codeGenerator.GetType(BaseTypes.Byte));
-            types["short"] = new IntegerTypeDesc("short", codeGenerator.GetType(BaseTypes.Short));
-            types["int"] = new IntegerTypeDesc("int", codeGenerator.GetType(BaseTypes.Int));
-            types["long"] = new IntegerTypeDesc("long", codeGenerator.GetType(BaseTypes.Long));
-            types["sbyte"] = new IntegerTypeDesc("sbyte", codeGenerator.GetType(BaseTypes.Byte));
-            types["ushort"] = new IntegerTypeDesc("ushort", codeGenerator.GetType(BaseTypes.Short));
-            types["uint"] = new IntegerTypeDesc("uint", codeGenerator.GetType(BaseTypes.Int));
-            types["ulong"] = new IntegerTypeDesc("long", codeGenerator.GetType(BaseTypes.Long));
-            types["float"] = new FloatTypeDesc("float", codeGenerator.GetType(BaseTypes.Float));
-            types["double"] = new FloatTypeDesc("double", codeGenerator.GetType(BaseTypes.Double));
+            types["void"] = new TypeDesc("void");
+			baseTypesRefs[types["void"]] = codeGenerator.GetType(BaseTypes.Void);
+			types["bool"] = new TypeDesc("bool");
+			baseTypesRefs[types["bool"]] = codeGenerator.GetType(BaseTypes.Bool);
+			types["byte"] = new IntegerTypeDesc("byte");
+			baseTypesRefs[types["byte"]] = codeGenerator.GetType(BaseTypes.Byte);
+			types["short"] = new IntegerTypeDesc("short");
+			baseTypesRefs[types["short"]] = codeGenerator.GetType(BaseTypes.Short);
+			types["int"] = new IntegerTypeDesc("int");
+			baseTypesRefs[types["int"]] = codeGenerator.GetType(BaseTypes.Int);
+			types["long"] = new IntegerTypeDesc("long");
+			baseTypesRefs[types["long"]] = codeGenerator.GetType(BaseTypes.Long);
+			types["sbyte"] = new IntegerTypeDesc("sbyte");
+			baseTypesRefs[types["sbyte"]] = codeGenerator.GetType(BaseTypes.Byte);
+			types["ushort"] = new IntegerTypeDesc("ushort");
+			baseTypesRefs[types["ushort"]] = codeGenerator.GetType(BaseTypes.Short);
+			types["uint"] = new IntegerTypeDesc("uint");
+			baseTypesRefs[types["uint"]] = codeGenerator.GetType(BaseTypes.Int);
+			types["ulong"] = new IntegerTypeDesc("long");
+			baseTypesRefs[types["ulong"]] = codeGenerator.GetType(BaseTypes.Long);
+			types["float"] = new FloatTypeDesc("float");
+			baseTypesRefs[types["float"]] = codeGenerator.GetType(BaseTypes.Float);
+			types["double"] = new FloatTypeDesc("double");
+			baseTypesRefs[types["double"]] = codeGenerator.GetType(BaseTypes.Double);
 
-            types["short"].CanExpandedTo.Add(types["int"]);
-            types["sbyte"].CanExpandedTo.Add(types["short"]);
+			types["short"].CanExpandedTo.Add(types["int"]);
+			types["sbyte"].CanExpandedTo.Add(types["short"]);
 
-            types["ushort"].CanExpandedTo.AddRange(types["uint"], types["int"]);
-            types["byte"].CanExpandedTo.AddRange(types["short"], types["ushort"]);
+			types["ushort"].CanExpandedTo.AddRange(types["uint"], types["int"]);
+			types["byte"].CanExpandedTo.AddRange(types["short"], types["ushort"]);
 
-            types["int"].CanExpandedTo.AddRange(types["long"], types["float"]);
-            types["uint"].CanExpandedTo.AddRange(types["long"], types["ulong"], types["float"]);
+			types["int"].CanExpandedTo.AddRange(types["long"], types["float"]);
+			types["uint"].CanExpandedTo.AddRange(types["long"], types["ulong"], types["float"]);
 
-            types["long"].CanExpandedTo.Add(types["double"]);
-            types["ulong"].CanExpandedTo.AddRange(types["double"]);
-            types["float"].CanExpandedTo.Add(types["double"]);
+			types["long"].CanExpandedTo.Add(types["double"]);
+			types["ulong"].CanExpandedTo.AddRange(types["double"]);
+			types["float"].CanExpandedTo.Add(types["double"]);
 
-            types[AnonymousObjectTypeDesc.TYPE_NAME] = new AnonymousObjectTypeDesc();
+			types[AnonymousObjectTypeDesc.TYPE_NAME] = new AnonymousObjectTypeDesc();
 
             return new MembersTable([], types);
         }

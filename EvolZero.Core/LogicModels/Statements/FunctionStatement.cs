@@ -15,12 +15,12 @@ namespace EvolZero.Core.LogicModels.Statements
 
 		public Argument[] Arguments => FunctionSignature.Arguments;
 
-		public IFuncRefData RefData => FunctionSignature.RefData;
-
 		public string Name => FunctionSignature.Name;
 
 		public override bool InevitableTerminating => LastStatementIsTerminating();
 
 		public LifetimeDecl[] Lifetimes => FunctionSignature.Lifetimes;
+
+		public IFunctionalBlockDesc BlockDesc => FunctionSignature;
 	}
 }

@@ -26,10 +26,10 @@ namespace EvolZero.Parsing
         private bool _currentClassConstructorHandled = false;
         private List<(string Name, FieldDeclContext Init)> _currentClassFieldInitializers = new();
 
-        public LogicVisitor(MembersFinder membersFinder, ErrorsBag errorsBag, string currentFile)
+        public LogicVisitor(MembersFinder membersFinder, MembersRefsManager refsManager, ErrorsBag errorsBag, string currentFile)
         {
             _typeAnalyzer = new TypeAnalyzer(membersFinder);
-            _semanticAnalyzer = new SemanticTreeBuilder(membersFinder, _typeAnalyzer, errorsBag);
+            _semanticAnalyzer = new SemanticTreeBuilder(membersFinder, _typeAnalyzer, refsManager, errorsBag);
             _membersFinder = membersFinder;
             _currentFile = currentFile;
         }

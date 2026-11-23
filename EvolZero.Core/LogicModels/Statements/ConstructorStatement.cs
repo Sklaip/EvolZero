@@ -1,7 +1,4 @@
 ﻿using EvolZero.Core.MemebersModels;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace EvolZero.Core.LogicModels.Statements
 {
@@ -20,12 +17,12 @@ namespace EvolZero.Core.LogicModels.Statements
 
 		public Argument[] Arguments => ConstuctorSignature.Arguments;
 
-		public IFuncRefData RefData => ConstuctorSignature.RefData;
-
 		public string Name => "ctor";
 
 		public override bool InevitableTerminating => LastStatementIsTerminating();
 
 		public LifetimeDecl[] Lifetimes => ConstuctorSignature.Lifetimes;
+
+		public IFunctionalBlockDesc BlockDesc => ConstuctorSignature;
 	}
 }

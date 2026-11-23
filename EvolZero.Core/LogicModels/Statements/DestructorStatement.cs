@@ -21,12 +21,12 @@ namespace EvolZero.Core.LogicModels.Statements
 
 		public Argument[] Arguments => [];
 
-		public IFuncRefData RefData => DestructorSignature.RefData;
-
 		public string Name => "dtor";
 
 		public override bool InevitableTerminating => LastStatementIsTerminating();
 
 		public LifetimeDecl[] Lifetimes => [];
+
+		public IFunctionalBlockDesc BlockDesc => DestructorSignature;
 	}
 }

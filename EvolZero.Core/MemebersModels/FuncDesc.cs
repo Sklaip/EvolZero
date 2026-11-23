@@ -4,12 +4,11 @@ using System.Text;
 
 namespace EvolZero.Core.MemebersModels
 {
-	public class FuncDesc
+	public class FuncDesc : IFunctionalBlockDesc
 	{
 		public readonly TypeSpec ReturnType;
 		public readonly string Name;
 		public readonly Argument[] Arguments;
-		public readonly IFuncRefData RefData;
 		public readonly bool IsInfArgs;
 		public readonly AccessModifier Access;
 		public readonly LifetimeDecl[] Lifetimes;

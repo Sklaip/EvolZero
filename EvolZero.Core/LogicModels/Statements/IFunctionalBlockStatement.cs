@@ -1,7 +1,4 @@
 ﻿using EvolZero.Core.MemebersModels;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace EvolZero.Core.LogicModels.Statements
 {
@@ -9,7 +6,7 @@ namespace EvolZero.Core.LogicModels.Statements
 	{
 		TypeSpec ReturnType { get; }
 		Argument[] Arguments { get; }
-		IFuncRefData RefData { get; }
+		IFunctionalBlockDesc BlockDesc { get; }
 		LifetimeDecl[] Lifetimes { get; }
 		string Name { get; }
 	}

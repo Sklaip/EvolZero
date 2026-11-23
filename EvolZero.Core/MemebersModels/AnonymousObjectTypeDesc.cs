@@ -7,7 +7,7 @@ namespace EvolZero.Core.MemebersModels
 	public class AnonymousObjectTypeDesc : TypeDesc
 	{
 		public const string TYPE_NAME = $"${nameof(AnonymousObjectTypeDesc)}";
-		public AnonymousObjectTypeDesc() : base(TYPE_NAME, null!)
+		public AnonymousObjectTypeDesc() : base(TYPE_NAME)
 		{
 		}
 	}

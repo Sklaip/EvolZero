@@ -13,22 +13,90 @@ namespace EvolZero.Core
 		/// </summary>
 		private Dictionary<TypeSpec, ITypeRef> _typesList;
 
-		public MembersRefsManager(IPlatformTypesProvider typesProvider, Dictionary<TypeSpec, ITypeRef> baseTypes)
+		private Dictionary<IFunctionalBlockDesc, Dictionary<FuncArgs, IFuncRefData>> _functionalBlocksList = new();
+
+		private readonly struct FuncArgs : IEquatable<FuncArgs>
+		{
+			public readonly TypeSpec[] Args;
+
+			public FuncArgs(TypeSpec[] args)
+			{
+				Args = args ?? Array.Empty<TypeSpec>();
+			}
+
+			public bool Equals(FuncArgs other)
+			{
+				var a = Args ?? Array.Empty<TypeSpec>();
+				var b = other.Args ?? Array.Empty<TypeSpec>();
+
+				if (ReferenceEquals(a, b))
+					return true;
+
+				if (a.Length != b.Length)
+					return false;
+
+				for (int i = 0; i < a.Length; i++)
+				{
+					if (!Equals(a[i], b[i]))
+						return false;
+				}
+
+				return true;
+			}
+
+			public override bool Equals(object? obj) => obj is FuncArgs other && Equals(other);
+
+			public override int GetHashCode()
+			{
+				var a = Args ?? Array.Empty<TypeSpec>();
+				var hash = new HashCode();
+
+				for (int i = 0; i < a.Length; i++)
+				{
+					hash.Add(a[i]);
+				}
+
+				return hash.ToHashCode();
+			}
+
+			public static bool operator ==(FuncArgs left, FuncArgs right) => left.Equals(right);
+
+			public static bool operator !=(FuncArgs left, FuncArgs right) => !left.Equals(right);
+		}
+
+		public MembersRefsManager(IPlatformTypesProvider typesProvider, MembersTable table, Dictionary<TypeDesc, ITypeRef> baseTypes)
 		{
 			_typesProvider = typesProvider;
-			_typesList = baseTypes;
+			_typesList = baseTypes.Select(x => (new TypeSpec(x.Key), x.Value)).ToDictionary();
+
+			foreach(var type in table.Types.Values)
+			{
+				if (type.IsGeneric) continue;
+				_typesList.TryAdd(new TypeSpec(type), _stub);
+			}
 		}
 
-		public void AddTypeSpec(TypeSpec typeSpec)
+		public void AddIfGeneric(TypeSpec typeSpec)
 		{
-			_typesList.TryAdd(GetKey(typeSpec), _stub);
+			if (typeSpec.ConfiguredGenericParams.Length > 0)
+				_typesList.TryAdd(GetKey(typeSpec), _stub);
 		}
 
+		/// <summary>
+		/// Возвращает <see cref="ITypeRef"/> без учета квалифиакторов, только Type + установленные Generic параметры
+		/// </summary>
+		/// <param name="typeSpec"></param>
+		/// <returns></returns>
 		public ITypeRef GetTypeRef(TypeSpec typeSpec)
 		{
 			return _typesList[GetKey(typeSpec)];
 		}
 
+		/// <summary>
+		/// Возвращает <see cref="ITypeRef"/> с учетом квалификаторов
+		/// </summary>
+		/// <param name="typeSpec"></param>
+		/// <returns></returns>
 		public ITypeRef GetRealTypeRef(TypeSpec typeSpec)
 		{
 			var baseType = GetTypeRef(typeSpec);
@@ -38,6 +106,24 @@ namespace EvolZero.Core
 				return typeSpec.Qualifiers[0].GetTypeRef(_typesProvider, typeSpec.Qualifiers.Skip(1), baseType);
 
 			return typeSpec.Qualifiers[0].GetTypeRef(_typesProvider, [], baseType);
+		}
+
+		public IFuncRefData GetFunctionalBlockRef(IFunctionalBlockDesc desc, IEnumerable<TypeSpec> arguments)
+		{
+			var args = arguments.Select(GetKey).ToArray();
+			return _functionalBlocksList[desc][new FuncArgs(args)];
+		}
+
+		/// <summary>
+		/// Возвращает все <see cref="IFuncRefData"/> для переданной функции. Если эта обычная функция, то значение будет только одно, 
+		/// в случае generic функций будут <see cref="IFuncRefData"/> на каждую конфигурацию generic параметров
+		/// </summary>
+		/// <param name="desc"></param>
+		/// <returns></returns>
+		public List<(IReadOnlyCollection<TypeSpec> args, IFuncRefData refData)> GetAllFunctionRefs(IFunctionalBlockDesc desc)
+		{
+			var refs = _functionalBlocksList[desc];
+			return refs.Select(x => ((IReadOnlyCollection<TypeSpec>)x.Key.Args, x.Value)).ToList();
 		}
 
 		public void BuildSigantures(ICodeGenerator codeGenerator)

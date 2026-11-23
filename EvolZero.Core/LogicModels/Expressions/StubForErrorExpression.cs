@@ -7,7 +7,7 @@ namespace EvolZero.Core.LogicModels.Expressions
 {
 	public class StubForErrorExpression : Expression
 	{
-		public StubForErrorExpression(PositionInSources pos) : base(new TypeSpec(new TypeDesc("ERROR", null!)), pos)
+		public StubForErrorExpression(PositionInSources pos) : base(new TypeSpec(new TypeDesc("ERROR")), pos)
 		{
 		}
 	}

@@ -15,16 +15,6 @@ namespace EvolZero.Core.MemebersModels
 		public readonly List<TypeDesc> CanExpandedTo = [];
 		public readonly List<GenericParamDesc> GenericParams = [];
 
-		private ITypeRef? _typeRef;
-		public ITypeRef TypeRef
-		{
-			get => _typeRef ?? throw new InvalidOperationException("TypeRef has not been initialized.");
-			set
-			{
-				if (_typeRef != null) throw new InvalidOperationException("Value elready exists.");
-			}
-		}
-
 		public readonly bool IsBaseType = false;
 		public bool IsGeneric { get => GenericParams.Count > 0; }
 
@@ -38,7 +28,7 @@ namespace EvolZero.Core.MemebersModels
 			Destructors = destructors;
 		}
 
-		public TypeDesc(string name, ITypeRef typeRef)
+		public TypeDesc(string name)
 		{
 			Name = name;
 			Variables = [];
@@ -46,7 +36,6 @@ namespace EvolZero.Core.MemebersModels
 			Constructors = [];
 			Destructors = [];
 			IsBaseType = true;
-			TypeRef = typeRef;
 		}
 	}
 }

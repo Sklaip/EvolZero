@@ -120,22 +120,6 @@
 			return hashCode.ToHashCode();
 		}
 
-		public ITypeRef GetTypeRef()
-		{
-			return Type.TypeRef;
-		}
-
-		public ITypeRef GetRealTypeRef(IPlatformTypesProvider typesProvider)
-		{
-			var baseType = Type.TypeRef;
-			if (!QualifiersExists) return baseType;
-
-			if (Qualifiers.Length > 1)
-				return Qualifiers[0].GetTypeRef(typesProvider, Qualifiers.Skip(1), baseType);
-
-			return Qualifiers[0].GetTypeRef(typesProvider, [], baseType);
-		}
-
 		public TypeSpec RemoveFirtsQualifier()
 		{
 			return new TypeSpec(Type, Qualifiers.Skip(1).ToArray());

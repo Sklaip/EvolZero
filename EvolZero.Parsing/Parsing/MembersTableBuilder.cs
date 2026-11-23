@@ -11,7 +11,6 @@ namespace EvolZero.Parsing
 		private HashSet<string> _usings { get; }
 		private Dictionary<string, ClassSignature> _classes = new();
 		private Dictionary<string, List<FuncSignature>> _singleFunctions = new();
-		private readonly ICodeGenerator _codeGenerator;
 		private Dictionary<string, TypeDesc> _parsedClasses = new();
 		private Dictionary<string, FuncDesc[]> _parsedSingleFunctions = new Dictionary<string, FuncDesc[]>();
 
@@ -19,13 +18,12 @@ namespace EvolZero.Parsing
 		private IPlatformTypesProvider _typesProvider;
 
 		public MembersTableBuilder(string currentNamespcae, HashSet<string> usings, Dictionary<string, ClassSignature> classes,
-			Dictionary<string, List<FuncSignature>> singleFunctions, ICodeGenerator codeGenerator, IPlatformTypesProvider typesProvider)
+			Dictionary<string, List<FuncSignature>> singleFunctions, IPlatformTypesProvider typesProvider)
 		{
 			_currentNameSpace = currentNamespcae;
 			_usings = usings;
 			_classes = classes;
 			_singleFunctions = singleFunctions;
-			_codeGenerator = codeGenerator;
 			_typesProvider = typesProvider;
 		}
 
@@ -39,7 +37,7 @@ namespace EvolZero.Parsing
 			}
 
 			// этого типа не существует
-			if (typeDesc == null) 
+			if (typeDesc == null)
 				throw new NotImplementedException();
 
 			return typeDesc;
@@ -64,15 +62,13 @@ namespace EvolZero.Parsing
 			return type;
 		}
 
-		private void ConstructorsAnalyze(List<ConstructorSignature> constructorsList, ICodeGenerator codeGenerator, TypeDesc currentClass)
+		private void ConstructorsAnalyze(List<ConstructorSignature> constructorsList, TypeDesc currentClass)
 		{
 			foreach (var ctor in constructorsList)
 			{
 				var arguments = new List<Argument>();
-				var agrumentsRefs = new List<ITypeRef>();
 
 				string funcName = $"{currentClass.Name}_ctor";
-				agrumentsRefs.Add(codeGenerator.PointerType);
 
 				if (ctor.Arguments != null)
 				{
@@ -81,13 +77,11 @@ namespace EvolZero.Parsing
 						TypeDesc argumentType = FindTypeForDeclaring(funcArgument.Type, currentClass.Name);
 						var declaring = new TypeSpec(argumentType, QualifierWorkpiece.ToQualifiers(funcArgument.Type.Qualifiers));
 						arguments.Add(new Argument(declaring, funcArgument.Name));
-						agrumentsRefs.Add(declaring.QualifiersExists ? codeGenerator.PointerType : argumentType.TypeRef);
 					}
 				}
 
 				IFuncRefData funcRefs;
 				bool infArgs = ctor.modifiers.Contains("infargs"); // TODO: енумом модификаторы сделать что ли, или флагами
-				funcRefs = codeGenerator.CreateFunctionSiganture(funcName, codeGenerator.VoidType, agrumentsRefs, infArgs);
 
 				LifetimeDecl[] lifetimes;
 				if (ctor.Lifetimes == null)
@@ -103,20 +97,16 @@ namespace EvolZero.Parsing
 					lifetimes = ctor.Lifetimes.ToArray();
 				}
 
-				currentClass.Constructors.Add(new ConstructorDesc(arguments.ToArray(), funcRefs, ctor.Access, lifetimes));
+				currentClass.Constructors.Add(new ConstructorDesc(arguments.ToArray(), ctor.Access, lifetimes));
 			}
 		}
 
-		private void DestructorsAnalyze(List<DestructorSignature> destructorsList, ICodeGenerator codeGenerator, TypeDesc currentClass)
+		private void DestructorsAnalyze(List<DestructorSignature> destructorsList, TypeDesc currentClass)
 		{
 			foreach (var dtor in destructorsList)
 			{
 				string funcName = $"{currentClass.Name}_dtor";
-
-				IFuncRefData funcRefs;
-				funcRefs = codeGenerator.CreateFunctionSiganture(funcName, codeGenerator.VoidType, [codeGenerator.PointerType], false);
-
-				currentClass.Destructors.Add(new DestructorDesc(funcRefs, dtor.Access));
+				currentClass.Destructors.Add(new DestructorDesc(dtor.Access));
 			}
 		}
 
@@ -133,13 +123,11 @@ namespace EvolZero.Parsing
 					var returnTypeQualifers = QualifierWorkpiece.ToQualifiers(func.ReturnType.Qualifiers);
 
 					var arguments = new List<Argument>();
-					var agrumentsRefs = new List<ITypeRef>();
 
 					string funcName;
 					if (currentClass != null)
 					{
 						funcName = $"{currentClass.Name}_{func.Name}"; // TODO: если неколько функций с одним именем, то это в названии надо учитывать
-						agrumentsRefs.Add(_codeGenerator.PointerType);
 					}
 					else
 					{
@@ -153,19 +141,14 @@ namespace EvolZero.Parsing
 							TypeDesc argumentType = FindTypeForDeclaring(funcArgument.Type, currentClass?.Name);
 							var declaring = new TypeSpec(argumentType, QualifierWorkpiece.ToQualifiers(funcArgument.Type.Qualifiers));
 							arguments.Add(new Argument(declaring, funcArgument.Name));
-							agrumentsRefs.Add(declaring.QualifiersExists ? _codeGenerator.PointerType : argumentType.TypeRef);
 						}
 					}
 
-					IFuncRefData funcRefs;
 					bool infArgs = func.modifiers.Contains("infargs"); // TODO: енумом модификаторы сделать что ли, или флагами
 					var resutlTypeSpec = new TypeSpec(returnType, returnTypeQualifers);
-					var rusltTypeRef = resutlTypeSpec.GetRealTypeRef(_typesProvider);
 
-					funcRefs = _codeGenerator.CreateFunctionSiganture(funcName, rusltTypeRef, agrumentsRefs, infArgs);
-
-					var funcDesc = new FuncDesc(resutlTypeSpec, func.Name, arguments.ToArray(), funcRefs,
-						infArgs, func.Access, func.Lifetimes?.ToArray() ?? [], currentClass);
+					var funcDesc = new FuncDesc(resutlTypeSpec, func.Name, arguments.ToArray(), infArgs, func.Access,
+						func.Lifetimes?.ToArray() ?? [], currentClass);
 					funcList.Add(funcDesc);
 				}
 
@@ -186,8 +169,7 @@ namespace EvolZero.Parsing
 					throw new NotImplementedException();
 				}
 
-				var classStructure = _codeGenerator.CreateStructure(currentClass.Name);
-				var classDesc = new TypeDesc(currentClass.Name, classStructure, [], [], [], []);
+				var classDesc = new TypeDesc(currentClass.Name, [], [], [], []);
 
 				_parsedClasses.Add(currentClass.Name, classDesc);
 				generalTypesList.Add(currentClass.Name, classDesc);
@@ -212,7 +194,6 @@ namespace EvolZero.Parsing
 			{
 				var currentClassTypeDesc = _parsedClasses[currentClass.Name];
 
-				var filedTypes = new List<ITypeRef>();
 				uint fieldNum = 0;
 				foreach (var field in currentClass.Fields.Values)
 				{
@@ -223,19 +204,15 @@ namespace EvolZero.Parsing
 					var typeSpec = new TypeSpec(fieldType, qualifers);
 					currentClassTypeDesc.Variables.Add(field.Name, new VariableDesc(typeSpec, field.Name, fieldNum, field.Access));
 
-					filedTypes.Add(typeSpec.GetRealTypeRef(_typesProvider));
-
 					fieldNum++;
 				}
-
-				_codeGenerator.FillStructureBody(currentClassTypeDesc.TypeRef, filedTypes);
 
 				if (currentClass.Ctors.Count == 0) currentClass.Ctors.Add(new ConstructorSignature(null, [], AccessModifier.Public, []));
 				if (currentClass.Dtors.Count == 0) currentClass.Dtors.Add(new DestructorSignature([], AccessModifier.Public));
 
 				FunctionsAnalyze(currentClass.Functions, currentClassTypeDesc.Functions, currentClassTypeDesc);
-				ConstructorsAnalyze(currentClass.Ctors, _codeGenerator, currentClassTypeDesc);
-				DestructorsAnalyze(currentClass.Dtors, _codeGenerator, currentClassTypeDesc);
+				ConstructorsAnalyze(currentClass.Ctors, currentClassTypeDesc);
+				DestructorsAnalyze(currentClass.Dtors, currentClassTypeDesc);
 			}
 		}
 

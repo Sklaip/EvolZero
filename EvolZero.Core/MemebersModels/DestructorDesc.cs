@@ -4,14 +4,12 @@ using System.Text;
 
 namespace EvolZero.Core.MemebersModels
 {
-	public class DestructorDesc
+	public class DestructorDesc : IFunctionalBlockDesc
 	{
-		public readonly IFuncRefData RefData;
 		public readonly AccessModifier Access;
 
-		public DestructorDesc(IFuncRefData refData, AccessModifier access)
+		public DestructorDesc(AccessModifier access)
 		{
-			RefData = refData;
 			Access = access;
 		}
 

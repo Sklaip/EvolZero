@@ -17,6 +17,7 @@ namespace EvolZero.Core.Analysis
 
 		private readonly MembersFinder _membersFinder;
 		private readonly TypeAnalyzer _typeAnalyzer;
+		private readonly MembersRefsManager _refsManager;
 		private readonly ErrorsBag _errorsBag;
 
 		private Stack<CodeBlock> _blocks = new();
@@ -60,10 +61,11 @@ namespace EvolZero.Core.Analysis
 			}
 		}
 
-		public SemanticTreeBuilder(MembersFinder membersFinder, TypeAnalyzer typeAnalyzer, ErrorsBag errorsBag)
+		public SemanticTreeBuilder(MembersFinder membersFinder, TypeAnalyzer typeAnalyzer, MembersRefsManager refsManager, ErrorsBag errorsBag)
 		{
 			_membersFinder = membersFinder;
 			_typeAnalyzer = typeAnalyzer;
+			_refsManager = refsManager;
 			_errorsBag = errorsBag;
 		}
 
@@ -561,7 +563,8 @@ namespace EvolZero.Core.Analysis
 				return new StubForErrorExpression(CurrentPosition);
 
 			Expression[] realArgs = new Expression[arguments.Length + 1];
-			realArgs[0] = instanceGetting.ResultTypeSpec.IsRef ? instanceGetting : new GetPointerToVarExpression(instanceGetting, false, CurrentPosition);
+			realArgs[0] = instanceGetting.ResultTypeSpec.IsRef ? 
+				instanceGetting : new GetPointerToVarExpression(instanceGetting, false, CurrentPosition);
 
 			for (int i = 1; i <= arguments.Length; i++)
 			{
@@ -1043,6 +1046,8 @@ namespace EvolZero.Core.Analysis
 				res = new DoNotAutoDereferenceIfPointerExpression(res, true, res.Pos);
 			}
 
+			_refsManager.AddIfGeneric(declaring);
+
 			return res;
 		}
 
@@ -1185,6 +1190,8 @@ namespace EvolZero.Core.Analysis
 
 				return new StructureFieldAccessExpression(field.Type, thisGetting, fieldDeclaring, field.IsInit, CurrentPosition);
 			}
+
+			_refsManager.AddIfGeneric(value.Type);
 
 			return new VariableAccessExpression(name, value.Type, value.IsInit, CurrentPosition);
 		}
