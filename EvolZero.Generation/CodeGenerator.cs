@@ -66,8 +66,9 @@ namespace EvolZero.Generation
             {
                 FuncRef = func,
                 TypeRef = funcType,
-                ArgumentsTypes = argumentsTypesArray
-            };
+                ArgumentsTypes = argumentsTypesArray,
+				argumentsTypes = argumentsTypes
+			};
         }
 
         public FuncAccessData StartFunctionBodyFill(IFuncRefData funcRefData, string funcName, ITypeRef resultType, IEnumerable<ITypeRef> argumentsTypes)

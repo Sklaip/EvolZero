@@ -75,20 +75,31 @@ namespace EvolZero.Core
 				if (type.IsGeneric) continue;
 				_typesList.TryAdd(new TypeSpec(type), _typeStub);
 
-				AddFunctions(type.Functions.Values.SelectMany(x => x));
-				AddFunctions(type.Constructors);
-				AddFunctions(type.Destructors);
+				AddFunctions(type.Functions.Values.SelectMany(x => x), type);
+				AddFunctions(type.Constructors, type);
+				AddFunctions(type.Destructors, type);
 			}
 
-			AddFunctions(table.Functions.Values.SelectMany(x => x));
+			AddFunctions(table.Functions.Values.SelectMany(x => x), null);
 		}
 
-		private void AddFunctions(IEnumerable<IFunctionalBlockDesc> functions)
+		private void AddFunctions(IEnumerable<IFunctionalBlockDesc> functions, TypeDesc? parentType)
 		{
 			foreach (var func in functions)
 			{
-				var args = func.Arguments.Select(x => GetKey(x.Declaring)).ToArray();
-				var configuredArgs = func.Arguments.Select(x => x.Declaring).ToArray();
+				// TODO: тоже такой хуйни быть здесь не должно, продумаать это архитектурно
+				TypeSpec[] configuredArgs;
+				TypeSpec[] args;
+				if (parentType != null)
+				{
+					configuredArgs = [new TypeSpec(parentType), .. func.Arguments.Select(x => x.Declaring).ToArray()];
+					args = [new TypeSpec(parentType), .. func.Arguments.Select(x => GetKey(x.Declaring))];
+				}
+				else
+				{
+					configuredArgs = func.Arguments.Select(x => x.Declaring).ToArray();
+					args = func.Arguments.Select(x => GetKey(x.Declaring)).ToArray();
+				}
 
 				_functionalBlocksList[func] = new Dictionary<FuncArgs, (IFuncRefData refData, TypeSpec[] configuredArgs)>()
 				{
@@ -145,7 +156,16 @@ namespace EvolZero.Core
 		public IFuncRefData GetFunctionalBlockRef(IFunctionalBlockDesc desc, IEnumerable<TypeSpec> arguments)
 		{
 			var args = arguments.Select(GetKey).ToArray();
-			return _functionalBlocksList[desc][new FuncArgs(args)].refData;
+
+			// TODO: нормально это сделать, оно работает до первого дженерика с infargs и вообще это костыль, здесь этой прверки быть не должно
+			if (desc.IsInfArgs)
+			{
+				return _functionalBlocksList[desc].First().Value.refData;
+			}
+
+			var xer = _functionalBlocksList[desc];
+
+			return xer[new FuncArgs(args)].refData;
 		}
 
 		/// <summary>
@@ -164,6 +184,7 @@ namespace EvolZero.Core
 		{
 			foreach (var (type, typeRef) in _typesList.ToArray())
 			{
+				if (typeRef is not TypeRefStub) continue;
 				CreateTypeBody(codeGenerator, type);
 			}
 
@@ -175,8 +196,17 @@ namespace EvolZero.Core
 				{
 					var configuredArgs = refs.First(); // специально делаем first, чтобы если что-то пошло не так и было 0 элементов в refs, то тут выбило исключение, а не хрен пойми что произошло потом
 
-					var typesRefs = args.Select(x => GetRealTypeRef(x.Declaring));
-					var funcRef = codeGenerator.CreateFunctionSiganture(blockDesc.Name, 
+					var typesRefs = new List<ITypeRef>();
+
+					// TODO: вот этой поеботу тут быть нне должно, это костыль ебанный
+					if ((blockDesc is ConstructorDesc or DestructorDesc) || ((blockDesc is FuncDesc func) && func.DeclaringType != null))
+					{
+						typesRefs.Add(_typesProvider.PointerType);
+					}
+
+					typesRefs.AddRange(args.Select(x => GetRealTypeRef(x.Declaring)));
+
+					var funcRef = codeGenerator.CreateFunctionSiganture(blockDesc.Name,
 						GetRealTypeRef(blockDesc.ReturnType), typesRefs, blockDesc.IsInfArgs);
 
 					_functionalBlocksList[blockDesc][configuredArgs.Key] = (funcRef, args.Select(x => x.Declaring).ToArray());
@@ -187,6 +217,12 @@ namespace EvolZero.Core
 					foreach (var configuredArgs in refs.Keys)
 					{
 						var typesRefs = new List<ITypeRef>();
+
+						// TODO: вот этой поеботу тут быть нне должно, это костыль ебанный
+						if ((blockDesc is ConstructorDesc or DestructorDesc) || ((blockDesc is FuncDesc func) && func.DeclaringType != null))
+						{
+							typesRefs.Add(_typesProvider.PointerType);
+						}
 
 						string genericEndingName = "__";
 
