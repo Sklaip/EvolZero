@@ -39,11 +39,11 @@ namespace EvolZero.Generation
             DeclareMalloc();
             DeclareFree();
 
-            PointerType = new TypeRef(GetPointerType());
+            PointerType = new TypeRef(GetPointerType(), null, true);
             VoidType = new TypeRef(_context.VoidType);
         }
 
-        public ITypeRef GetType(BaseTypes type) => new TypeRef(BaseTypeToLLVMType(type));
+        public ITypeRef GetType(BaseTypes type) => new TypeRef(BaseTypeToLLVMType(type), type);
 
         public ITypeRef CreateStructure(string name)
         {

@@ -97,16 +97,18 @@ namespace EvolZero.Parsing
 					lifetimes = ctor.Lifetimes.ToArray();
 				}
 
-				currentClass.Constructors.Add(new ConstructorDesc(arguments.ToArray(), ctor.Access, lifetimes));
+				var voidType = new TypeSpec(_existsClasses["void"]);
+				currentClass.Constructors.Add(new ConstructorDesc(arguments.ToArray(), ctor.Access, lifetimes, voidType));
 			}
 		}
 
 		private void DestructorsAnalyze(List<DestructorSignature> destructorsList, TypeDesc currentClass)
 		{
+			var voidType = new TypeSpec(_existsClasses["void"]);
 			foreach (var dtor in destructorsList)
 			{
 				string funcName = $"{currentClass.Name}_dtor";
-				currentClass.Destructors.Add(new DestructorDesc(dtor.Access));
+				currentClass.Destructors.Add(new DestructorDesc(dtor.Access, voidType));
 			}
 		}
 

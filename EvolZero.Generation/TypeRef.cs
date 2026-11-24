@@ -3,5 +3,5 @@ using LLVMSharp.Interop;
 
 namespace EvolZero.Generation
 {
-	public record TypeRef(LLVMTypeRef Type) : ITypeRef;
+	public record TypeRef(LLVMTypeRef Type, BaseTypes? baseType = null, bool isPtr = false) : ITypeRef;
 }

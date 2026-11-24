@@ -1046,7 +1046,7 @@ namespace EvolZero.Core.Analysis
 				res = new DoNotAutoDereferenceIfPointerExpression(res, true, res.Pos);
 			}
 
-			_refsManager.AddIfGeneric(declaring);
+			_refsManager.AddTypeIfGeneric(declaring);
 
 			return res;
 		}
@@ -1191,7 +1191,7 @@ namespace EvolZero.Core.Analysis
 				return new StructureFieldAccessExpression(field.Type, thisGetting, fieldDeclaring, field.IsInit, CurrentPosition);
 			}
 
-			_refsManager.AddIfGeneric(value.Type);
+			_refsManager.AddTypeIfGeneric(value.Type);
 
 			return new VariableAccessExpression(name, value.Type, value.IsInit, CurrentPosition);
 		}

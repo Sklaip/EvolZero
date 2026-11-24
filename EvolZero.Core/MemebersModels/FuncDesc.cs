@@ -6,10 +6,10 @@ namespace EvolZero.Core.MemebersModels
 {
 	public class FuncDesc : IFunctionalBlockDesc
 	{
-		public readonly TypeSpec ReturnType;
-		public readonly string Name;
-		public readonly Argument[] Arguments;
-		public readonly bool IsInfArgs;
+		public TypeSpec ReturnType { get; private set; }
+		public string Name { get; private set; }
+		public Argument[] Arguments { get; private set; }
+		public bool IsInfArgs { get; private set; }
 		public readonly AccessModifier Access;
 		public readonly LifetimeDecl[] Lifetimes;
 

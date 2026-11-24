@@ -144,6 +144,7 @@ namespace EvolZero
 
             if (!errorsBag.HasErrors)
             {
+				refsManager.BuildSigantures(codeGenerator);
 				var emitter = new Emitter(codeGenerator, refsManager);
                 emitter.Build(program);
 
