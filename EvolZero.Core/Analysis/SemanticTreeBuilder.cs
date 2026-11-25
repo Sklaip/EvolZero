@@ -124,37 +124,28 @@ namespace EvolZero.Core.Analysis
 		private void EnterToMethod(CodeBlock block, ClassStatement currentClass, string funcName, List<(TypeSpec Type, string Name)> parameters)
 		{
 			MethodDesc? methodDesc = null;
-			bool errorOccured = true;
-			try
+
+			_membersFinder.SetCurrentType(currentClass.TypeDesc);
+
+			var functions = _membersFinder.FindMethod(currentClass.TypeDesc, funcName);
+			if (functions == null)
 			{
-				_membersFinder.SetCurrentType(currentClass.TypeDesc);
-
-				var functions = _membersFinder.FindMethod(currentClass.TypeDesc, funcName);
-				if (functions == null)
-				{
-					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "A function with that name was not found", CurrentPosition);
-					return;
-				}
-
-				methodDesc = _typeAnalyzer.FindSuitableFunction(functions, parameters.Select(x => x.Type), out _);
-
-				_membersFinder.ClearCurrentType();
-
-				if (methodDesc == null)
-				{
-					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Function overload with specified arguments could not be found", CurrentPosition);
-					return;
-				}
-
-				errorOccured = false;
+				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "A function with that name was not found", CurrentPosition);
+				var stubStm = new FunctionStatement(null!, [], CurrentPosition);
+				_blocks.Push(new CodeBlock(stubStm, [], [], [], stubStm, currentClass));
+				return;
 			}
-			finally
+
+			methodDesc = _typeAnalyzer.FindSuitableFunction(functions, parameters.Select(x => x.Type), out _);
+
+			_membersFinder.ClearCurrentType();
+
+			if (methodDesc == null)
 			{
-				if (errorOccured)
-				{
-					var stubStm = new FunctionStatement(null!, [], CurrentPosition);
-					_blocks.Push(new CodeBlock(stubStm, [], [], [], stubStm, currentClass));
-				}
+				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Function overload with specified arguments could not be found", CurrentPosition);
+				var stubStm = new FunctionStatement(null!, [], CurrentPosition);
+				_blocks.Push(new CodeBlock(stubStm, [], [], [], stubStm, currentClass));
+				return;
 			}
 
 			var childs = new List<ILogicModel>();
@@ -177,33 +168,23 @@ namespace EvolZero.Core.Analysis
 		private void EnterToSingleFunction(CodeBlock block, string funcName, List<(TypeSpec Type, string Name)> parameters)
 		{
 			FuncDesc? funcDesc = null;
-			bool errorOccured = true;
-			try
+			var functions = _membersFinder.FindFunction(funcName);
+			if (functions == null)
 			{
-				var functions = _membersFinder.FindFunction(funcName);
-				if (functions == null)
-				{
-					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "A function with that name was not found", CurrentPosition);
-					return;
-				}
-
-				funcDesc = _typeAnalyzer.FindSuitableFunction(functions, parameters.Select(x => x.Type), out _);
-
-				if (funcDesc == null)
-				{
-					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Function overload with specified arguments could not be found", CurrentPosition);
-					return;
-				}
-
-				errorOccured = false;
+				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "A function with that name was not found", CurrentPosition);
+				var stubStm = new FunctionStatement(null!, [], CurrentPosition);
+				_blocks.Push(new CodeBlock(stubStm, [], [], [], stubStm, null));
+				return;
 			}
-			finally
+
+			funcDesc = _typeAnalyzer.FindSuitableFunction(functions, parameters.Select(x => x.Type), out _);
+
+			if (funcDesc == null)
 			{
-				if (errorOccured)
-				{
-					var stubStm = new FunctionStatement(null!, [], CurrentPosition);
-					_blocks.Push(new CodeBlock(stubStm, [], [], [], stubStm, null));
-				}
+				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Function overload with specified arguments could not be found", CurrentPosition);
+				var stubStm = new FunctionStatement(null!, [], CurrentPosition);
+				_blocks.Push(new CodeBlock(stubStm, [], [], [], stubStm, null));
+				return;
 			}
 
 			var childs = new List<ILogicModel>();
