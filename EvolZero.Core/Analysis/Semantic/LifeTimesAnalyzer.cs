@@ -519,17 +519,17 @@ namespace EvolZero.Core.Analysis.Semantic
                 VarData = varMeta
             };
 
-            // обнуляем текущий лайфтайм в который сейчас происходит присвоение
-            _transmissionsSequence.AddNull();
-
             ValueMeta? thisGetting = null; // если это метод класса, здесь будет лайфтайм this, если обычная функция, то просто null
             if (instanceGetting != null)
             {
-                thisGetting = HandleExpression(instanceGetting);
-            }
+				// обнуляем текущий лайфтайм в который сейчас происходит присвоение
+				_transmissionsSequence.AddNull();
 
-            // возвращаем лайфтайм обратно
-            _transmissionsSequence.RemoveCurrent();
+				thisGetting = HandleExpression(instanceGetting);
+
+				// возвращаем лайфтайм обратно
+				_transmissionsSequence.RemoveCurrent();
+			}
 
             bool linkWithThisExists = false;
             bool linkWithReturnExists = false;
@@ -555,7 +555,12 @@ namespace EvolZero.Core.Analysis.Semantic
                 linkWithReturnExists = linkWithReturnExists || res.LinkWithReturn;
 
                 var arg = HandleExpression(passedArguments[i]);
-                if (arg == null) continue;
+                if (arg == null)
+				{
+					_transmissionsSequence.RemoveCurrent();
+					continue;
+				}
+
                 PassToArgumentHandler(acceptedArguments[i], arg, res);
 
                 if (res.LinkWithReturn && !arg.IsAnonymous)
