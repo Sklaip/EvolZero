@@ -59,7 +59,7 @@ namespace EvolZero.Core.Analysis.Semantic
 			return Is(second, first, out _);
 		}
 
-		public FuncDesc? FindSuitableFunction(FuncDesc[] functions, IEnumerable<TypeSpec> arguments, out TypeSpec?[] downcasts)
+		public T? FindSuitableFunction<T>(T[] functions, IEnumerable<TypeSpec> arguments, out TypeSpec?[] downcasts) where T : IFunctionalBlockDesc
 		{
 			// TODO: проверять что подходит только одна функция, если подходит несколько то выдавать ошибку
 			foreach (var func in functions)
@@ -89,7 +89,7 @@ namespace EvolZero.Core.Analysis.Semantic
 			}
 
 			downcasts = [];
-			return null;
+			return default;
 		}
 
 		public ConstructorDesc? FindSuitableConstructor(IEnumerable<ConstructorDesc> constructors, IEnumerable<TypeSpec> arguments)

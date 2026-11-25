@@ -121,43 +121,26 @@ namespace EvolZero.Core.Analysis
 			_blocks.Push(new CodeBlock(statement, childs, [], null, null, statement));
 		}
 
-		public void EnterToFunction(string funcName, List<(TypeSpec Type, string Name)> parameters)
+		private void EnterToMethod(CodeBlock block, ClassStatement currentClass, string funcName, List<(TypeSpec Type, string Name)> parameters)
 		{
-			CodeBlock block = _blocks.Peek();
-			var currentClass = block.CurrentClass;
-
-			FuncDesc? funcDesc = null;
+			MethodDesc? methodDesc = null;
 			bool errorOccured = true;
 			try
 			{
-				if (currentClass != null)
+				_membersFinder.SetCurrentType(currentClass.TypeDesc);
+
+				var functions = _membersFinder.FindMethod(currentClass.TypeDesc, funcName);
+				if (functions == null)
 				{
-					_membersFinder.SetCurrentType(currentClass.TypeDesc);
-
-					var functions = _membersFinder.FindFunction(currentClass.TypeDesc, funcName);
-					if (functions == null)
-					{
-						_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "A function with that name was not found", CurrentPosition);
-						return;
-					}
-
-					funcDesc = _typeAnalyzer.FindSuitableFunction(functions, parameters.Select(x => x.Type), out _);
-
-					_membersFinder.ClearCurrentType();
-				}
-				else
-				{
-					var functions = _membersFinder.FindFunction(funcName);
-					if (functions == null)
-					{
-						_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "A function with that name was not found", CurrentPosition);
-						return;
-					}
-
-					funcDesc = _typeAnalyzer.FindSuitableFunction(functions, parameters.Select(x => x.Type), out _);
+					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "A function with that name was not found", CurrentPosition);
+					return;
 				}
 
-				if (funcDesc == null)
+				methodDesc = _typeAnalyzer.FindSuitableFunction(functions, parameters.Select(x => x.Type), out _);
+
+				_membersFinder.ClearCurrentType();
+
+				if (methodDesc == null)
 				{
 					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Function overload with specified arguments could not be found", CurrentPosition);
 					return;
@@ -175,6 +158,55 @@ namespace EvolZero.Core.Analysis
 			}
 
 			var childs = new List<ILogicModel>();
+			var statement = new MethodStatement(methodDesc, childs, CurrentPosition);
+
+			block.StatementChilds.Add(statement);
+
+			var variables = new Dictionary<string, Var>();
+
+			foreach (var param in parameters)
+			{
+				variables[param.Name] = new(param.Type, true);
+			}
+
+			var classFields = currentClass.TypeDesc.Variables.Values.Select(x => (x.Name, new Field(x, true))).ToDictionary();
+
+			_blocks.Push(new CodeBlock(statement, childs, variables, classFields, statement, currentClass));
+		}
+
+		private void EnterToSingleFunction(CodeBlock block, string funcName, List<(TypeSpec Type, string Name)> parameters)
+		{
+			FuncDesc? funcDesc = null;
+			bool errorOccured = true;
+			try
+			{
+				var functions = _membersFinder.FindFunction(funcName);
+				if (functions == null)
+				{
+					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "A function with that name was not found", CurrentPosition);
+					return;
+				}
+
+				funcDesc = _typeAnalyzer.FindSuitableFunction(functions, parameters.Select(x => x.Type), out _);
+
+				if (funcDesc == null)
+				{
+					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Function overload with specified arguments could not be found", CurrentPosition);
+					return;
+				}
+
+				errorOccured = false;
+			}
+			finally
+			{
+				if (errorOccured)
+				{
+					var stubStm = new FunctionStatement(null!, [], CurrentPosition);
+					_blocks.Push(new CodeBlock(stubStm, [], [], [], stubStm, null));
+				}
+			}
+
+			var childs = new List<ILogicModel>();
 			var statement = new FunctionStatement(funcDesc, childs, CurrentPosition);
 
 			block.StatementChilds.Add(statement);
@@ -186,9 +218,22 @@ namespace EvolZero.Core.Analysis
 				variables[param.Name] = new(param.Type, true);
 			}
 
-			var classFields = currentClass?.TypeDesc.Variables.Values.Select(x => (x.Name, new Field(x, true))).ToDictionary();
+			_blocks.Push(new CodeBlock(statement, childs, variables, null, statement, null));
+		}
 
-			_blocks.Push(new CodeBlock(statement, childs, variables, classFields, statement, currentClass));
+		public void EnterToFunction(string funcName, List<(TypeSpec Type, string Name)> parameters)
+		{
+			CodeBlock block = _blocks.Peek();
+			var currentClass = block.CurrentClass;
+
+			if (currentClass != null)
+			{
+				EnterToMethod(block, currentClass, funcName, parameters);
+			}
+			else
+			{
+				EnterToSingleFunction(block, funcName, parameters);
+			}
 		}
 
 		public void EnterToConstructor(List<(TypeSpec Type, string Name)> parameters)
@@ -542,7 +587,7 @@ namespace EvolZero.Core.Analysis
 			var arguments = args.Select(x => AutoDereferenceIfPointer(x, true)).ToArray();
 
 			// TODO: проверить instanceGetting на валидность
-			var funcs = _membersFinder.FindFunction(instanceGetting.ResultTypeSpec.Type, name);
+			var funcs = _membersFinder.FindMethod(instanceGetting.ResultTypeSpec.Type, name);
 			if (funcs == null)
 			{
 				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB",
@@ -562,15 +607,14 @@ namespace EvolZero.Core.Analysis
 			if (!ValidateReferenceQualifiers(arguments, funcDesc.Arguments))
 				return new StubForErrorExpression(CurrentPosition);
 
-			Expression[] realArgs = new Expression[arguments.Length + 1];
-			realArgs[0] = instanceGetting.ResultTypeSpec.IsRef ? 
+			Expression[] realArgs = new Expression[arguments.Length];
+			var instanceGetter = instanceGetting.ResultTypeSpec.IsRef ?
 				instanceGetting : new GetPointerToVarExpression(instanceGetting, false, CurrentPosition);
 
-			for (int i = 1; i <= arguments.Length; i++)
+			for (int i = 0; i < arguments.Length; i++)
 			{
-				var sourceArgumentIndex = i - 1;
-				var currentCast = casts[sourceArgumentIndex];
-				var currentArg = arguments[sourceArgumentIndex];
+				var currentCast = casts[i];
+				var currentArg = arguments[i];
 
 				if (currentCast.HasValue && (currentArg.ResultTypeSpec.Type is IntegerTypeDesc))
 				{
@@ -582,7 +626,7 @@ namespace EvolZero.Core.Analysis
 				}
 			}
 
-			return new CallFunctionExpression(realArgs, funcDesc, CurrentPosition);
+			return new CallMethodExpression(instanceGetter, realArgs, funcDesc, CurrentPosition);
 		}
 
 		public Expression CreateObject(TypeSpec type, Expression[]? args, Expression? objInitializer, bool inHeap)

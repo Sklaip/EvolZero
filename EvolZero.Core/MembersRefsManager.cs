@@ -199,7 +199,7 @@ namespace EvolZero.Core
 					var typesRefs = new List<ITypeRef>();
 
 					// TODO: вот этой поеботу тут быть нне должно, это костыль ебанный
-					if ((blockDesc is ConstructorDesc or DestructorDesc) || ((blockDesc is FuncDesc func) && func.DeclaringType != null))
+					if ((blockDesc is ConstructorDesc or DestructorDesc) || (blockDesc is MethodDesc))
 					{
 						typesRefs.Add(_typesProvider.PointerType);
 					}
@@ -219,7 +219,7 @@ namespace EvolZero.Core
 						var typesRefs = new List<ITypeRef>();
 
 						// TODO: вот этой поеботу тут быть нне должно, это костыль ебанный
-						if ((blockDesc is ConstructorDesc or DestructorDesc) || ((blockDesc is FuncDesc func) && func.DeclaringType != null))
+						if ((blockDesc is ConstructorDesc or DestructorDesc) || (blockDesc is MethodDesc))
 						{
 							typesRefs.Add(_typesProvider.PointerType);
 						}

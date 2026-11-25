@@ -10,16 +10,15 @@ namespace EvolZero.Core.MemebersModels
 		public string Name { get; private set; }
 		public Argument[] Arguments { get; private set; }
 		public bool IsInfArgs { get; private set; }
+
+		public TypeSpec? ImplicitArgument => null;
+
 		public readonly AccessModifier Access;
 		public readonly LifetimeDecl[] Lifetimes;
 
-		/// <summary>
-		/// Класс-владелец метода. <c>null</c> для функций, объявленных вне класса.
-		/// </summary>
-		public readonly TypeDesc? DeclaringType;
 
 		public FuncDesc(TypeSpec returnType, string name, Argument[] arguments, bool isInfArgs, 
-			AccessModifier access, LifetimeDecl[] lifetimes, TypeDesc? declaringType)
+			AccessModifier access, LifetimeDecl[] lifetimes)
 		{
 			ReturnType = returnType;
 			Name = name;
@@ -27,7 +26,6 @@ namespace EvolZero.Core.MemebersModels
 			IsInfArgs = isInfArgs;
 			Access = access;
 			Lifetimes = lifetimes;
-			DeclaringType = declaringType;
 		}
 
 	}

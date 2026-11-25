@@ -102,14 +102,14 @@ namespace EvolZero.Core
 			return FindFunction(_membersTable.Functions, name);
 		}
 
-		public FuncDesc[]? FindFunction(TypeDesc parentType, string name)
+		public MethodDesc[]? FindMethod(TypeDesc parentType, string name)
 		{
 			return FindFunction(parentType.Functions, name);
 		}
 
-		private FuncDesc[]? FindFunction(Dictionary<string, FuncDesc[]> functionsList, string name)
+		private T[]? FindFunction<T>(Dictionary<string, T[]> functionsList, string name)
 		{
-			if (!functionsList.TryGetValue(name, out FuncDesc[] functions))
+			if (!functionsList.TryGetValue(name, out T[]? functions))
 			{
 				return null;
 			}

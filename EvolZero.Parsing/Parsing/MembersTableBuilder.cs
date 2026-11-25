@@ -98,7 +98,7 @@ namespace EvolZero.Parsing
 				}
 
 				var voidType = new TypeSpec(_existsClasses["void"]);
-				currentClass.Constructors.Add(new ConstructorDesc(arguments.ToArray(), ctor.Access, lifetimes, voidType));
+				currentClass.Constructors.Add(new ConstructorDesc(arguments.ToArray(), ctor.Access, lifetimes, currentClass, voidType));
 			}
 		}
 
@@ -108,12 +108,51 @@ namespace EvolZero.Parsing
 			foreach (var dtor in destructorsList)
 			{
 				string funcName = $"{currentClass.Name}_dtor";
-				currentClass.Destructors.Add(new DestructorDesc(dtor.Access, voidType));
+				currentClass.Destructors.Add(new DestructorDesc(dtor.Access, currentClass, voidType));
+			}
+		}
+
+		private void MethodsAnalyze(Dictionary<string, List<FuncSignature>> rawFunctionsList,
+			Dictionary<string, MethodDesc[]> listToAdd, TypeDesc currentClass)
+		{
+			foreach (var funcsKey in rawFunctionsList.Keys)
+			{
+				var funcList = new List<MethodDesc>();
+
+				foreach (var func in rawFunctionsList[funcsKey])
+				{
+					TypeDesc returnType = FindTypeForDeclaring(func.ReturnType, currentClass.Name);
+					var returnTypeQualifers = QualifierWorkpiece.ToQualifiers(func.ReturnType.Qualifiers);
+
+					var arguments = new List<Argument>();
+
+					string funcName = $"{currentClass.Name}_{func.Name}"; // TODO: если неколько функций с одним именем, то это в названии надо учитывать
+
+					if (func.Arguments != null)
+					{
+						foreach ((TypeDeclaring Type, string Name) funcArgument in func.Arguments)
+						{
+							TypeDesc argumentType = FindTypeForDeclaring(funcArgument.Type, currentClass.Name);
+							var declaring = new TypeSpec(argumentType, QualifierWorkpiece.ToQualifiers(funcArgument.Type.Qualifiers));
+							arguments.Add(new Argument(declaring, funcArgument.Name));
+						}
+					}
+
+					bool infArgs = func.modifiers.Contains("infargs"); // TODO: енумом модификаторы сделать что ли, или флагами
+					var resutlTypeSpec = new TypeSpec(returnType, returnTypeQualifers);
+
+					var funcDesc = new MethodDesc(resutlTypeSpec, func.Name, arguments.ToArray(), infArgs, func.Access,
+						func.Lifetimes?.ToArray() ?? [], currentClass);
+					funcList.Add(funcDesc);
+				}
+
+				// TODO: сделать проверку на дубликаты методов
+				listToAdd.Add(funcsKey, funcList.ToArray());
 			}
 		}
 
 		private void FunctionsAnalyze(Dictionary<string, List<FuncSignature>> rawFunctionsList,
-			Dictionary<string, FuncDesc[]> listToAdd, TypeDesc? currentClass = null)
+			Dictionary<string, FuncDesc[]> listToAdd)
 		{
 			foreach (var funcsKey in rawFunctionsList.Keys)
 			{
@@ -121,26 +160,18 @@ namespace EvolZero.Parsing
 
 				foreach (var func in rawFunctionsList[funcsKey])
 				{
-					TypeDesc returnType = FindTypeForDeclaring(func.ReturnType, currentClass?.Name);
+					TypeDesc returnType = FindTypeForDeclaring(func.ReturnType, null);
 					var returnTypeQualifers = QualifierWorkpiece.ToQualifiers(func.ReturnType.Qualifiers);
 
 					var arguments = new List<Argument>();
 
-					string funcName;
-					if (currentClass != null)
-					{
-						funcName = $"{currentClass.Name}_{func.Name}"; // TODO: если неколько функций с одним именем, то это в названии надо учитывать
-					}
-					else
-					{
-						funcName = $"{func.Name}";
-					}
+					string funcName = func.Name;
 
 					if (func.Arguments != null)
 					{
 						foreach ((TypeDeclaring Type, string Name) funcArgument in func.Arguments)
 						{
-							TypeDesc argumentType = FindTypeForDeclaring(funcArgument.Type, currentClass?.Name);
+							TypeDesc argumentType = FindTypeForDeclaring(funcArgument.Type, null);
 							var declaring = new TypeSpec(argumentType, QualifierWorkpiece.ToQualifiers(funcArgument.Type.Qualifiers));
 							arguments.Add(new Argument(declaring, funcArgument.Name));
 						}
@@ -150,7 +181,7 @@ namespace EvolZero.Parsing
 					var resutlTypeSpec = new TypeSpec(returnType, returnTypeQualifers);
 
 					var funcDesc = new FuncDesc(resutlTypeSpec, func.Name, arguments.ToArray(), infArgs, func.Access,
-						func.Lifetimes?.ToArray() ?? [], currentClass);
+						func.Lifetimes?.ToArray() ?? []);
 					funcList.Add(funcDesc);
 				}
 
@@ -212,7 +243,7 @@ namespace EvolZero.Parsing
 				if (currentClass.Ctors.Count == 0) currentClass.Ctors.Add(new ConstructorSignature(null, [], AccessModifier.Public, []));
 				if (currentClass.Dtors.Count == 0) currentClass.Dtors.Add(new DestructorSignature([], AccessModifier.Public));
 
-				FunctionsAnalyze(currentClass.Functions, currentClassTypeDesc.Functions, currentClassTypeDesc);
+				MethodsAnalyze(currentClass.Functions, currentClassTypeDesc.Functions, currentClassTypeDesc);
 				ConstructorsAnalyze(currentClass.Ctors, currentClassTypeDesc);
 				DestructorsAnalyze(currentClass.Dtors, currentClassTypeDesc);
 			}

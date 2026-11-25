@@ -39,6 +39,9 @@ namespace EvolZero.Core.Analysis
 				case FunctionStatement functionStatement:
 					HandleFunctionalBlock(functionStatement);
 					break;
+				case MethodStatement methodStatement:
+					HandleFunctionalBlock(methodStatement);
+					break;
 				case ConstructorStatement contructorStatetment:
 					HandleFunctionalBlock(contructorStatetment);
 					break;
@@ -186,6 +189,8 @@ namespace EvolZero.Core.Analysis
 					return Exchange(exchange);
 				case CallFunctionExpression callFunction:
 					return CallFunction(callFunction);
+				case CallMethodExpression callMethod:
+					return CallMethod(callMethod);
 				case CompareOperationExpression compareOperation:
 					return CompareOperationHandle(compareOperation);
 				case GetPointerToVarExpression getPointerToVar:
@@ -285,6 +290,13 @@ namespace EvolZero.Core.Analysis
 
 		protected virtual T CallFunction(CallFunctionExpression expr)
 		{
+			foreach (var arg in expr.Arguments) HandleExpression(arg);
+			return default!;
+		}
+
+		protected virtual T CallMethod(CallMethodExpression expr)
+		{
+			HandleExpression(expr.InstanceGetting);
 			foreach (var arg in expr.Arguments) HandleExpression(arg);
 			return default!;
 		}

@@ -8,6 +8,7 @@ namespace EvolZero.Core.MemebersModels
 	{
 		string Name { get; }
 		Argument[] Arguments { get; }
+		TypeSpec? ImplicitArgument { get; }
 		bool IsInfArgs { get; }
 		TypeSpec ReturnType { get; }
 	}

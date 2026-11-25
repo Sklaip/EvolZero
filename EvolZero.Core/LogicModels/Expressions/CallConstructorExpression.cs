@@ -1,7 +1,4 @@
 ﻿using EvolZero.Core.MemebersModels;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace EvolZero.Core.LogicModels.Expressions
 {
@@ -13,8 +10,7 @@ namespace EvolZero.Core.LogicModels.Expressions
 		public readonly Expression[] Arguments;
 		public readonly bool ToHeap;
 
-
-        public CallConstructorExpression(Expression memoryGetting, ConstructorDesc constructor, 
+		public CallConstructorExpression(Expression memoryGetting, ConstructorDesc constructor, 
 			Expression[] arguments, bool toHeap, PositionInSources pos) : base(memoryGetting.ResultTypeSpec, pos)
 		{
 			MemoryGetting = memoryGetting;
@@ -22,5 +18,5 @@ namespace EvolZero.Core.LogicModels.Expressions
 			Arguments = arguments;
             ToHeap = toHeap;
         }
-    }
+	}
 }

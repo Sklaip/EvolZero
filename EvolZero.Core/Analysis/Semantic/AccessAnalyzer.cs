@@ -52,10 +52,21 @@ namespace EvolZero.Core.Analysis.Semantic
 				HandleExpression(arg);
 			}
 
-			if (expr.Function.Access == AccessModifier.Private && expr.Function.DeclaringType != null && _currentClass != expr.Function.DeclaringType)
+			return null;
+		}
+
+		protected override object? CallMethod(CallMethodExpression expr)
+		{
+			foreach (var arg in expr.Arguments)
+			{
+				HandleExpression(arg);
+			}
+
+			var classType = expr.Method.ImplicitArgument!.Value.Type;
+			if (expr.Method.Access == AccessModifier.Private && _currentClass != classType)
 			{
 				_errorsBag.AddError(ACCESS_LAYER, "ACC002",
-					$"The method '{expr.Function.Name}' of class '{expr.Function.DeclaringType.Name}' is private and cannot be called from this context",
+					$"The method '{expr.Method.Name}' of class '{classType.Name}' is private and cannot be called from this context",
 					expr.Pos);
 			}
 
