@@ -18,10 +18,13 @@ namespace EvolZero.Generation
 		{
 			var typesRefs = new List<ITypeRef>();
 
+			// TODO: тут деструктор в имени не будет иметь окончания, потому что у него нет явных аргументов
+			string funcName = blockDesc.Name;
 			if (blockDesc.ImplicitArgument != null)
 			{
 				var arg = blockDesc.ImplicitArgument.Value;
 				typesRefs.Add(typeRefGetter(argumentHandler(arg)));
+				funcName = $"{blockDesc.ImplicitArgument.Value.Type.Name}_{funcName}";
 			}
 
 			string genericEndingName = string.Empty;
@@ -40,7 +43,7 @@ namespace EvolZero.Generation
 				typesRefs.Add(typeRefGetter(actualTypeSpec));
 			}
 
-			return _codeGenerator.CreateFunctionSiganture($"{blockDesc.Name}{genericEndingName}",
+			return _codeGenerator.CreateFunctionSiganture($"{funcName}{genericEndingName}",
 				typeRefGetter(blockDesc.ReturnType), typesRefs, blockDesc.IsInfArgs);
 		}
 	}

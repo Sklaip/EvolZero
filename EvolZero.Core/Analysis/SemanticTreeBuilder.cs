@@ -589,6 +589,8 @@ namespace EvolZero.Core.Analysis
 			if (!ValidateReferenceQualifiers(arguments, funcDesc.Arguments))
 				return new StubForErrorExpression(CurrentPosition);
 
+			_refsManager.AddFuncIfGeneric(funcDesc, instanceGetting.ResultTypeSpec);
+
 			Expression[] realArgs = new Expression[arguments.Length];
 			var instanceGetter = instanceGetting.ResultTypeSpec.IsRef ?
 				instanceGetting : new GetPointerToVarExpression(instanceGetting, false, CurrentPosition);
