@@ -119,7 +119,7 @@ namespace EvolZero
                 }
             }
 
-			var refsManager = new MembersRefsManager(typesProvider, globalMembersTable, baseTypesRefs);
+			var refsManager = new MembersRefsManager(typesProvider, new SignaturesGenerator(codeGenerator), globalMembersTable, baseTypesRefs);
 
 			foreach (var unit in units)
             {

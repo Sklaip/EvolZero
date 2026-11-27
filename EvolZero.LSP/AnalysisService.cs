@@ -231,7 +231,7 @@ namespace EvolZero.LSP
                 }
             }
 
-			var refsManager = new MembersRefsManager(new TypesProviderStub(), globalMembersTable, baseTypesRefs);
+			var refsManager = new MembersRefsManager(new TypesProviderStub(), new SignaturesGenerator(codeGenerator), globalMembersTable, baseTypesRefs);
 
 			foreach (var unit in units)
             {

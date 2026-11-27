@@ -5,6 +5,7 @@ namespace EvolZero.Core
 	public class MembersRefsManager
 	{
 		private readonly IPlatformTypesProvider _typesProvider;
+		private readonly ISignaturesGenerator _signaturesGenerator;
 		private static readonly TypeRefStub _typeStub = new();
 		private static readonly FuncRefDataStub _funcStub = new();
 
@@ -12,69 +13,21 @@ namespace EvolZero.Core
 		/// <see cref="ITypeRef"/> мы храним не на каждый TypeSpec, 
 		/// а только на уникальную связку Type и списка generic параметров
 		/// </summary>
-		private Dictionary<TypeSpec, ITypeRef> _typesList;
+		private Dictionary<TypeApplication, ITypeRef> _typesList;
 
-		private Dictionary<IFunctionalBlockDesc, Dictionary<TypeSpec, (IFuncRefData refData, TypeSpec[] configuredArgs)>> _classMembersList = new();
+		private Dictionary<IFunctionalBlockDesc, Dictionary<TypeApplication, (IFuncRefData refData, TypeSpec[] configuredArgs)>> _classMembersList = new();
 		private Dictionary<IFunctionalBlockDesc, IFuncRefData> _singleFunctions = new();
 
-		private readonly struct FuncArgs : IEquatable<FuncArgs>
-		{
-			public readonly TypeSpec[] Args;
-
-			public FuncArgs(TypeSpec[] args)
-			{
-				Args = args ?? Array.Empty<TypeSpec>();
-			}
-
-			public bool Equals(FuncArgs other)
-			{
-				var a = Args ?? Array.Empty<TypeSpec>();
-				var b = other.Args ?? Array.Empty<TypeSpec>();
-
-				if (ReferenceEquals(a, b))
-					return true;
-
-				if (a.Length != b.Length)
-					return false;
-
-				for (int i = 0; i < a.Length; i++)
-				{
-					if (!Equals(a[i], b[i]))
-						return false;
-				}
-
-				return true;
-			}
-
-			public override bool Equals(object? obj) => obj is FuncArgs other && Equals(other);
-
-			public override int GetHashCode()
-			{
-				var a = Args ?? Array.Empty<TypeSpec>();
-				var hash = new HashCode();
-
-				for (int i = 0; i < a.Length; i++)
-				{
-					hash.Add(a[i]);
-				}
-
-				return hash.ToHashCode();
-			}
-
-			public static bool operator ==(FuncArgs left, FuncArgs right) => left.Equals(right);
-
-			public static bool operator !=(FuncArgs left, FuncArgs right) => !left.Equals(right);
-		}
-
-		public MembersRefsManager(IPlatformTypesProvider typesProvider, MembersTable table, Dictionary<TypeDesc, ITypeRef> baseTypes)
+		public MembersRefsManager(IPlatformTypesProvider typesProvider, ISignaturesGenerator signaturesGenerator, MembersTable table, Dictionary<TypeDesc, ITypeRef> baseTypes)
 		{
 			_typesProvider = typesProvider;
-			_typesList = baseTypes.Select(x => (new TypeSpec(x.Key), x.Value)).ToDictionary();
+			_signaturesGenerator = signaturesGenerator;
+			_typesList = baseTypes.Select(x => (new TypeApplication(x.Key), x.Value)).ToDictionary();
 
 			foreach (var type in table.Types.Values)
 			{
 				if (type.HasGenericParams) continue;
-				_typesList.TryAdd(new TypeSpec(type), _typeStub);
+				_typesList.TryAdd(new TypeApplication(type), _typeStub);
 
 				AddClassMembers(type.Functions.Values.SelectMany(x => x), type);
 				AddClassMembers(type.Constructors, type);
@@ -94,7 +47,7 @@ namespace EvolZero.Core
 					_classMembersList[func] = memberVariations;
 				}
 
-				memberVariations[new TypeSpec(parentType)] = (_funcStub, []);
+				memberVariations[new TypeApplication(parentType)] = (_funcStub, []);
 			}
 		}
 
@@ -109,12 +62,12 @@ namespace EvolZero.Core
 		public void AddTypeIfGeneric(TypeSpec typeSpec)
 		{
 			if (typeSpec.ConfiguredGenericParams.Length > 0)
-				_typesList.TryAdd(GetKey(typeSpec), _typeStub);
+				_typesList.TryAdd(GetApplication(typeSpec), _typeStub);
 		}
 
-		public void AddFuncIfGeneric(IFunctionalBlockDesc func, TypeSpec parentType)
+		public void AddFuncIfGeneric(IFunctionalBlockDesc func, TypeSpec parentTypeSpec)
 		{
-			parentType = GetKey(parentType);
+			var parentType = GetApplication(parentTypeSpec);
 			if (!parentType.Type.HasGenericParams) return;
 
 			if (!_classMembersList.TryGetValue(func, out var memberVariations))
@@ -143,7 +96,7 @@ namespace EvolZero.Core
 			memberVariations[parentType] = (_funcStub, configuredArgs.ToArray());
 		}
 
-		public static TypeSpec FillGeneric(TypeSpec source, TypeSpec[] fillers)
+		public TypeSpec FillGeneric(TypeSpec source, TypeSpec[] fillers)
 		{
 			if (source.Type is GenericParamDesc generic) // если это сам дженерик параметр, то просто заменяем его filler'ом
 			{
@@ -179,7 +132,7 @@ namespace EvolZero.Core
 		/// <returns></returns>
 		public ITypeRef GetTypeRef(TypeSpec typeSpec)
 		{
-			return _typesList[GetKey(typeSpec)];
+			return _typesList[GetApplication(typeSpec)];
 		}
 
 		public ITypeRef GetTypeRef(TypeSpec typeSpec, TypeSpec[]? genericFillers)
@@ -223,7 +176,7 @@ namespace EvolZero.Core
 			if (parentType != null)
 			{
 				var xer = _classMembersList[desc];
-				return xer[GetKey(parentType.Value)].refData;
+				return xer[GetApplication(parentType.Value)].refData;
 			}
 			else
 			{
@@ -267,10 +220,7 @@ namespace EvolZero.Core
 
 			foreach (var func in _singleFunctions.Keys.ToArray())
 			{
-				var typesRefs = func.Arguments.Select(x => GetRealTypeRef(x.Declaring));
-				var funcRef = codeGenerator.CreateFunctionSiganture(func.Name,
-					GetRealTypeRef(func.ReturnType), typesRefs, func.IsInfArgs);
-
+				var funcRef = _signaturesGenerator.CreateFunctionSiganture(func, GetRealTypeRef, source => source);
 				_singleFunctions[func] = funcRef;
 			}
 
@@ -278,71 +228,29 @@ namespace EvolZero.Core
 			{
 				var sourceArgs = blockDesc.Arguments;
 
-				// TODO: залупа какая-то, код написан так будто ImplicitArgument обязательно является родителским классом. Хотя принадлежность ImplicitArgument к экземпляру родительского класса это зона ответственности Emiter. Надо отрефакторить
-				if (blockDesc.ImplicitArgument == null || !blockDesc.ImplicitArgument.Value.Type.HasGenericParams)
+				// TODO: написать дженерик где T будет использоваться только для возвращаемого типа и посмотреть где отъебнет
+				foreach (var configuredParentType in refs.Keys)
 				{
-					var configuredArgs = refs.First();
-					var typesRefs = new List<ITypeRef>();
+					var configuredArgs = new List<TypeSpec>();
 
-					if (blockDesc.ImplicitArgument != null)
+					for (int i = 0; i < sourceArgs.Length; i++)
 					{
-						typesRefs.Add(GetRealTypeRef(blockDesc.ImplicitArgument.Value));
+						var typeSpec = sourceArgs[i].Declaring;
+						configuredArgs.Add(FillGeneric(typeSpec, configuredParentType.ConfiguredGenericParams));
 					}
 
-					typesRefs.AddRange(sourceArgs.Select(x => GetRealTypeRef(x.Declaring)));
-
-					var funcRef = codeGenerator.CreateFunctionSiganture(blockDesc.Name,
-						GetRealTypeRef(blockDesc.ReturnType), typesRefs, blockDesc.IsInfArgs);
-
-					_classMembersList[blockDesc][configuredArgs.Key] = (funcRef, sourceArgs.Select(x => x.Declaring).ToArray());
-				}
-				else
-				{
-					// TODO: написать дженерик где T будет использоваться только для возвращаемого типа и посмотреть где отъебнет
-					foreach (var configuredParentType in refs.Keys)
+					var funcRef = _signaturesGenerator.CreateFunctionSiganture(blockDesc, GetRealTypeRef, source =>
 					{
-						var typesRefs = new List<ITypeRef>();
+						return FillGeneric(source, configuredParentType.ConfiguredGenericParams);
+					});
 
-						// TODO: создание сигнатур вынести в отдельный класс, рядом с Emiter, чтобы он принимал просто опсиание функции
-						if (blockDesc.ImplicitArgument != null)
-						{
-							var parent = blockDesc.ImplicitArgument.Value;
-							typesRefs.Add(GetRealTypeRef(new TypeSpec(parent.Type, parent.Qualifiers, configuredParentType.ConfiguredGenericParams)));
-						}
-
-						string genericEndingName = "__";
-
-						var configuredArgs = new List<TypeSpec>();
-
-						for (int i = 0; i < sourceArgs.Length; i++)
-						{
-							var typeSpec = sourceArgs[i].Declaring;
-							if (typeSpec.Type is not GenericParamDesc generic)
-							{
-								typesRefs.Add(GetRealTypeRef(typeSpec));
-								configuredArgs.Add(typeSpec);
-							}
-							else
-							{
-								genericEndingName = $"{genericEndingName}gp{i}{typeSpec.ToString("_")}__";
-								TypeSpec currentConfiguedParameter = configuredParentType.ConfiguredGenericParams[generic.ParamIndex];
-								typesRefs.Add(GetRealTypeRef(currentConfiguedParameter));
-								configuredArgs.Add(currentConfiguedParameter);
-							}
-						}
-
-						var funcRef = codeGenerator.CreateFunctionSiganture($"{blockDesc.Name}{genericEndingName}",
-							GetRealTypeRef(blockDesc.ReturnType), typesRefs, blockDesc.IsInfArgs);
-
-						var sourceData = _classMembersList[blockDesc][configuredParentType];
-						_classMembersList[blockDesc][configuredParentType] = (funcRef, configuredArgs.ToArray());
-					}
+					var sourceData = _classMembersList[blockDesc][configuredParentType];
+					_classMembersList[blockDesc][configuredParentType] = (funcRef, configuredArgs.ToArray());
 				}
-
 			}
 		}
 
-		private ITypeRef CreateTypeBody(ICodeGenerator codeGenerator, TypeSpec typeSpec)
+		private ITypeRef CreateTypeBody(ICodeGenerator codeGenerator, TypeApplication typeSpec)
 		{
 			ITypeRef typeRef;
 			if (!typeSpec.Type.HasGenericParams)
@@ -369,7 +277,7 @@ namespace EvolZero.Core
 					fieldDeclaring = typeSpec.ConfiguredGenericParams[gpd.ParamIndex];
 				}
 
-				var simpleTypeSpec = GetKey(fieldDeclaring);
+				var simpleTypeSpec = GetApplication(fieldDeclaring);
 				var fieldTypeRef = _typesList[simpleTypeSpec];
 
 				if (fieldTypeRef is TypeRefStub)
@@ -386,9 +294,9 @@ namespace EvolZero.Core
 			return typeRef;
 		}
 
-		private TypeSpec GetKey(TypeSpec source)
+		private TypeApplication GetApplication(TypeSpec source)
 		{
-			return new TypeSpec(source.Type, [], source.ConfiguredGenericParams);
+			return new TypeApplication(source.Type, source.ConfiguredGenericParams);
 		}
 	}
 }

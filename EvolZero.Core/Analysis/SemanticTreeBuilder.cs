@@ -754,7 +754,7 @@ namespace EvolZero.Core.Analysis
 			}
 
 			instanceGetting = AutoDereferenceIfPointer(instanceGetting);
-			var resultType = MembersRefsManager.FillGeneric(variable.Declaring, instanceGetting.ResultTypeSpec.ConfiguredGenericParams);
+			var resultType = _refsManager.FillGeneric(variable.Declaring, instanceGetting.ResultTypeSpec.ConfiguredGenericParams);
 
 			return new StructureFieldAccessExpression(variable, instanceGetting, resultType, true, CurrentPosition);
 		}
