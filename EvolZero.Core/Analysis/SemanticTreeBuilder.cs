@@ -136,7 +136,7 @@ namespace EvolZero.Core.Analysis
 				return;
 			}
 
-			methodDesc = _typeAnalyzer.FindSuitableFunction(functions, parameters.Select(x => x.Type), out _);
+			methodDesc = _typeAnalyzer.FindSuitableFunction(functions, parameters.Select(x => x.Type), null, out _);
 
 			_membersFinder.ClearCurrentType();
 
@@ -177,7 +177,7 @@ namespace EvolZero.Core.Analysis
 				return;
 			}
 
-			funcDesc = _typeAnalyzer.FindSuitableFunction(functions, parameters.Select(x => x.Type), out _);
+			funcDesc = _typeAnalyzer.FindSuitableFunction(functions, parameters.Select(x => x.Type), null, out _);
 
 			if (funcDesc == null)
 			{
@@ -234,7 +234,7 @@ namespace EvolZero.Core.Analysis
 
 				var constructors = _membersFinder.FindConstructors(currentClass.TypeDesc);
 
-				ctorDesc = _typeAnalyzer.FindSuitableConstructor(constructors, parameters.Select(x => x.Type));
+				ctorDesc = _typeAnalyzer.FindSuitableConstructor(null, constructors, parameters.Select(x => x.Type));
 
 				if (ctorDesc == null)
 				{
@@ -287,7 +287,7 @@ namespace EvolZero.Core.Analysis
 				}
 
 				var destructors = _membersFinder.FindDesctructors(currentClass.TypeDesc);
-				dtorDesc = _typeAnalyzer.FindSuitableDestructor(destructors);
+				dtorDesc = _typeAnalyzer.FindSuitableDestructor(null, destructors);
 
 				if (dtorDesc == null)
 				{
@@ -537,7 +537,7 @@ namespace EvolZero.Core.Analysis
 				return CallClassMethod(name, thisGetting, args);
 			}
 
-			FuncDesc? funcDesc = _typeAnalyzer.FindSuitableFunction(functions, arguments.Select(x => x.ResultTypeSpec), out TypeSpec?[] casts);
+			FuncDesc? funcDesc = _typeAnalyzer.FindSuitableFunction(functions, arguments.Select(x => x.ResultTypeSpec), null, out TypeSpec?[] casts);
 
 			if (funcDesc == null)
 			{
@@ -576,7 +576,8 @@ namespace EvolZero.Core.Analysis
 				return new StubForErrorExpression(CurrentPosition);
 			}
 
-			var funcDesc = _typeAnalyzer.FindSuitableFunction(funcs, arguments.Select(x => x.ResultTypeSpec), out TypeSpec?[] casts);
+			var funcDesc = _typeAnalyzer.FindSuitableFunction(funcs, arguments.Select(x => x.ResultTypeSpec), 
+				instanceGetting.ResultTypeSpec, out TypeSpec?[] casts);
 
 			if (funcDesc == null)
 			{
@@ -630,7 +631,7 @@ namespace EvolZero.Core.Analysis
 				}
 
 				Qualifier[] qualifiers = [Qualifier.Reference, .. type.Qualifiers];
-				var resType = new TypeSpec(type.Type, qualifiers);
+				var resType = new TypeSpec(type.Type, qualifiers, type.ConfiguredGenericParams);
 
 				Expression res = new AllocateHeapMemoryToType(resType, CurrentPosition);
 
@@ -661,8 +662,8 @@ namespace EvolZero.Core.Analysis
 			}
 			else
 			{
-				var tempVar = CreateTempVar(new TypeSpec(type.Type, [Qualifier.OwnerValue, .. type.Qualifiers]));
-				return CallValueConstructor(type.Type, tempVar, args);
+				var tempVar = CreateTempVar(new TypeSpec(type.Type, [Qualifier.OwnerValue, .. type.Qualifiers], type.ConfiguredGenericParams));
+				return CallValueConstructor(type, tempVar, args);
 			}
 
 		}
@@ -677,7 +678,7 @@ namespace EvolZero.Core.Analysis
 			ConstructorDesc? ctorDesc = null;
 			var constructors = _membersFinder.FindConstructors(typeSpec.Type);
 
-			ctorDesc = _typeAnalyzer.FindSuitableConstructor(constructors, arguments.Select(x => x.ResultTypeSpec), out TypeSpec?[] casts);
+			ctorDesc = _typeAnalyzer.FindSuitableConstructor(typeSpec, constructors, arguments.Select(x => x.ResultTypeSpec), out TypeSpec?[] casts);
 
 			if (ctorDesc == null)
 			{
@@ -688,6 +689,8 @@ namespace EvolZero.Core.Analysis
 			if (!ValidateReferenceQualifiers(arguments, ctorDesc.Arguments))
 				return new StubForErrorExpression(CurrentPosition);
 
+			_refsManager.AddFuncIfGeneric(ctorDesc, typeSpec);
+
 			for (int i = 0; i < casts.Length; i++)
 			{
 				TypeSpec? cast = casts[i];
@@ -695,11 +698,11 @@ namespace EvolZero.Core.Analysis
 				arguments[i] = ImplicitIntExtenssion(arguments[i], cast.Value);
 			}
 
-			var memory = new AllocateHeapMemoryToType(new TypeSpec(typeSpec.Type, [Qualifier.Reference]), pos: CurrentPosition);
+			var memory = new AllocateHeapMemoryToType(new TypeSpec(typeSpec.Type, [Qualifier.Reference], typeSpec.ConfiguredGenericParams), pos: CurrentPosition);
 			return new CallConstructorExpression(memory, ctorDesc, arguments, true, CurrentPosition);
 		}
 
-		private Expression CallValueConstructor(TypeDesc typeDesc, Expression objMemoryGetting, Expression[] args)
+		private Expression CallValueConstructor(TypeSpec typeSpec, Expression objMemoryGetting, Expression[] args)
 		{
 			if (CheckStubForError(objMemoryGetting)) return new StubForErrorExpression(CurrentPosition);
 			if (CheckStubForError(args)) return new StubForErrorExpression(CurrentPosition);
@@ -708,12 +711,12 @@ namespace EvolZero.Core.Analysis
 			InitializeVariable(objMemoryGetting);
 
 			ConstructorDesc? ctorDesc = null;
-			var constructors = _membersFinder.FindConstructors(typeDesc);
+			var constructors = _membersFinder.FindConstructors(typeSpec.Type);
 
 			if (constructors.Count > 0)
 			{
 				var arguments = args.Select(x => AutoDereferenceIfPointer(x, true)).ToArray();
-				ctorDesc = _typeAnalyzer.FindSuitableConstructor(constructors, arguments.Select(x => x.ResultTypeSpec), out TypeSpec?[] casts);
+				ctorDesc = _typeAnalyzer.FindSuitableConstructor(typeSpec, constructors, arguments.Select(x => x.ResultTypeSpec), out TypeSpec?[] casts);
 
 				if (ctorDesc == null)
 				{
@@ -723,6 +726,8 @@ namespace EvolZero.Core.Analysis
 
 				if (!ValidateReferenceQualifiers(arguments, ctorDesc.Arguments))
 					return new StubForErrorExpression(CurrentPosition);
+
+				_refsManager.AddFuncIfGeneric(ctorDesc, typeSpec);
 
 				for (int i = 0; i < casts.Length; i++)
 				{
@@ -749,7 +754,9 @@ namespace EvolZero.Core.Analysis
 			}
 
 			instanceGetting = AutoDereferenceIfPointer(instanceGetting);
-			return new StructureFieldAccessExpression(variable, instanceGetting, variable.Declaring, true, CurrentPosition);
+			var resultType = MembersRefsManager.FillGeneric(variable.Declaring, instanceGetting.ResultTypeSpec.ConfiguredGenericParams);
+
+			return new StructureFieldAccessExpression(variable, instanceGetting, resultType, true, CurrentPosition);
 		}
 
 		public Expression ArrayCellAccess(Expression arrayGetting, Expression indexGetting)

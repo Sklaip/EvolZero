@@ -4,7 +4,7 @@
 	{
 		public Argument[] Arguments => [];
 
-		public string Name => "dtor";
+		public string Name { get; set; }
 
 		public bool IsInfArgs => false;
 
@@ -20,6 +20,7 @@
 			Access = access;
 			_voidType = voidType;
 			ImplicitArgument = new TypeSpec(declaringType, [Qualifier.BorrowReference]);
+			Name = $"{declaringType.Name}_dtor";
 		}
 
 	}

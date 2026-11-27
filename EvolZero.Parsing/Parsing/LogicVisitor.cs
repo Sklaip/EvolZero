@@ -13,821 +13,834 @@ using static CEvolParser;
 
 namespace EvolZero.Parsing
 {
-    public class LogicVisitor : CEvolParserBaseVisitor<Expression?>
-    {
-        private readonly MembersFinder _membersFinder;
-        private readonly string _currentFile;
-        private readonly SemanticTreeBuilder _semanticAnalyzer;
-        private readonly TypeAnalyzer _typeAnalyzer;
-
-        public Statement ResultStatement { get; private set; }
-
-        private bool _currentClassDestructorHandled = false; // TODO: эту логику от сюда куда-нибудь вынести, здесь ее быть не должно
-        private bool _currentClassConstructorHandled = false;
-        private List<(string Name, FieldDeclContext Init)> _currentClassFieldInitializers = new();
-
-        public LogicVisitor(MembersFinder membersFinder, MembersRefsManager refsManager, ErrorsBag errorsBag, string currentFile)
-        {
-            _typeAnalyzer = new TypeAnalyzer(membersFinder);
-            _semanticAnalyzer = new SemanticTreeBuilder(membersFinder, _typeAnalyzer, refsManager, errorsBag);
-            _membersFinder = membersFinder;
-            _currentFile = currentFile;
-        }
-
-        public override Expression? VisitProgram(CEvolParser.ProgramContext context)
-        {
-            _membersFinder.ClearUsings();
-
-            VisitChildren(context);
-            ResultStatement = _semanticAnalyzer.ExitFromBlock();
-
-            return null;
-        }
-
-        public override Expression? VisitNamespaceDecl([NotNull] CEvolParser.NamespaceDeclContext context)
-        {
-            var lastPos = _semanticAnalyzer.CurrentPosition;
-            SetCurrentPosition(context);
-
-            string name = context.IDENTIFIER().GetText();
-            if (name == null) throw new NotImplementedException();
-
-            _semanticAnalyzer.EnterToNameSpace(name);
-
-            VisitChildren(context);
-
-            _semanticAnalyzer.CurrentPosition = lastPos;
-
-            return null;
-        }
+	public class LogicVisitor : CEvolParserBaseVisitor<Expression?>
+	{
+		private readonly MembersFinder _membersFinder;
+		private readonly string _currentFile;
+		private readonly SemanticTreeBuilder _semanticAnalyzer;
+		private readonly TypeAnalyzer _typeAnalyzer;
+
+		public Statement ResultStatement { get; private set; }
+
+		private bool _currentClassDestructorHandled = false; // TODO: эту логику от сюда куда-нибудь вынести, здесь ее быть не должно
+		private bool _currentClassConstructorHandled = false;
+		private List<(string Name, FieldDeclContext Init)> _currentClassFieldInitializers = new();
+
+		public LogicVisitor(MembersFinder membersFinder, MembersRefsManager refsManager, ErrorsBag errorsBag, string currentFile)
+		{
+			_typeAnalyzer = new TypeAnalyzer(membersFinder);
+			_semanticAnalyzer = new SemanticTreeBuilder(membersFinder, _typeAnalyzer, refsManager, errorsBag);
+			_membersFinder = membersFinder;
+			_currentFile = currentFile;
+		}
+
+		public override Expression? VisitProgram(CEvolParser.ProgramContext context)
+		{
+			_membersFinder.ClearUsings();
+
+			VisitChildren(context);
+			ResultStatement = _semanticAnalyzer.ExitFromBlock();
+
+			return null;
+		}
+
+		public override Expression? VisitNamespaceDecl([NotNull] CEvolParser.NamespaceDeclContext context)
+		{
+			var lastPos = _semanticAnalyzer.CurrentPosition;
+			SetCurrentPosition(context);
+
+			string name = context.IDENTIFIER().GetText();
+			if (name == null) throw new NotImplementedException();
+
+			_semanticAnalyzer.EnterToNameSpace(name);
+
+			VisitChildren(context);
+
+			_semanticAnalyzer.CurrentPosition = lastPos;
+
+			return null;
+		}
 
-        public override Expression? VisitUsingDecl([NotNull] CEvolParser.UsingDeclContext context)
-        {
-            var lastPos = _semanticAnalyzer.CurrentPosition;
-            SetCurrentPosition(context);
+		public override Expression? VisitUsingDecl([NotNull] CEvolParser.UsingDeclContext context)
+		{
+			var lastPos = _semanticAnalyzer.CurrentPosition;
+			SetCurrentPosition(context);
 
-            string name = context.IDENTIFIER().GetText();
-            if (name == null) throw new NotImplementedException();
+			string name = context.IDENTIFIER().GetText();
+			if (name == null) throw new NotImplementedException();
 
-            _semanticAnalyzer.Using(name);
-
-            _semanticAnalyzer.CurrentPosition = lastPos;
-            return null;
-        }
-
-        public override Expression? VisitClassDecl([NotNull] CEvolParser.ClassDeclContext context)
-        {
-            var lastPos = _semanticAnalyzer.CurrentPosition;
-            SetCurrentPosition(context);
+			_semanticAnalyzer.Using(name);
+
+			_semanticAnalyzer.CurrentPosition = lastPos;
+			return null;
+		}
+
+		public override Expression? VisitClassDecl([NotNull] CEvolParser.ClassDeclContext context)
+		{
+			var lastPos = _semanticAnalyzer.CurrentPosition;
+			SetCurrentPosition(context);
 
-            _semanticAnalyzer.EnterToClass(context.IDENTIFIER().GetText());
+			_semanticAnalyzer.EnterToClass(context.IDENTIFIER().GetText());
 
-            _currentClassConstructorHandled = false;
-            _currentClassFieldInitializers = context.fieldDecl()
-                .Where(f => f.ASSIGN() != null)
-                .Select(f => (f.IDENTIFIER().GetText(), f))
-                .ToList();
+			_currentClassConstructorHandled = false;
+			_currentClassFieldInitializers = context.fieldDecl()
+				.Where(f => f.ASSIGN() != null)
+				.Select(f => (f.IDENTIFIER().GetText(), f))
+				.ToList();
 
-            base.VisitClassDecl(context);
+			base.VisitClassDecl(context);
 
-            if (!_currentClassConstructorHandled && (_currentClassFieldInitializers.Count > 0 || _semanticAnalyzer.CurrentClassHasRefFields()))
-            {
-                _semanticAnalyzer.EnterToConstructor([]);
-                InjectFieldInitializers();
-                _semanticAnalyzer.ExitFromBlock();
-            }
+			if (!_currentClassConstructorHandled && (_currentClassFieldInitializers.Count > 0 || _semanticAnalyzer.CurrentClassHasRefFields()))
+			{
+				_semanticAnalyzer.EnterToConstructor([]);
+				InjectFieldInitializers();
+				_semanticAnalyzer.ExitFromBlock();
+			}
 
-            if (!_currentClassDestructorHandled)
-            {
-                _semanticAnalyzer.EnterToDestructor();
-                _semanticAnalyzer.ExitFromBlock();
-            }
+			if (!_currentClassDestructorHandled)
+			{
+				_semanticAnalyzer.EnterToDestructor();
+				_semanticAnalyzer.ExitFromBlock();
+			}
 
-            _semanticAnalyzer.ExitFromBlock();
-            _semanticAnalyzer.CurrentPosition = lastPos;
-            _currentClassDestructorHandled = false;
-            _currentClassConstructorHandled = false;
-            _currentClassFieldInitializers = new();
+			_semanticAnalyzer.ExitFromBlock();
+			_semanticAnalyzer.CurrentPosition = lastPos;
+			_currentClassDestructorHandled = false;
+			_currentClassConstructorHandled = false;
+			_currentClassFieldInitializers = new();
 
-            return null;
-        }
+			return null;
+		}
 
-        private void InjectFieldInitializers()
-        {
-            foreach (var (name, initExpr) in _currentClassFieldInitializers)
-            {
-                SetCurrentPosition(initExpr);
-                var value = VisitField(initExpr);
-                if (value == null) continue;
+		private void InjectFieldInitializers()
+		{
+			foreach (var (name, initExpr) in _currentClassFieldInitializers)
+			{
+				SetCurrentPosition(initExpr);
+				var value = VisitField(initExpr);
+				if (value == null) continue;
 
-                var assign = _semanticAnalyzer.FieldAssing(name, value);
-                _semanticAnalyzer.InserToCurrentBlock(assign);
-            }
-        }
+				var assign = _semanticAnalyzer.FieldAssing(name, value);
+				_semanticAnalyzer.InserToCurrentBlock(assign);
+			}
+		}
 
-        public Expression? VisitField(FieldDeclContext context)
-        {
-            var expr = context.expression();
-            if (expr == null) return null;
+		public Expression? VisitField(FieldDeclContext context)
+		{
+			var expr = context.expression();
+			if (expr == null) return null;
 
-            return Visit(expr);
-        }
+			return Visit(expr);
+		}
 
-        public override Expression? VisitFieldDecl([NotNull] CEvolParser.FieldDeclContext context)
-        {
-            return null;
-        }
+		public override Expression? VisitFieldDecl([NotNull] CEvolParser.FieldDeclContext context)
+		{
+			return null;
+		}
 
-        public override Expression? VisitFunctionDecl([NotNull] CEvolParser.FunctionDeclContext context)
-        {
-            var lastPos = _semanticAnalyzer.CurrentPosition;
-            SetCurrentPosition(context);
+		public override Expression? VisitFunctionDecl([NotNull] CEvolParser.FunctionDeclContext context)
+		{
+			var lastPos = _semanticAnalyzer.CurrentPosition;
+			SetCurrentPosition(context);
 
-            var prms = context.@params();
-            List<(TypeSpec Type, string Name)> parameters = null!;
+			var prms = context.@params();
+			List<(TypeSpec Type, string Name)> parameters = null!;
 
-            if (prms != null)
-            {
-                parameters = ParseParams(prms);
-            }
+			if (prms != null)
+			{
+				parameters = ParseParams(prms);
+			}
 
-            if (parameters == null) parameters = [];
+			if (parameters == null) parameters = [];
 
-            string? funcName = context.IDENTIFIER().ToString();
-            if (funcName == null) throw new NotImplementedException();
+			string? funcName = context.IDENTIFIER().ToString();
+			if (funcName == null) throw new NotImplementedException();
 
-            _semanticAnalyzer.EnterToFunction(funcName, parameters);
+			_semanticAnalyzer.EnterToFunction(funcName, parameters);
 
-            Visit(context.block());
+			Visit(context.block());
 
-            _semanticAnalyzer.ExitFromBlock();
-            _semanticAnalyzer.CurrentPosition = lastPos;
+			_semanticAnalyzer.ExitFromBlock();
+			_semanticAnalyzer.CurrentPosition = lastPos;
 
-            return null;
-        }
+			return null;
+		}
 
-        public override Expression? VisitAbstractFunctionDecl([NotNull] AbstractFunctionDeclContext context)
-        {
-            return null;
-        }
+		public override Expression? VisitAbstractFunctionDecl([NotNull] AbstractFunctionDeclContext context)
+		{
+			return null;
+		}
 
-        public override Expression? VisitConstructorDecl([NotNull] CEvolParser.ConstructorDeclContext context)
-        {
-            var lastPos = _semanticAnalyzer.CurrentPosition;
-            SetCurrentPosition(context);
+		public override Expression? VisitConstructorDecl([NotNull] CEvolParser.ConstructorDeclContext context)
+		{
+			var lastPos = _semanticAnalyzer.CurrentPosition;
+			SetCurrentPosition(context);
 
-            var prms = context.@params();
-            List<(TypeSpec Type, string Name)> parameters = null!;
+			var prms = context.@params();
+			List<(TypeSpec Type, string Name)> parameters = null!;
 
-            if (prms != null)
-            {
-                parameters = ParseParams(prms);
-            }
+			if (prms != null)
+			{
+				parameters = ParseParams(prms);
+			}
 
-            if (parameters == null) parameters = [];
+			if (parameters == null) parameters = [];
 
-            _currentClassConstructorHandled = true;
+			_currentClassConstructorHandled = true;
 
-            _semanticAnalyzer.EnterToConstructor(parameters);
+			_semanticAnalyzer.EnterToConstructor(parameters);
 
-            InjectFieldInitializers();
+			InjectFieldInitializers();
 
-            Visit(context.block());
+			Visit(context.block());
 
-            _semanticAnalyzer.ExitFromBlock();
-            _semanticAnalyzer.CurrentPosition = lastPos;
+			_semanticAnalyzer.ExitFromBlock();
+			_semanticAnalyzer.CurrentPosition = lastPos;
 
-            return null;
-        }
+			return null;
+		}
 
-        public override Expression? VisitDesctructorDecl([NotNull] DesctructorDeclContext context)
-        {
-            var lastPos = _semanticAnalyzer.CurrentPosition;
-            SetCurrentPosition(context);
+		public override Expression? VisitDesctructorDecl([NotNull] DesctructorDeclContext context)
+		{
+			var lastPos = _semanticAnalyzer.CurrentPosition;
+			SetCurrentPosition(context);
 
-            _semanticAnalyzer.EnterToDestructor();
+			_semanticAnalyzer.EnterToDestructor();
 
-            Visit(context.block());
+			Visit(context.block());
 
-            _semanticAnalyzer.ExitFromBlock();
-            _semanticAnalyzer.CurrentPosition = lastPos;
-            _currentClassDestructorHandled = true;
+			_semanticAnalyzer.ExitFromBlock();
+			_semanticAnalyzer.CurrentPosition = lastPos;
+			_currentClassDestructorHandled = true;
 
-            return null;
-        }
+			return null;
+		}
 
-        public override Expression? VisitBlock([NotNull] CEvolParser.BlockContext context)
-        {
-            var lastPos = _semanticAnalyzer.CurrentPosition;
-            SetCurrentPosition(context);
+		public override Expression? VisitBlock([NotNull] CEvolParser.BlockContext context)
+		{
+			var lastPos = _semanticAnalyzer.CurrentPosition;
+			SetCurrentPosition(context);
 
-            foreach (var statement in context.statement())
-            {
-                Expression? expr = Visit(statement);
-                if (expr != null)
-                {
-                    _semanticAnalyzer.InserToCurrentBlock(expr);
-                }
-            }
+			foreach (var statement in context.statement())
+			{
+				Expression? expr = Visit(statement);
+				if (expr != null)
+				{
+					_semanticAnalyzer.InserToCurrentBlock(expr);
+				}
+			}
 
-            _semanticAnalyzer.CurrentPosition = lastPos;
+			_semanticAnalyzer.CurrentPosition = lastPos;
 
-            return null;
-        }
+			return null;
+		}
 
-        public override Expression? VisitVarDeclStmt([NotNull] CEvolParser.VarDeclStmtContext context)
-        {
-            var lastPos = _semanticAnalyzer.CurrentPosition;
-            SetCurrentPosition(context);
+		public override Expression? VisitVarDeclStmt([NotNull] CEvolParser.VarDeclStmtContext context)
+		{
+			var lastPos = _semanticAnalyzer.CurrentPosition;
+			SetCurrentPosition(context);
 
-            var ctx = context.fieldDecl();
+			var ctx = context.fieldDecl();
 
-            var typeSpec_ = ParseTypeSpec(ctx.typeSpec());
-            if (typeSpec_ == null)
-            {
-                var errorPos = _semanticAnalyzer.CurrentPosition;
-                _semanticAnalyzer.CurrentPosition = lastPos;
-                return new StubForErrorExpression(errorPos);
-            }
+			var typeSpec_ = ParseTypeSpec(ctx.typeSpec());
+			if (typeSpec_ == null)
+			{
+				var errorPos = _semanticAnalyzer.CurrentPosition;
+				_semanticAnalyzer.CurrentPosition = lastPos;
+				return new StubForErrorExpression(errorPos);
+			}
 
-            var typeSpec = typeSpec_.Value;
-            var varName = ctx.IDENTIFIER().ToString();
+			var typeSpec = typeSpec_.Value;
+			var varName = ctx.IDENTIFIER().ToString();
 
-            if (varName == null) throw new NotImplementedException();
+			if (varName == null) throw new NotImplementedException();
 
-            Expression varAccessing = _semanticAnalyzer.CreateLocalVariable(varName, typeSpec);
+			Expression varAccessing = _semanticAnalyzer.CreateLocalVariable(varName, typeSpec);
 
-            if (ctx.ASSIGN() != null)
-            {
-                var value = Visit(ctx.expression());
-                if (value == null) throw new NotImplementedException();
+			if (ctx.ASSIGN() != null)
+			{
+				var value = Visit(ctx.expression());
+				if (value == null) throw new NotImplementedException();
 
-                return _semanticAnalyzer.VariableAssing(varAccessing, value);
-            }
+				return _semanticAnalyzer.VariableAssing(varAccessing, value);
+			}
 
-            _semanticAnalyzer.CurrentPosition = lastPos;
+			_semanticAnalyzer.CurrentPosition = lastPos;
 
-            return varAccessing;
-        }
+			return varAccessing;
+		}
 
-        public override Expression? VisitExprStmt([NotNull] CEvolParser.ExprStmtContext context)
-        {
-            return Visit(context.expression());
-        }
+		public override Expression? VisitExprStmt([NotNull] CEvolParser.ExprStmtContext context)
+		{
+			return Visit(context.expression());
+		}
 
-        public override Expression VisitAssignExpr([NotNull] CEvolParser.AssignExprContext context)
-        {
-            var lastPos = _semanticAnalyzer.CurrentPosition;
-            SetCurrentPosition(context);
+		public override Expression VisitAssignExpr([NotNull] CEvolParser.AssignExprContext context)
+		{
+			var lastPos = _semanticAnalyzer.CurrentPosition;
+			SetCurrentPosition(context);
 
-            var expressions = context.expression();
-            if (expressions.Length != 2)
-                throw new NotImplementedException();
+			var expressions = context.expression();
+			if (expressions.Length != 2)
+				throw new NotImplementedException();
 
-            var leftExpression = Visit(expressions[0]);
-            var rightExpression = Visit(expressions[1]);
+			var leftExpression = Visit(expressions[0]);
+			var rightExpression = Visit(expressions[1]);
 
-            if (leftExpression == null || rightExpression == null) throw new NotImplementedException();
+			if (leftExpression == null || rightExpression == null) throw new NotImplementedException();
 
-            // TODO: где-то сделать проверку что это выражение - доступ к переменной, а не каккая-то хуета
+			// TODO: где-то сделать проверку что это выражение - доступ к переменной, а не каккая-то хуета
 
-            var res = _semanticAnalyzer.VariableAssing(leftExpression, rightExpression);
-            _semanticAnalyzer.CurrentPosition = lastPos;
+			var res = _semanticAnalyzer.VariableAssing(leftExpression, rightExpression);
+			_semanticAnalyzer.CurrentPosition = lastPos;
 
-            return res;
-        }
+			return res;
+		}
 
-        public override Expression? VisitCallExpr([NotNull] CEvolParser.CallExprContext context)
-        {
-            var lastPos = _semanticAnalyzer.CurrentPosition;
-            SetCurrentPosition(context);
+		public override Expression? VisitCallExpr([NotNull] CEvolParser.CallExprContext context)
+		{
+			var lastPos = _semanticAnalyzer.CurrentPosition;
+			SetCurrentPosition(context);
 
-            string? funcName = context.IDENTIFIER().ToString();
-            if (funcName == null) throw new NotImplementedException();
-            var args = context.args();
+			string? funcName = context.IDENTIFIER().ToString();
+			if (funcName == null) throw new NotImplementedException();
+			var args = context.args();
 
-            var arguments = args != null ? ParseArgs(context.args()) : Array.Empty<Expression>();
+			var arguments = args != null ? ParseArgs(context.args()) : Array.Empty<Expression>();
 
-            var res = _semanticAnalyzer.CallFunction(funcName, arguments);
+			var res = _semanticAnalyzer.CallFunction(funcName, arguments);
 
-            _semanticAnalyzer.CurrentPosition = lastPos;
-            return res;
-        }
+			_semanticAnalyzer.CurrentPosition = lastPos;
+			return res;
+		}
 
-        private Expression[] ParseArgs(CEvolParser.ArgsContext context)
-        {
-            var ars = context?.expression();
-            if (ars == null) return Array.Empty<Expression>();
+		private Expression[] ParseArgs(CEvolParser.ArgsContext context)
+		{
+			var ars = context?.expression();
+			if (ars == null) return Array.Empty<Expression>();
 
-            Expression[] result = new Expression[ars.Length];
+			Expression[] result = new Expression[ars.Length];
 
-            for (int i = 0; i < ars.Length; i++)
-            {
-                var expr = Visit(ars[i]);
-                if (expr == null) throw new NotImplementedException();
+			for (int i = 0; i < ars.Length; i++)
+			{
+				var expr = Visit(ars[i]);
+				if (expr == null) throw new NotImplementedException();
 
-                result[i] = expr;
-            }
+				result[i] = expr;
+			}
 
-            return result;
-        }
+			return result;
+		}
 
-        private List<(TypeSpec Type, string Name)> ParseParams([NotNull] CEvolParser.ParamsContext context)
-        {
-            var parameters = new List<(TypeSpec Type, string Name)>();
+		private List<(TypeSpec Type, string Name)> ParseParams([NotNull] CEvolParser.ParamsContext context)
+		{
+			var parameters = new List<(TypeSpec Type, string Name)>();
 
-            int count = context.typeSpec().Length;
+			int count = context.typeSpec().Length;
 
-            for (int i = 0; i < count; i++)
-            {
-                TypeSpec? paramDecl = ParseTypeSpec(context.typeSpec(i));
-                string paramName = context.IDENTIFIER(i).GetText();
+			for (int i = 0; i < count; i++)
+			{
+				TypeSpec? paramDecl = ParseTypeSpec(context.typeSpec(i));
+				string paramName = context.IDENTIFIER(i).GetText();
 
-                if (paramDecl == null) continue;
-                parameters.Add((paramDecl.Value, paramName));
-            }
+				if (paramDecl == null) continue;
+				parameters.Add((paramDecl.Value, paramName));
+			}
 
-            return parameters;
-        }
+			return parameters;
+		}
 
-        public override Expression? VisitLocExpr([NotNull] CEvolParser.LocExprContext context)
-        {
-            var lastPos = _semanticAnalyzer.CurrentPosition;
-            SetCurrentPosition(context);
+		public override Expression? VisitLocExpr([NotNull] CEvolParser.LocExprContext context)
+		{
+			var lastPos = _semanticAnalyzer.CurrentPosition;
+			SetCurrentPosition(context);
 
-            var value = Visit(context.expression());
-            if (value == null) throw new NotImplementedException();
+			var value = Visit(context.expression());
+			if (value == null) throw new NotImplementedException();
 
-            var res = _semanticAnalyzer.GetPointerToVar(value);
+			var res = _semanticAnalyzer.GetPointerToVar(value);
 
-            _semanticAnalyzer.CurrentPosition = lastPos;
-            return res;
-        }
+			_semanticAnalyzer.CurrentPosition = lastPos;
+			return res;
+		}
 
-        public override Expression VisitQualifierExpr([NotNull] CEvolParser.QualifierExprContext context)
-        {
-            var lastPos = _semanticAnalyzer.CurrentPosition;
-            SetCurrentPosition(context);
+		public override Expression VisitQualifierExpr([NotNull] CEvolParser.QualifierExprContext context)
+		{
+			var lastPos = _semanticAnalyzer.CurrentPosition;
+			SetCurrentPosition(context);
 
-            var value = Visit(context.expression());
-            if (value == null) throw new NotImplementedException();
+			var value = Visit(context.expression());
+			if (value == null) throw new NotImplementedException();
 
-            Qualifier qualifier = new QualifierWorkpiece(context.qualifier().GetText()).ToQualifier();
-            var res = _semanticAnalyzer.SetQualifier(value, qualifier);
+			Qualifier qualifier = new QualifierWorkpiece(context.qualifier().GetText()).ToQualifier();
+			var res = _semanticAnalyzer.SetQualifier(value, qualifier);
 
-            _semanticAnalyzer.CurrentPosition = lastPos;
-            return res;
-        }
+			_semanticAnalyzer.CurrentPosition = lastPos;
+			return res;
+		}
 
-        public override Expression? VisitNewExpr([NotNull] NewExprContext context)
-        {
-            return VisitObjectInstantiation(context, context.typeSpec(),
-                context.args(), context.LPAREN(), context.objectInitializer(), true);
-        }
+		public override Expression? VisitNewExpr([NotNull] NewExprContext context)
+		{
+			return VisitObjectInstantiation(context, context.typeSpec(),
+				context.args(), context.LPAREN(), context.objectInitializer(), true);
+		}
 
-        public override Expression? VisitValExpr([NotNull] ValExprContext context)
-        {
-            return VisitObjectInstantiation(context, context.typeSpec(), context.args(),
-                context.LPAREN(), context.objectInitializer(), false);
-        }
+		public override Expression? VisitValExpr([NotNull] ValExprContext context)
+		{
+			return VisitObjectInstantiation(context, context.typeSpec(), context.args(),
+				context.LPAREN(), context.objectInitializer(), false);
+		}
 
-        private Expression? VisitObjectInstantiation(ParserRuleContext context, TypeSpecContext typeSpecContext, ArgsContext? argsContext,
-            ITerminalNode? lparenNode, ObjectInitializerContext? objectInitializerContext, bool inHeap)
-        {
-            var lastPos = _semanticAnalyzer.CurrentPosition;
-            SetCurrentPosition(context);
+		private Expression? VisitObjectInstantiation(ParserRuleContext context, TypeSpecContext typeSpecContext, ArgsContext? argsContext,
+			ITerminalNode? lparenNode, ObjectInitializerContext? objectInitializerContext, bool inHeap)
+		{
+			var lastPos = _semanticAnalyzer.CurrentPosition;
+			SetCurrentPosition(context);
 
-            var typeSpec = ParseTypeSpec(typeSpecContext);
-            if (typeSpec == null)
-            {
-                var errorPos = _semanticAnalyzer.CurrentPosition;
-                _semanticAnalyzer.CurrentPosition = lastPos;
-                return new StubForErrorExpression(errorPos);
-            }
+			var typeSpec = ParseTypeSpec(typeSpecContext);
+			if (typeSpec == null)
+			{
+				var errorPos = _semanticAnalyzer.CurrentPosition;
+				_semanticAnalyzer.CurrentPosition = lastPos;
+				return new StubForErrorExpression(errorPos);
+			}
 
-            Expression[]? arguments = null;
-            if (argsContext != null)
-            {
-                arguments = ParseArgs(argsContext);
-            }
-            else if (lparenNode != null)
-            {
-                arguments = Array.Empty<Expression>();
-            }
+			Expression[]? arguments = null;
+			if (argsContext != null)
+			{
+				arguments = ParseArgs(argsContext);
+			}
+			else if (lparenNode != null)
+			{
+				arguments = Array.Empty<Expression>();
+			}
 
-            Expression? objectInitializer = null;
-            if (objectInitializerContext != null)
-            {
-                objectInitializer = Visit(objectInitializerContext);
-            }
+			Expression? objectInitializer = null;
+			if (objectInitializerContext != null)
+			{
+				objectInitializer = Visit(objectInitializerContext);
+			}
 
-            var res = _semanticAnalyzer.CreateObject(typeSpec.Value, arguments, objectInitializer, inHeap);
+			var res = _semanticAnalyzer.CreateObject(typeSpec.Value, arguments, objectInitializer, inHeap);
 
-            _semanticAnalyzer.CurrentPosition = lastPos;
-            return res;
-        }
+			_semanticAnalyzer.CurrentPosition = lastPos;
+			return res;
+		}
 
-        public override Expression? VisitIndexExpr([NotNull] CEvolParser.IndexExprContext context)
-        {
-            var lastPos = _semanticAnalyzer.CurrentPosition;
-            SetCurrentPosition(context);
+		public override Expression? VisitIndexExpr([NotNull] CEvolParser.IndexExprContext context)
+		{
+			var lastPos = _semanticAnalyzer.CurrentPosition;
+			SetCurrentPosition(context);
 
-            if (context.expression() == null || context.args() == null)
-                throw new NotImplementedException();
+			if (context.expression() == null || context.args() == null)
+				throw new NotImplementedException();
 
-            Expression? expr = Visit(context.expression());
-            if (expr == null)
-                throw new NotImplementedException();
+			Expression? expr = Visit(context.expression());
+			if (expr == null)
+				throw new NotImplementedException();
 
-            Expression[] args = ParseArgs(context.args());
+			Expression[] args = ParseArgs(context.args());
 
-            if (args.Length != 1)  // TODO: реализовать многомерные массивы
-                throw new NotImplementedException();
+			if (args.Length != 1)  // TODO: реализовать многомерные массивы
+				throw new NotImplementedException();
 
-            var res = _semanticAnalyzer.ArrayCellAccess(expr, args[0]);
+			var res = _semanticAnalyzer.ArrayCellAccess(expr, args[0]);
 
-            _semanticAnalyzer.CurrentPosition = lastPos;
-            return res;
-        }
+			_semanticAnalyzer.CurrentPosition = lastPos;
+			return res;
+		}
 
-        public override Expression? VisitMemberAccess([NotNull] CEvolParser.MemberAccessContext context)
-        {
-            var lastPos = _semanticAnalyzer.CurrentPosition;
-            SetCurrentPosition(context);
+		public override Expression? VisitMemberAccess([NotNull] CEvolParser.MemberAccessContext context)
+		{
+			var lastPos = _semanticAnalyzer.CurrentPosition;
+			SetCurrentPosition(context);
 
-            var expr = Visit(context.expression());
-            if (expr == null) throw new NotImplementedException();
+			var expr = Visit(context.expression());
+			if (expr == null) throw new NotImplementedException();
 
-            string? memberName = context.IDENTIFIER().GetText();
-            if (memberName == null) throw new NotImplementedException();
+			string? memberName = context.IDENTIFIER().GetText();
+			if (memberName == null) throw new NotImplementedException();
 
-            if (context.LPAREN() == null)
-            {
-                var res = _semanticAnalyzer.ClassFieldAccess(expr, memberName);
+			if (context.LPAREN() == null)
+			{
+				var res = _semanticAnalyzer.ClassFieldAccess(expr, memberName);
 
-                _semanticAnalyzer.CurrentPosition = lastPos;
-                return res;
-            }
-            else
-            {
-                var arguments = ParseArgs(context.args());
-                SetCurrentPosition(context.IDENTIFIER().Symbol);
-                var res = _semanticAnalyzer.CallClassMethod(memberName, expr, arguments);
+				_semanticAnalyzer.CurrentPosition = lastPos;
+				return res;
+			}
+			else
+			{
+				var arguments = ParseArgs(context.args());
+				SetCurrentPosition(context.IDENTIFIER().Symbol);
+				var res = _semanticAnalyzer.CallClassMethod(memberName, expr, arguments);
 
-                _semanticAnalyzer.CurrentPosition = lastPos;
-                return res;
-            }
-        }
+				_semanticAnalyzer.CurrentPosition = lastPos;
+				return res;
+			}
+		}
 
-        private TypeSpec? ParseTypeSpec([NotNull] CEvolParser.TypeSpecContext context)
-        {
-            // TODO: поля классов парсить здесь повторно смысла нет. Надо как-то это все кэшировать
-            var typeName = context.IDENTIFIER().GetText();
-            if (string.IsNullOrEmpty(typeName))
-                throw new NotImplementedException();
+		private TypeSpec? ParseTypeSpec(TypeSpecContext? context)
+		{
+			if (context == null) return null;
 
-            var qualifiers = ParsingCommon.ParseQualifiers(context);
+			// TODO: поля классов парсить здесь повторно смысла нет. Надо как-то это все кэшировать
+			var typeName = context.IDENTIFIER().GetText();
+			if (string.IsNullOrEmpty(typeName))
+				throw new NotImplementedException();
+
+			var qualifiers = ParsingCommon.ParseQualifiers(context);
+
+			TypeSpec[] configuredGenerics = [];
+			var genericContext = context.genericSpec();
+			if (genericContext != null)
+			{
+				configuredGenerics = genericContext.typeSpec()
+					.Select(ParseTypeSpec)
+					.Where(x => x != null)
+					.Select(x => x!.Value)
+					.ToArray();
+			}
 
 			var typeDesc = _semanticAnalyzer.GetActualType(typeName);
 
 			if (typeDesc == null)
-            {
-                return null;
-            }
+			{
+				return null;
+			}
 
-            return new TypeSpec(typeDesc, QualifierWorkpiece.ToQualifiers(qualifiers));
-        }
+			return new TypeSpec(typeDesc, QualifierWorkpiece.ToQualifiers(qualifiers), configuredGenerics);
+		}
 
-        public override Expression? VisitNumberExpr([NotNull] CEvolParser.NumberExprContext context)
-        {
-            var lastPos = _semanticAnalyzer.CurrentPosition;
-            SetCurrentPosition(context);
+		public override Expression? VisitNumberExpr([NotNull] CEvolParser.NumberExprContext context)
+		{
+			var lastPos = _semanticAnalyzer.CurrentPosition;
+			SetCurrentPosition(context);
 
-            var value = context.NUMBER().GetText();
-            var num = BigInteger.Parse(value);
+			var value = context.NUMBER().GetText();
+			var num = BigInteger.Parse(value);
 
-            if (context.MINUS() != null) num *= -1;
+			if (context.MINUS() != null) num *= -1;
 
-            if (num >= 0 && num <= 255)
-            {
-                var res = _semanticAnalyzer.CreateByte((byte)num);
+			if (num >= 0 && num <= 255)
+			{
+				var res = _semanticAnalyzer.CreateByte((byte)num);
 
-                _semanticAnalyzer.CurrentPosition = lastPos;
-                return res;
-            }
-            else
-            {
-                var res = _semanticAnalyzer.CreateInt((int)num);
+				_semanticAnalyzer.CurrentPosition = lastPos;
+				return res;
+			}
+			else
+			{
+				var res = _semanticAnalyzer.CreateInt((int)num);
 
-                _semanticAnalyzer.CurrentPosition = lastPos;
-                return res;
-            }
-        }
+				_semanticAnalyzer.CurrentPosition = lastPos;
+				return res;
+			}
+		}
 
-        public override Expression? VisitStringExpr([NotNull] CEvolParser.StringExprContext context)
-        {
-            var str = context.STRING().GetText();
-            return _semanticAnalyzer.CreateString(str);
-        }
+		public override Expression? VisitStringExpr([NotNull] CEvolParser.StringExprContext context)
+		{
+			var str = context.STRING().GetText();
+			return _semanticAnalyzer.CreateString(str);
+		}
 
-        public override Expression? VisitReturnStmt([NotNull] CEvolParser.ReturnStmtContext context)
-        {
-            var lastPos = _semanticAnalyzer.CurrentPosition;
-            SetCurrentPosition(context);
+		public override Expression? VisitReturnStmt([NotNull] CEvolParser.ReturnStmtContext context)
+		{
+			var lastPos = _semanticAnalyzer.CurrentPosition;
+			SetCurrentPosition(context);
 
-            var result = Visit(context.expression());
-            if (result == null) throw new NotImplementedException();
+			var result = Visit(context.expression());
+			if (result == null) throw new NotImplementedException();
 
-            _semanticAnalyzer.BuildReturn(result);
+			_semanticAnalyzer.BuildReturn(result);
 
-            _semanticAnalyzer.CurrentPosition = lastPos;
-            return null;
-        }
+			_semanticAnalyzer.CurrentPosition = lastPos;
+			return null;
+		}
 
-        public override Expression? VisitIfStmt([NotNull] CEvolParser.IfStmtContext context)
-        {
-            var lastPos = _semanticAnalyzer.CurrentPosition;
-            SetCurrentPosition(context);
-
-            var ctx = context.ifStatement();
-
-            var condition = Visit(ctx.expression());
-            if (condition == null) throw new NotImplementedException();
-
-            _semanticAnalyzer.EnterToIfBlock(condition);
-            Visit(ctx.block());
-
-            var ifBlock = _semanticAnalyzer.ExitFromBlock();
-            _semanticAnalyzer.CurrentPosition = lastPos;
-
-            foreach (var statement in ctx.elseIfStatement())
-            {
-                HendleElseIf(statement, ifBlock);
-            }
-
-            var elseBlock = ctx.elseStatement();
-            if (elseBlock != null)
-            {
-                HendleElse(elseBlock, ifBlock);
-            }
-
-            return null;
-        }
+		public override Expression? VisitIfStmt([NotNull] CEvolParser.IfStmtContext context)
+		{
+			var lastPos = _semanticAnalyzer.CurrentPosition;
+			SetCurrentPosition(context);
+
+			var ctx = context.ifStatement();
+
+			var condition = Visit(ctx.expression());
+			if (condition == null) throw new NotImplementedException();
+
+			_semanticAnalyzer.EnterToIfBlock(condition);
+			Visit(ctx.block());
+
+			var ifBlock = _semanticAnalyzer.ExitFromBlock();
+			_semanticAnalyzer.CurrentPosition = lastPos;
+
+			foreach (var statement in ctx.elseIfStatement())
+			{
+				HendleElseIf(statement, ifBlock);
+			}
+
+			var elseBlock = ctx.elseStatement();
+			if (elseBlock != null)
+			{
+				HendleElse(elseBlock, ifBlock);
+			}
+
+			return null;
+		}
 
-        private void HendleElseIf(ElseIfStatementContext ctx, Statement ifBlock)
-        {
-            var lastPos = _semanticAnalyzer.CurrentPosition;
-            SetCurrentPosition(ctx);
-
-            var elseIfCondition = Visit(ctx.expression());
-            if (elseIfCondition == null) throw new NotImplementedException();
-
-            _semanticAnalyzer.EnterToElseIfBlock(ifBlock, elseIfCondition);
-
-            Visit(ctx.block());
-
-            _semanticAnalyzer.ExitFromBlock();
-            _semanticAnalyzer.CurrentPosition = lastPos;
-        }
-
-        private void HendleElse(ElseStatementContext ctx, Statement ifBlock)
-        {
-            var lastPos = _semanticAnalyzer.CurrentPosition;
-            SetCurrentPosition(ctx);
-
-            _semanticAnalyzer.EnterToElseBlock(ifBlock);
-            Visit(ctx.block());
-
-            _semanticAnalyzer.ExitFromBlock();
-            _semanticAnalyzer.CurrentPosition = lastPos;
-        }
-
-        public override Expression? VisitWhileStmt([NotNull] CEvolParser.WhileStmtContext context)
-        {
-            var lastPos = _semanticAnalyzer.CurrentPosition;
-            SetCurrentPosition(context);
-
-            var ctx = context.whileStatement();
-
-            var condition = Visit(ctx.expression());
-            if (condition == null) throw new NotImplementedException();
-
-            _semanticAnalyzer.EnterToWhileBlock(condition);
-            Visit(ctx.block());
-            _semanticAnalyzer.ExitFromBlock();
-
-            _semanticAnalyzer.CurrentPosition = lastPos;
-            return null;
-        }
-
-        public override Expression? VisitUnsafeStmt([NotNull] CEvolParser.UnsafeStmtContext context)
-        {
-            var lastPos = _semanticAnalyzer.CurrentPosition;
-            SetCurrentPosition(context);
-
-            _semanticAnalyzer.EnterUnsafeBlock();
-            Visit(context.unsafeStatement().block());
-            _semanticAnalyzer.ExitFromBlock();
-
-            _semanticAnalyzer.CurrentPosition = lastPos;
-            return null;
-        }
-
-        public override Expression VisitObjectInitializer([NotNull] ObjectInitializerContext context)
-        {
-            var lastPos = _semanticAnalyzer.CurrentPosition;
-            SetCurrentPosition(context);
-
-            var res = new List<Expression>();
-            if (context.objectInitializerParams() != null)
-            {
-                foreach (var param in context.objectInitializerParams().expression())
-                {
-                    var expr = Visit(param);
-                    if (expr != null) res.Add(expr);
-                }
-            }
-
-            _semanticAnalyzer.CurrentPosition = lastPos;
-            return _semanticAnalyzer.ObjectInitializer(res);
-        }
-
-        public override Expression? VisitIdExpr([NotNull] CEvolParser.IdExprContext context)
-        {
-            var lastPos = _semanticAnalyzer.CurrentPosition;
-            SetCurrentPosition(context);
-
-            var varName = context.IDENTIFIER().ToString();
-            if (varName == null) throw new NotImplementedException();
-
-            var res = _semanticAnalyzer.VariableAccess(varName);
-
-            _semanticAnalyzer.CurrentPosition = lastPos;
-            return res;
-        }
-
-        public override Expression? VisitAddSubExpr([NotNull] CEvolParser.AddSubExprContext context)
-        {
-            var lastPos = _semanticAnalyzer.CurrentPosition;
-            SetCurrentPosition(context);
-
-            (Expression leftValue, Expression rightValue) = ParseBinaryExpression(context.expression());
-
-            Expression res;
-            if (context.MINUS() != null) // это минус
-            {
-                res = _semanticAnalyzer.Sub(leftValue, rightValue);
-            }
-            else // это плюс
-            {
-                res = _semanticAnalyzer.Sum(leftValue, rightValue);
-            }
-
-            _semanticAnalyzer.CurrentPosition = lastPos;
-            return res;
-        }
-
-        public override Expression VisitMulDivExpr([NotNull] MulDivExprContext context)
-        {
-            var lastPos = _semanticAnalyzer.CurrentPosition;
-            SetCurrentPosition(context);
-
-            (Expression leftValue, Expression rightValue) = ParseBinaryExpression(context.expression());
-
-            Expression res;
-            if (context.MUL() != null) // это умножить
-            {
-                res = _semanticAnalyzer.Multiple(leftValue, rightValue);
-            }
-            else // это разделить
-            {
-                res = _semanticAnalyzer.Division(leftValue, rightValue);
-            }
-
-            _semanticAnalyzer.CurrentPosition = lastPos;
-            return res;
-        }
-
-        public override Expression? VisitParenExpr([NotNull] CEvolParser.ParenExprContext context)
-        {
-            var lastPos = _semanticAnalyzer.CurrentPosition;
-            SetCurrentPosition(context);
-
-            var res = Visit(context.expression());
-
-            _semanticAnalyzer.CurrentPosition = lastPos;
-            return res;
-        }
-
-        public override Expression? VisitCastExpr([NotNull] CEvolParser.CastExprContext context)
-        {
-            var lastPos = _semanticAnalyzer.CurrentPosition;
-            SetCurrentPosition(context);
-
-            var expression = Visit(context.expression());
-            if (expression == null) throw new NotImplementedException();
-
-            var typeSpec = ParseTypeSpec(context.typeSpec());
-            if (typeSpec == null)
-            {
-                var errorPos = _semanticAnalyzer.CurrentPosition;
-                _semanticAnalyzer.CurrentPosition = lastPos;
-                return new StubForErrorExpression(errorPos);
-            }
-
-            var res = _semanticAnalyzer.TypeCast(expression, typeSpec.Value);
-
-            _semanticAnalyzer.CurrentPosition = lastPos;
-            return res;
-        }
-
-        public override Expression? VisitEqNeqExpr([NotNull] CEvolParser.EqNeqExprContext context)
-        {
-            (Expression left, Expression right) = ParseBinaryExpression(context.expression());
-
-            CompareOperator compareOperator;
-            if (context.NEQ() != null)
-                compareOperator = CompareOperator.NotEqual;
-            else if (context.EQ() != null)
-                compareOperator = CompareOperator.Equal;
-            else
-                throw new NotImplementedException();
-
-            return _semanticAnalyzer.Compare(left, right, compareOperator);
-        }
-
-        public override Expression? VisitLtGtExpr([NotNull] CEvolParser.LtGtExprContext context)
-        {
-            (Expression left, Expression right) = ParseBinaryExpression(context.expression());
-
-            CompareOperator compareOperator;
-            if (context.LT() != null)
-                compareOperator = CompareOperator.LessThan;
-            else if (context.GT() != null)
-                compareOperator = CompareOperator.GreaterThan;
-            else
-                throw new NotImplementedException();
-
-            return _semanticAnalyzer.Compare(left, right, compareOperator);
-        }
-
-        public override Expression? VisitBitAndExpr([NotNull] CEvolParser.BitAndExprContext context)
-        {
-            (Expression left, Expression right) = ParseBinaryExpression(context.expression());
-            return _semanticAnalyzer.BitAnd(left, right);
-        }
-
-        public override Expression? VisitBitXorExpr([NotNull] CEvolParser.BitXorExprContext context)
-        {
-            (Expression left, Expression right) = ParseBinaryExpression(context.expression());
-            return _semanticAnalyzer.BitXor(left, right);
-        }
-
-        public override Expression? VisitBitOrExpr([NotNull] CEvolParser.BitOrExprContext context)
-        {
-            (Expression left, Expression right) = ParseBinaryExpression(context.expression());
-            return _semanticAnalyzer.BitOr(left, right);
-        }
-
-        public override Expression? VisitLogicalAndExpr([NotNull] CEvolParser.LogicalAndExprContext context)
-        {
-            (Expression left, Expression right) = ParseBinaryExpression(context.expression());
-            return _semanticAnalyzer.LogicalAnd(left, right);
-        }
-
-        public override Expression? VisitExchangeExpr([NotNull] CEvolParser.ExchangeExprContext context)
-        {
-            var lastPos = _semanticAnalyzer.CurrentPosition;
-            SetCurrentPosition(context);
-
-            (Expression leftValue, Expression rightValue) = ParseBinaryExpression(context.expression());
-
-            var res = _semanticAnalyzer.Exchange(leftValue, rightValue);
-
-            _semanticAnalyzer.CurrentPosition = lastPos;
-            return res;
-        }
-
-        private (Expression left, Expression right) ParseBinaryExpression(CEvolParser.ExpressionContext[]? expressions)
-        {
-            if (expressions == null || expressions.Length != 2) throw new NotImplementedException();
-
-            var leftValue = Visit(expressions[0]);
-            var rightValue = Visit(expressions[1]);
-
-            if (leftValue == null || rightValue == null) throw new NotImplementedException();
-
-            return (leftValue, rightValue);
-        }
-
-        private void SetCurrentPosition(ParserRuleContext context)
-        {
-            SetCurrentPosition(context.Start);
-        }
-
-        private void SetCurrentPosition(IToken context)
-        {
-            _semanticAnalyzer.CurrentPosition = new PositionInSources(_currentFile, context.Line, context.Column, context.StopIndex);
-        }
-    }
+		private void HendleElseIf(ElseIfStatementContext ctx, Statement ifBlock)
+		{
+			var lastPos = _semanticAnalyzer.CurrentPosition;
+			SetCurrentPosition(ctx);
+
+			var elseIfCondition = Visit(ctx.expression());
+			if (elseIfCondition == null) throw new NotImplementedException();
+
+			_semanticAnalyzer.EnterToElseIfBlock(ifBlock, elseIfCondition);
+
+			Visit(ctx.block());
+
+			_semanticAnalyzer.ExitFromBlock();
+			_semanticAnalyzer.CurrentPosition = lastPos;
+		}
+
+		private void HendleElse(ElseStatementContext ctx, Statement ifBlock)
+		{
+			var lastPos = _semanticAnalyzer.CurrentPosition;
+			SetCurrentPosition(ctx);
+
+			_semanticAnalyzer.EnterToElseBlock(ifBlock);
+			Visit(ctx.block());
+
+			_semanticAnalyzer.ExitFromBlock();
+			_semanticAnalyzer.CurrentPosition = lastPos;
+		}
+
+		public override Expression? VisitWhileStmt([NotNull] CEvolParser.WhileStmtContext context)
+		{
+			var lastPos = _semanticAnalyzer.CurrentPosition;
+			SetCurrentPosition(context);
+
+			var ctx = context.whileStatement();
+
+			var condition = Visit(ctx.expression());
+			if (condition == null) throw new NotImplementedException();
+
+			_semanticAnalyzer.EnterToWhileBlock(condition);
+			Visit(ctx.block());
+			_semanticAnalyzer.ExitFromBlock();
+
+			_semanticAnalyzer.CurrentPosition = lastPos;
+			return null;
+		}
+
+		public override Expression? VisitUnsafeStmt([NotNull] CEvolParser.UnsafeStmtContext context)
+		{
+			var lastPos = _semanticAnalyzer.CurrentPosition;
+			SetCurrentPosition(context);
+
+			_semanticAnalyzer.EnterUnsafeBlock();
+			Visit(context.unsafeStatement().block());
+			_semanticAnalyzer.ExitFromBlock();
+
+			_semanticAnalyzer.CurrentPosition = lastPos;
+			return null;
+		}
+
+		public override Expression VisitObjectInitializer([NotNull] ObjectInitializerContext context)
+		{
+			var lastPos = _semanticAnalyzer.CurrentPosition;
+			SetCurrentPosition(context);
+
+			var res = new List<Expression>();
+			if (context.objectInitializerParams() != null)
+			{
+				foreach (var param in context.objectInitializerParams().expression())
+				{
+					var expr = Visit(param);
+					if (expr != null) res.Add(expr);
+				}
+			}
+
+			_semanticAnalyzer.CurrentPosition = lastPos;
+			return _semanticAnalyzer.ObjectInitializer(res);
+		}
+
+		public override Expression? VisitIdExpr([NotNull] CEvolParser.IdExprContext context)
+		{
+			var lastPos = _semanticAnalyzer.CurrentPosition;
+			SetCurrentPosition(context);
+
+			var varName = context.IDENTIFIER().ToString();
+			if (varName == null) throw new NotImplementedException();
+
+			var res = _semanticAnalyzer.VariableAccess(varName);
+
+			_semanticAnalyzer.CurrentPosition = lastPos;
+			return res;
+		}
+
+		public override Expression? VisitAddSubExpr([NotNull] CEvolParser.AddSubExprContext context)
+		{
+			var lastPos = _semanticAnalyzer.CurrentPosition;
+			SetCurrentPosition(context);
+
+			(Expression leftValue, Expression rightValue) = ParseBinaryExpression(context.expression());
+
+			Expression res;
+			if (context.MINUS() != null) // это минус
+			{
+				res = _semanticAnalyzer.Sub(leftValue, rightValue);
+			}
+			else // это плюс
+			{
+				res = _semanticAnalyzer.Sum(leftValue, rightValue);
+			}
+
+			_semanticAnalyzer.CurrentPosition = lastPos;
+			return res;
+		}
+
+		public override Expression VisitMulDivExpr([NotNull] MulDivExprContext context)
+		{
+			var lastPos = _semanticAnalyzer.CurrentPosition;
+			SetCurrentPosition(context);
+
+			(Expression leftValue, Expression rightValue) = ParseBinaryExpression(context.expression());
+
+			Expression res;
+			if (context.MUL() != null) // это умножить
+			{
+				res = _semanticAnalyzer.Multiple(leftValue, rightValue);
+			}
+			else // это разделить
+			{
+				res = _semanticAnalyzer.Division(leftValue, rightValue);
+			}
+
+			_semanticAnalyzer.CurrentPosition = lastPos;
+			return res;
+		}
+
+		public override Expression? VisitParenExpr([NotNull] CEvolParser.ParenExprContext context)
+		{
+			var lastPos = _semanticAnalyzer.CurrentPosition;
+			SetCurrentPosition(context);
+
+			var res = Visit(context.expression());
+
+			_semanticAnalyzer.CurrentPosition = lastPos;
+			return res;
+		}
+
+		public override Expression? VisitCastExpr([NotNull] CEvolParser.CastExprContext context)
+		{
+			var lastPos = _semanticAnalyzer.CurrentPosition;
+			SetCurrentPosition(context);
+
+			var expression = Visit(context.expression());
+			if (expression == null) throw new NotImplementedException();
+
+			var typeSpec = ParseTypeSpec(context.typeSpec());
+			if (typeSpec == null)
+			{
+				var errorPos = _semanticAnalyzer.CurrentPosition;
+				_semanticAnalyzer.CurrentPosition = lastPos;
+				return new StubForErrorExpression(errorPos);
+			}
+
+			var res = _semanticAnalyzer.TypeCast(expression, typeSpec.Value);
+
+			_semanticAnalyzer.CurrentPosition = lastPos;
+			return res;
+		}
+
+		public override Expression? VisitEqNeqExpr([NotNull] CEvolParser.EqNeqExprContext context)
+		{
+			(Expression left, Expression right) = ParseBinaryExpression(context.expression());
+
+			CompareOperator compareOperator;
+			if (context.NEQ() != null)
+				compareOperator = CompareOperator.NotEqual;
+			else if (context.EQ() != null)
+				compareOperator = CompareOperator.Equal;
+			else
+				throw new NotImplementedException();
+
+			return _semanticAnalyzer.Compare(left, right, compareOperator);
+		}
+
+		public override Expression? VisitLtGtExpr([NotNull] CEvolParser.LtGtExprContext context)
+		{
+			(Expression left, Expression right) = ParseBinaryExpression(context.expression());
+
+			CompareOperator compareOperator;
+			if (context.LT() != null)
+				compareOperator = CompareOperator.LessThan;
+			else if (context.GT() != null)
+				compareOperator = CompareOperator.GreaterThan;
+			else
+				throw new NotImplementedException();
+
+			return _semanticAnalyzer.Compare(left, right, compareOperator);
+		}
+
+		public override Expression? VisitBitAndExpr([NotNull] CEvolParser.BitAndExprContext context)
+		{
+			(Expression left, Expression right) = ParseBinaryExpression(context.expression());
+			return _semanticAnalyzer.BitAnd(left, right);
+		}
+
+		public override Expression? VisitBitXorExpr([NotNull] CEvolParser.BitXorExprContext context)
+		{
+			(Expression left, Expression right) = ParseBinaryExpression(context.expression());
+			return _semanticAnalyzer.BitXor(left, right);
+		}
+
+		public override Expression? VisitBitOrExpr([NotNull] CEvolParser.BitOrExprContext context)
+		{
+			(Expression left, Expression right) = ParseBinaryExpression(context.expression());
+			return _semanticAnalyzer.BitOr(left, right);
+		}
+
+		public override Expression? VisitLogicalAndExpr([NotNull] CEvolParser.LogicalAndExprContext context)
+		{
+			(Expression left, Expression right) = ParseBinaryExpression(context.expression());
+			return _semanticAnalyzer.LogicalAnd(left, right);
+		}
+
+		public override Expression? VisitExchangeExpr([NotNull] CEvolParser.ExchangeExprContext context)
+		{
+			var lastPos = _semanticAnalyzer.CurrentPosition;
+			SetCurrentPosition(context);
+
+			(Expression leftValue, Expression rightValue) = ParseBinaryExpression(context.expression());
+
+			var res = _semanticAnalyzer.Exchange(leftValue, rightValue);
+
+			_semanticAnalyzer.CurrentPosition = lastPos;
+			return res;
+		}
+
+		private (Expression left, Expression right) ParseBinaryExpression(CEvolParser.ExpressionContext[]? expressions)
+		{
+			if (expressions == null || expressions.Length != 2) throw new NotImplementedException();
+
+			var leftValue = Visit(expressions[0]);
+			var rightValue = Visit(expressions[1]);
+
+			if (leftValue == null || rightValue == null) throw new NotImplementedException();
+
+			return (leftValue, rightValue);
+		}
+
+		private void SetCurrentPosition(ParserRuleContext context)
+		{
+			SetCurrentPosition(context.Start);
+		}
+
+		private void SetCurrentPosition(IToken context)
+		{
+			_semanticAnalyzer.CurrentPosition = new PositionInSources(_currentFile, context.Line, context.Column, context.StopIndex);
+		}
+	}
 }

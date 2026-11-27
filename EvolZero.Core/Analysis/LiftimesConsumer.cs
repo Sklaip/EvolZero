@@ -17,11 +17,13 @@ namespace EvolZero.Core.Analysis
 
         private readonly Stack<ConditionBlock> _blocks = new();
         private readonly MembersFinder _membersFinder;
+		private readonly MembersRefsManager _refsManager;
 
-        public LiftimesConsumer(MembersFinder membersFinder)
+		public LiftimesConsumer(MembersFinder membersFinder, MembersRefsManager refsManager)
         {
             _membersFinder = membersFinder;
-        }
+			_refsManager = refsManager;
+		}
 
         public void EnterToIfStatement(IfStatement statement)
         {
@@ -116,7 +118,8 @@ namespace EvolZero.Core.Analysis
             if (!currentType.QualifiersExists)
             {
                 var typeDestructor = expr.ResultTypeSpec.Type.Destructors.First();
-                return new CallDesructorExpression(new GetPointerToVarExpression(expr, true, expr.Pos), typeDestructor, expr.Pos);
+				_refsManager.AddFuncIfGeneric(typeDestructor, expr.ResultTypeSpec);
+				return new CallDestructorExpression(new GetPointerToVarExpression(expr, true, expr.Pos), typeDestructor, expr.Pos);
             }
 
             if (currentType.IsRef)
@@ -125,7 +128,8 @@ namespace EvolZero.Core.Analysis
                 if (!innerType.QualifiersExists)
                 {
                     var typeDestructor = expr.ResultTypeSpec.Type.Destructors.First();
-                    return new CallDesructorExpression(expr, typeDestructor, expr.Pos);
+					_refsManager.AddFuncIfGeneric(typeDestructor, expr.ResultTypeSpec);
+					return new CallDestructorExpression(expr, typeDestructor, expr.Pos);
                 }
 
                 return GetDestructionCode(new PointerDereferenceExpression(expr, expr.Pos), false);

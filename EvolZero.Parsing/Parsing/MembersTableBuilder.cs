@@ -202,7 +202,8 @@ namespace EvolZero.Parsing
 					throw new NotImplementedException();
 				}
 
-				var classDesc = new TypeDesc(currentClass.Name, [], [], [], []);
+				var generics = new List<GenericParamDesc>();
+				var classDesc = new TypeDesc(currentClass.Name, [], [], [], [], generics);
 
 				_parsedClasses.Add(currentClass.Name, classDesc);
 				generalTypesList.Add(currentClass.Name, classDesc);
@@ -213,6 +214,7 @@ namespace EvolZero.Parsing
 					var genericParamName = $"{currentClass.Name}${param}";
 					var genericParam = new GenericParamDesc(genericParamName, null!, [], [], [], [], param, i);
 
+					generics.Add(genericParam);
 					_parsedClasses.Add(genericParamName, genericParam);
 					generalTypesList.Add(genericParamName, genericParam);
 				}

@@ -248,7 +248,7 @@ namespace EvolZero.LSP
                 return errorsBag.GetErrors();
             }
 
-            var referencesAnalazer = new LifeTimesAnalyzer(errorsBag, new LiftimesConsumer(finder));
+            var referencesAnalazer = new LifeTimesAnalyzer(errorsBag, new LiftimesConsumer(finder, refsManager));
             referencesAnalazer.Visit(program);
 
             var accessAnalazer = new AccessAnalyzer(errorsBag);

@@ -205,7 +205,7 @@ namespace EvolZero.Core.Analysis
 					return HandleExpression(doNotAutoDereferenceIfPointerExpression.Expression);
 				case CallConstructorExpression callConstructorExpression:
 					return CallConstructor(callConstructorExpression);
-				case CallDesructorExpression callDesructorExpression:
+				case CallDestructorExpression callDesructorExpression:
 					return CallDestructor(callDesructorExpression);
 				case GlobalArrayExpression globalArrayExpression:
 					return CreateGlobalArray(globalArrayExpression);
@@ -335,7 +335,7 @@ namespace EvolZero.Core.Analysis
 			return default!;
 		}
 
-		protected virtual T CallDestructor(CallDesructorExpression expr)
+		protected virtual T CallDestructor(CallDestructorExpression expr)
 		{
 			HandleExpression(expr.MemoryGetting);
 			return default!;

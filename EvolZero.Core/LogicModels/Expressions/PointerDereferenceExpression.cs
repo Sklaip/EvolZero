@@ -20,9 +20,9 @@ namespace EvolZero.Core.LogicModels.Expressions
 			if (!typeSpec.QualifiersExists || typeSpec.Qualifiers[0] is not (ReferenceQualifier or BorrowReferenceQualifier))
 				throw new NotImplementedException();
 
-			if (typeSpec.Qualifiers.Length == 1) return new TypeSpec(typeSpec.Type);
+			if (typeSpec.Qualifiers.Length == 1) return new TypeSpec(typeSpec.Type, [], typeSpec.ConfiguredGenericParams);
 
-			return new TypeSpec(typeSpec.Type, typeSpec.Qualifiers[1..]);
+			return new TypeSpec(typeSpec.Type, typeSpec.Qualifiers[1..], typeSpec.ConfiguredGenericParams);
 		}
 	}
 }

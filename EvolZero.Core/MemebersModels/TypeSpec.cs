@@ -75,7 +75,7 @@
 
 		public bool GenericEquals(TypeSpec other)
 		{
-			if (Type.IsGeneric != other.Type.IsGeneric || ConfiguredGenericParams.Length != other.ConfiguredGenericParams.Length)
+			if (Type.HasGenericParams != other.Type.HasGenericParams || ConfiguredGenericParams.Length != other.ConfiguredGenericParams.Length)
 				return false;
 
 			for (int i = 0; i < other.ConfiguredGenericParams.Length; i++)
@@ -122,7 +122,7 @@
 
 		public TypeSpec RemoveFirtsQualifier()
 		{
-			return new TypeSpec(Type, Qualifiers.Skip(1).ToArray());
+			return new TypeSpec(Type, Qualifiers.Skip(1).ToArray(), ConfiguredGenericParams);
 		}
 
 		public string ToString(string separator)

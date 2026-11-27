@@ -59,7 +59,8 @@ namespace EvolZero.Core.Analysis.Semantic
 			return Is(second, first, out _);
 		}
 
-		public T? FindSuitableFunction<T>(T[] functions, IEnumerable<TypeSpec> arguments, out TypeSpec?[] downcasts) where T : IFunctionalBlockDesc
+		public T? FindSuitableFunction<T>(T[] functions, IEnumerable<TypeSpec> arguments, TypeSpec? parentType,
+			out TypeSpec?[] downcasts) where T : IFunctionalBlockDesc
 		{
 			// TODO: проверять что подходит только одна функция, если подходит несколько то выдавать ошибку
 			foreach (var func in functions)
@@ -67,6 +68,11 @@ namespace EvolZero.Core.Analysis.Semantic
 				var agrsCount = func.Arguments.Length;
 				var comparer = new ArgumentsComparer(this, agrsCount);
 				var funcArgs = func.Arguments.Select(x => x.Declaring);
+
+				if (parentType != null)
+				{
+					funcArgs = funcArgs.Select(x => FillGenericsParams(parentType.Value, x));
+				}
 
 				if (funcArgs.SequenceEqual(arguments, comparer))
 				{
@@ -92,17 +98,24 @@ namespace EvolZero.Core.Analysis.Semantic
 			return default;
 		}
 
-		public ConstructorDesc? FindSuitableConstructor(IEnumerable<ConstructorDesc> constructors, IEnumerable<TypeSpec> arguments)
+		public ConstructorDesc? FindSuitableConstructor(TypeSpec? parentType, IEnumerable<ConstructorDesc> constructors, IEnumerable<TypeSpec> arguments)
 		{
-			return FindSuitableConstructor(constructors, arguments, out _);
+			return FindSuitableConstructor(parentType, constructors, arguments, out _);
 		}
 
-		public ConstructorDesc? FindSuitableConstructor(IEnumerable<ConstructorDesc> constructors, IEnumerable<TypeSpec> arguments, out TypeSpec?[] downcasts)
+		public ConstructorDesc? FindSuitableConstructor(TypeSpec? parentType, IEnumerable<ConstructorDesc> constructors,
+			IEnumerable<TypeSpec> arguments, out TypeSpec?[] downcasts)
 		{
 			foreach (var ctor in constructors)
 			{
 				var comparer = new ArgumentsComparer(this, ctor.Arguments.Length);
 				var funcArgs = ctor.Arguments.Select(x => x.Declaring);
+
+				if (parentType != null)
+				{
+					funcArgs = funcArgs.Select(x => FillGenericsParams(parentType.Value, x));
+				}
+
 				if (funcArgs.SequenceEqual(arguments, comparer))
 				{
 					downcasts = comparer.Downcasts;
@@ -114,7 +127,7 @@ namespace EvolZero.Core.Analysis.Semantic
 			return null;
 		}
 
-		public DestructorDesc? FindSuitableDestructor(IEnumerable<DestructorDesc> constructors)
+		public DestructorDesc? FindSuitableDestructor(TypeSpec? parentType, IEnumerable<DestructorDesc> constructors)
 		{
 			return constructors.FirstOrDefault();
 		}
@@ -188,6 +201,11 @@ namespace EvolZero.Core.Analysis.Semantic
 			return false;
 		}
 
+		private TypeSpec FillGenericsParams(TypeSpec parentType, TypeSpec source)
+		{
+			if (source.Type is not GenericParamDesc generic) return source;
+			return parentType.ConfiguredGenericParams[generic.ParamIndex];
+		}
 
 	}
 }

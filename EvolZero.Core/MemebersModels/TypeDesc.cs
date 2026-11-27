@@ -13,19 +13,20 @@ namespace EvolZero.Core.MemebersModels
 		public readonly List<DestructorDesc> Destructors;
 		public readonly List<TypeDesc> InheritedTypes = [];
 		public readonly List<TypeDesc> CanExpandedTo = [];
-		public readonly List<GenericParamDesc> GenericParams = [];
+		public readonly List<GenericParamDesc> GenericParams;
 
 		public readonly bool IsBaseType = false;
-		public bool IsGeneric { get => GenericParams.Count > 0; }
+		public bool HasGenericParams { get => GenericParams.Count > 0; }
 
-		public TypeDesc(string name, Dictionary<string, VariableDesc> variables,
-			Dictionary<string, MethodDesc[]> functions, List<ConstructorDesc> constructors, List<DestructorDesc> destructors)
+		public TypeDesc(string name, Dictionary<string, VariableDesc> variables, Dictionary<string, MethodDesc[]> functions, 
+			List<ConstructorDesc> constructors, List<DestructorDesc> destructors, List<GenericParamDesc> genericParams)
 		{
 			Name = name;
 			Variables = variables;
 			Functions = functions;
 			Constructors = constructors;
 			Destructors = destructors;
+			GenericParams = genericParams;
 		}
 
 		public TypeDesc(string name)
@@ -35,6 +36,7 @@ namespace EvolZero.Core.MemebersModels
 			Functions = [];
 			Constructors = [];
 			Destructors = [];
+			GenericParams = [];
 			IsBaseType = true;
 		}
 	}

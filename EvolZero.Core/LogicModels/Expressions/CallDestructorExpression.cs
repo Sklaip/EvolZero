@@ -5,13 +5,13 @@ using System.Text;
 
 namespace EvolZero.Core.LogicModels.Expressions
 {
-	public class CallDesructorExpression : Expression
+	public class CallDestructorExpression : Expression
 	{
 		public readonly Expression MemoryGetting;
 
 		public readonly DestructorDesc Destructor;
 
-		public CallDesructorExpression(Expression memoryGetting, DestructorDesc destructor, PositionInSources pos) 
+		public CallDestructorExpression(Expression memoryGetting, DestructorDesc destructor, PositionInSources pos) 
 			: base(memoryGetting.ResultTypeSpec, pos)
 		{
 			MemoryGetting = memoryGetting;

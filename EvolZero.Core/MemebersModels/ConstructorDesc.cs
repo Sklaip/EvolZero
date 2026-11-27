@@ -8,7 +8,7 @@ namespace EvolZero.Core.MemebersModels
 	{
 		public Argument[] Arguments { get; private set; }
 
-		public string Name => "ctor";
+		public string Name { get; private set; }
 
 		public bool IsInfArgs => false;
 
@@ -27,6 +27,7 @@ namespace EvolZero.Core.MemebersModels
 			Lifetimes = lifetimes;
 			_voidType = voidType;
 			ImplicitArgument = new TypeSpec(declaringType, [Qualifier.BorrowReference]);
+			Name = $"{declaringType.Name}_ctor";
 		}
 
 	}

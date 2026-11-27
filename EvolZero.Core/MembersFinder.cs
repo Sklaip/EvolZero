@@ -7,7 +7,7 @@ namespace EvolZero.Core
 		private readonly MembersTable _membersTable;
 		private HashSet<string> _namespaces = [];
 		private HashSet<string> _usings = [];
-		private string? _currentClassName = null;
+		private TypeDesc? _currentClass = null;
 
 		public TypeDesc IntType { get; }
 		public TypeDesc LongType { get; }
@@ -56,12 +56,12 @@ namespace EvolZero.Core
 
 		public void SetCurrentType(TypeDesc? type)
 		{
-			_currentClassName = type?.Name;
+			_currentClass = type;
 		}
 
 		public void ClearCurrentType()
 		{
-			_currentClassName = null;
+			_currentClass = null;
 		}
 
 		public TypeDesc FindType(string name)
@@ -75,9 +75,9 @@ namespace EvolZero.Core
 			var type = TryFindTypeByName(name);
 
 			// если не нашли, то ищем среди дженериков текущего класса
-			if (type == null)
+			if (type == null && _currentClass != null)
 			{
-				type = TryFindTypeByName($"{_currentClassName}${name}");
+				type = TryFindTypeByName($"{_currentClass.Name}${name}");
 			}
 
 			return type;

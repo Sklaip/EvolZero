@@ -143,7 +143,7 @@ namespace EvolZero.Core.Analysis.Semantic
 
             if (statement is IFunctionalBlockStatement fst)
             {
-                _currentFunc = fst;
+				_currentFunc = fst;
                 foreach (var argument in fst.Arguments)
                 {
                     var liftime = DefineArgumentLifetime(argument, fst.Lifetimes);
@@ -1037,7 +1037,7 @@ namespace EvolZero.Core.Analysis.Semantic
         {
             var baseLifetime = IsBorrow(argument.Declaring) ? Lifetime.ForRefbArgument() : Lifetime.ForArgument();
             var lifetime = lifetimes.FirstOrDefault(x => x.LeftKey.KeyType == LifetimeDecl.KeyType.Var && x.LeftKey.VarName == argument.Name);
-            if (argument.Declaring.IsRef && lifetime != null)
+            if (lifetime != null)
             {
                 if (lifetime.RightKey.KeyType == LifetimeDecl.KeyType.This) baseLifetime.Connect(Lifetime.ForThis());
                 else if (lifetime.RightKey.KeyType == LifetimeDecl.KeyType.Return) baseLifetime.Connect(Lifetime.ForReturn());

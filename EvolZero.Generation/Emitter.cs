@@ -55,18 +55,23 @@ namespace EvolZero.Generation
 			_currentClass = null;
 		}
 
+		private TypeSpec[]? _currentConfiguredGenerics = null;
+
 		protected override void HandleFunctionalBlock<TBlock>(TBlock statement)
 		{
 			var signatures = _refsManager.GetAllFunctionRefs(statement.BlockDesc);
 
 			foreach (var signature in signatures)
 			{
-				(IReadOnlyCollection<TypeSpec> args, IFuncRefData refData) = signature;
+				(TypeSpec? implictArg, IReadOnlyCollection<TypeSpec> args, IFuncRefData refData) = signature;
+				if (implictArg != null) _currentConfiguredGenerics = implictArg.Value.ConfiguredGenericParams;
 
 				_functionLocalVariables = new();
 
 				var argumentsTypes = new List<ITypeRef>();
-				if (_currentClass != null) argumentsTypes.Add(_codeGenerator.PointerType);
+				if (implictArg != null)
+					argumentsTypes.Add(GetActualTypeRef(implictArg.Value));
+
 				argumentsTypes.AddRange(args.Select(GetActualTypeRef));
 
 				string name = statement.Name;
@@ -103,6 +108,7 @@ namespace EvolZero.Generation
 				}
 
 				_functionLocalVariables = null!;
+				_currentConfiguredGenerics = null;
 
 				_codeGenerator.StopFunctionBodyFill();
 			}
@@ -210,7 +216,7 @@ namespace EvolZero.Generation
 		protected override IValueAccessor AllocateHeapMemory(AllocateHeapMemoryToType expr)
 		{
 			var typeSpec = expr.ResultTypeSpec.RemoveFirtsQualifier();
-			var type = _refsManager.GetRealTypeRef(typeSpec) as TypeRef;
+			var type = _refsManager.GetRealTypeRef(typeSpec, _currentConfiguredGenerics) as TypeRef;
 
 			if (type == null) throw new NotImplementedException();
 
@@ -288,7 +294,7 @@ namespace EvolZero.Generation
 		{
 			var accessors = expr.Arguments.Select(HandleExpression).ToArray();
 
-			var refData = _refsManager.GetFunctionalBlockRef(expr.Function, expr.Arguments.Select(x => x.ResultTypeSpec));
+			var refData = _refsManager.GetFunctionalBlockRef(expr.Function, null);
 			return _codeGenerator.FunctionCall(refData, accessors);
 		}
 
@@ -297,9 +303,7 @@ namespace EvolZero.Generation
 			var instanceAccessor = HandleExpression(expr.InstanceGetting);
 			var argsAccessors = expr.Arguments.Select(HandleExpression);
 
-			TypeSpec[] args = [expr.InstanceGetting.ResultTypeSpec, .. expr.Arguments.Select(x => x.ResultTypeSpec)];
-
-			var refData = _refsManager.GetFunctionalBlockRef(expr.Method, args);
+			var refData = _refsManager.GetFunctionalBlockRef(expr.Method, expr.InstanceGetting.ResultTypeSpec);
 			return _codeGenerator.FunctionCall(refData, [instanceAccessor, .. argsAccessors]);
 		}
 
@@ -323,7 +327,7 @@ namespace EvolZero.Generation
 
 		protected override IValueAccessor PointerDereference(PointerDereferenceExpression expr)
 		{
-			var typeRef = _refsManager.GetTypeRef(expr.ResultTypeSpec);
+			var typeRef = _refsManager.GetTypeRef(expr.ResultTypeSpec, _currentConfiguredGenerics);
 			return _codeGenerator.PointerDereference(HandleExpression(expr.Target), typeRef);
 		}
 
@@ -339,7 +343,7 @@ namespace EvolZero.Generation
 			}
 
 			var instanceGetting = HandleExpression(structureGetting);
-			var structureType = _refsManager.GetTypeRef(expr.StructureGetting.ResultTypeSpec);
+			var structureType = _refsManager.GetTypeRef(expr.StructureGetting.ResultTypeSpec, _currentConfiguredGenerics);
 			var fieldTypeRef = GetActualTypeRef(expr.ResultTypeSpec);
 
 			if (byRef)
@@ -362,8 +366,7 @@ namespace EvolZero.Generation
 				firstArgument = _codeGenerator.GetPointerToVar(memoryGetting);
 			}
 
-			TypeSpec[] argsTypes = [expr.MemoryGetting.ResultTypeSpec, .. expr.Arguments.Select(x => x.ResultTypeSpec)];
-			var refData = _refsManager.GetFunctionalBlockRef(expr.Constructor, argsTypes);
+			var refData = _refsManager.GetFunctionalBlockRef(expr.Constructor, expr.MemoryGetting.ResultTypeSpec);
 
 			IValueAccessor[] accessors = [firstArgument, .. expr.Arguments.Select(HandleExpression)];
 			_codeGenerator.FunctionCall(refData, accessors);
@@ -371,12 +374,12 @@ namespace EvolZero.Generation
 			return memoryGetting;
 		}
 
-		protected override IValueAccessor CallDestructor(CallDesructorExpression expr)
+		protected override IValueAccessor CallDestructor(CallDestructorExpression expr)
 		{
 			var memoryGetting = HandleExpression(expr.MemoryGetting);
 			IValueAccessor[] accessors = [memoryGetting];
 
-			var refData = _refsManager.GetFunctionalBlockRef(expr.Destructor, [expr.MemoryGetting.ResultTypeSpec]);
+			var refData = _refsManager.GetFunctionalBlockRef(expr.Destructor, expr.MemoryGetting.ResultTypeSpec);
 			_codeGenerator.FunctionCall(refData, accessors);
 
 			return memoryGetting;
@@ -391,7 +394,7 @@ namespace EvolZero.Generation
 		{
 			var accessor = HandleExpression(expr.NumGetting);
 
-			var typeRef = _refsManager.GetTypeRef(expr.ResultTypeSpec);
+			var typeRef = _refsManager.GetTypeRef(expr.ResultTypeSpec, _currentConfiguredGenerics);
 			return _codeGenerator.IntToIntExtension(accessor, expr.IsSigned, typeRef);
 		}
 
@@ -399,7 +402,7 @@ namespace EvolZero.Generation
 		{
 			var accessor = HandleExpression(expr.NumGetting);
 
-			var typeRef = _refsManager.GetTypeRef(expr.ResultTypeSpec);
+			var typeRef = _refsManager.GetTypeRef(expr.ResultTypeSpec, _currentConfiguredGenerics);
 			return _codeGenerator.IntToFloatExtension(accessor, expr.IsSigned, typeRef);
 		}
 
@@ -492,10 +495,10 @@ namespace EvolZero.Generation
 		{
 			if (varDeclaring.QualifiersExists)
 			{
-				return _refsManager.GetRealTypeRef(varDeclaring);
+				return _refsManager.GetRealTypeRef(varDeclaring, _currentConfiguredGenerics);
 			}
 
-			return _refsManager.GetTypeRef(varDeclaring);
+			return _refsManager.GetTypeRef(varDeclaring, _currentConfiguredGenerics);
 		}
 	}
 }

@@ -18,7 +18,7 @@ qualifier : REF | REFB | arraySpec | OWN;
 
 // --- Типы данных ---
 arraySpec : LBRACK expression? RBRACK ;
-typeSpec : (qualifier)* IDENTIFIER arraySpec* ;
+typeSpec : (qualifier)* IDENTIFIER genericSpec? arraySpec* ;
 genericSpec : LT typeSpec (COMMA typeSpec)* GT ;
 
 
