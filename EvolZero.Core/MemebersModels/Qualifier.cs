@@ -7,7 +7,7 @@ namespace EvolZero.Core.MemebersModels
 {
 	public abstract class Qualifier
 	{
-		public static readonly Qualifier Reference = new ReferenceQualifier();
+		public static readonly Qualifier Reference = new OwnerReferenceQualifier();
 		public static readonly Qualifier BorrowReference = new BorrowReferenceQualifier();
 		public static readonly Qualifier OwnerValue = new OwnQualifier();
 
@@ -20,7 +20,7 @@ namespace EvolZero.Core.MemebersModels
 		public abstract ITypeRef GetTypeRef(IPlatformTypesProvider typesProvider, IEnumerable<Qualifier> nextQualifiers, ITypeRef baseType);
 	}
 
-	public sealed class ReferenceQualifier : Qualifier
+	public sealed class OwnerReferenceQualifier : Qualifier
 	{
 		public override ITypeRef GetTypeRef(IPlatformTypesProvider typesProvider, IEnumerable<Qualifier> nextQualifiers, ITypeRef baseType)
 		{
@@ -28,9 +28,9 @@ namespace EvolZero.Core.MemebersModels
 		}
 
 		public override bool Equals(Qualifier? other) =>
-			other is ReferenceQualifier or BorrowReferenceQualifier;
+			other is OwnerReferenceQualifier or BorrowReferenceQualifier;
 
-		public override int GetHashCode() => typeof(ReferenceQualifier).GetHashCode();
+		public override int GetHashCode() => typeof(OwnerReferenceQualifier).GetHashCode();
 
 		public override string ToString() => "ref";
 	}
@@ -43,9 +43,9 @@ namespace EvolZero.Core.MemebersModels
 		}
 
 		public override bool Equals(Qualifier? other) =>
-			other is ReferenceQualifier or BorrowReferenceQualifier;
+			other is OwnerReferenceQualifier or BorrowReferenceQualifier;
 
-		public override int GetHashCode() => typeof(ReferenceQualifier).GetHashCode();
+		public override int GetHashCode() => typeof(OwnerReferenceQualifier).GetHashCode();
 
 		public override string ToString() => "refb";
 	}

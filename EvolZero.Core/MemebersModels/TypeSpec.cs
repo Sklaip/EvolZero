@@ -7,9 +7,9 @@
 		public readonly TypeSpec[] ConfiguredGenericParams;
 
 		public bool QualifiersExists => Qualifiers != null && Qualifiers.Length > 0;
-		public bool IsRef => QualifiersExists && Qualifiers[0] is ReferenceQualifier or BorrowReferenceQualifier;
+		public bool IsRef => QualifiersExists && Qualifiers[0] is OwnerReferenceQualifier or BorrowReferenceQualifier;
 		public bool IsBorrowRef => QualifiersExists && Qualifiers[0] is BorrowReferenceQualifier;
-		public bool IsOwnerRef => QualifiersExists && Qualifiers[0] is ReferenceQualifier;
+		public bool IsOwnerRef => QualifiersExists && Qualifiers[0] is OwnerReferenceQualifier;
 		public bool IsValueOwner => QualifiersExists && Qualifiers[0] is OwnQualifier;
 		public bool IsArray => QualifiersExists && Qualifiers[0] is ArrayQualifier;
 		public bool ArrayExists => Qualifiers.Any(x => x is ArrayQualifier);

@@ -1256,7 +1256,7 @@ namespace EvolZero.Core.Analysis
 			thisGetting = new PointerDereferenceExpression(thisGetting, CurrentPosition);
 			Expression fieldAccess = new StructureFieldAccessExpression(field.Type, thisGetting, fieldDeclaring, field.IsInit, CurrentPosition);
 
-			if (fieldDeclaring.QualifiersExists && (fieldDeclaring.Qualifiers[0] is (ReferenceQualifier or BorrowReferenceQualifier)))
+			if (fieldDeclaring.QualifiersExists && (fieldDeclaring.Qualifiers[0] is (OwnerReferenceQualifier or BorrowReferenceQualifier)))
 			{
 				fieldAccess = new DoNotAutoDereferenceIfPointerExpression(fieldAccess, fieldAccess.Pos);
 			}
@@ -1266,7 +1266,7 @@ namespace EvolZero.Core.Analysis
 
 		public Expression SetQualifier(Expression expr, Qualifier qualifier)
 		{
-			if (qualifier is not (ReferenceQualifier or BorrowReferenceQualifier))
+			if (qualifier is not (OwnerReferenceQualifier or BorrowReferenceQualifier))
 			{
 				_errorsBag.AddError(COMPILATION_LAYER, "REF005",
 					"Уточняющим кваллификатором может быть только 'ref' или 'refb'.", CurrentPosition);
