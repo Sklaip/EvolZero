@@ -3,7 +3,7 @@ using Tests.Infrastructure;
 namespace Tests;
 
 /// <summary>
-/// Позитивные тесты анализа времён жизни (правила ref/refb).
+/// Позитивные тесты анализа времён жизни (правила refo/ref).
 /// Каждый позитивный тест не только собирает программу, но и запускает её:
 /// исполняемый файл должен завершиться кодом 0 и вывести ровно ожидаемые строки.
 /// Благодаря этому ошибка компилятора, из-за которой объект удаляется не в тот
@@ -17,14 +17,14 @@ public sealed class LifetimeAnalyzerPositiveTests : IDisposable
 	[Fact]
 	public void RefIntoBorrow_AliveAfterBorrowUse_PrintsCorrectValues()
 	{
-		// Правила 3, 5: владеющая ref отдаётся как refb через loc (промоушен ref -> refb
-		// в компиляторе не реализован) без деинициализации; loc возвращает refb
+		// Правила 3, 5: владеющая refo отдаётся как ref через loc (промоушен refo -> ref
+		// в компиляторе не реализован) без деинициализации; loc возвращает ref
 		// с временем жизни объекта.
 		string exePath = _compiler.Compile("LifetimeAnalyzerPositive", ["LT_Positive_RefIntoBorrow.cev"]);
 
 		TestAssertions.AssertOutputLines(exePath, _compiler.WorkDir, new[]
 		{
-			"10", // печать через refb-аргумент после передачи по loc
+			"10", // печать через ref-аргумент после передачи по loc
 			"10", // объект жив после передачи как borrow-аргумент
 			"10", // loc на поле владеющей ссылки
 		});
@@ -53,8 +53,8 @@ public sealed class LifetimeAnalyzerPositiveTests : IDisposable
 	[Fact]
 	public void LifetimeScopes_BorrowOutlivesOwnerBlock_ProgramProducesCorrectOutput()
 	{
-		// Правило 1: владеющая ref удаляется при выходе из блока, refb — нет.
-		// refb на долгоживущую переменную переживает блок (x == 11 после блока);
+		// Правило 1: владеющая refo удаляется при выходе из блока, ref — нет.
+		// ref на долгоживущую переменную переживает блок (x == 11 после блока);
 		// освобождённый в блоке объект не должен затирать последующие аллокации
 		// (heap-reuse проверяет, что tmp удалён вовремя).
 		string exePath = _compiler.Compile("LifetimeAnalyzerPositive", ["LT_Positive_LifetimeScopes.cev"]);
@@ -176,8 +176,8 @@ public sealed class LifetimeAnalyzerPositiveTests : IDisposable
 	[Fact]
 	public void LifetimesBorrowArgThisInField_BorrowArgWithThisLink_PrintsValues()
 	{
-		// Связь 'b ~ this' приравнивает лайфтайм refb-параметра к this, иначе
-		// refb-аргумент жил бы «бесконечно долго» и поле его принять не могло (LT002).
+		// Связь 'b ~ this' приравнивает лайфтайм ref-параметра к this, иначе
+		// ref-аргумент жил бы «бесконечно долго» и поле его принять не могло (LT002).
 		// Поле — алиас источника, деструктор источника срабатывает в конце main.
 		string exePath = _compiler.Compile("LifetimeAnalyzerPositive", ["LT_Positive_LifetimesBorrowArgThisInField.cev"]);
 
@@ -194,13 +194,13 @@ public sealed class LifetimeAnalyzerPositiveTests : IDisposable
 	public void LifetimesReturnThisField_ReturnThisLink_PrintsValues()
 	{
 		// Связь 'return ~ this' приравнивает лайфтайм возвращаемого значения к this:
-		// refb-поле можно вернуть (правило 7.6), результат — алиас поля.
+		// ref-поле можно вернуть (правило 7.6), результат — алиас поля.
 		string exePath = _compiler.Compile("LifetimeAnalyzerPositive", ["LT_Positive_LifetimesReturnThisField.cev"]);
 
 		TestAssertions.AssertOutputLines(exePath, _compiler.WorkDir, new[]
 		{
 			"10", // чтение Value через GetRef до записи
-			"42", // запись через возвращённый refb видна полю Value
+			"42", // запись через возвращённый ref видна полю Value
 		});
 	}
 
@@ -221,8 +221,8 @@ public sealed class LifetimeAnalyzerPositiveTests : IDisposable
 	[Fact]
 	public void LifetimesReturnArgWithBorrowFieldAlias_ReturnLink_PrintsValues()
 	{
-		// 'structureOne ~ return' приравнивает лайфтайм refb-аргумента к return:
-		// аргумент можно положить в refb-поле возвращаемого объекта (алиас-цепочка
+		// 'structureOne ~ return' приравнивает лайфтайм ref-аргумента к return:
+		// аргумент можно положить в ref-поле возвращаемого объекта (алиас-цепочка
 		// поля не короче лайфтайма возвращаемого значения, LT013 не срабатывает).
 		string exePath = _compiler.Compile("LifetimeAnalyzerPositive", ["LT_Positive_LifetimesReturnArgWithBorrowFieldAlias.cev"]);
 
@@ -237,7 +237,7 @@ public sealed class LifetimeAnalyzerPositiveTests : IDisposable
 	public void LifetimesMultiLinks_MixedThisAndReturnLinks_PrintsValues()
 	{
 		// Несколько связей в одной секции: 'b ~ this' класть в поле, 'a ~ return'
-		// возвращать как refb — оба аргумента проходят свои проверки независимо.
+		// возвращать как ref — оба аргумента проходят свои проверки независимо.
 		string exePath = _compiler.Compile("LifetimeAnalyzerPositive", ["LT_Positive_LifetimesMultiLinks.cev"]);
 
 		TestAssertions.AssertOutputLines(exePath, _compiler.WorkDir, new[]

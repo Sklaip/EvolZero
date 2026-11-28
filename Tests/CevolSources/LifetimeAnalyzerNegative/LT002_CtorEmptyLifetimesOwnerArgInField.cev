@@ -12,21 +12,21 @@ class Structure
 
 class Holder
 {
-	public ref Structure Data;
+	public refo Structure Data;
 
 	// Пустая секция lifetimes возвращает НЕ null, а пустой список (ParseLifetimesDecl),
 	// поэтому автогенерация 'data ~ this' для конструктора отключается (MembersTableBuilder).
 	// Без связи лайфтайм аргумента короче this, и поле его принять не может.
-	public ctor(ref Structure data) lifetimes ()
+	public ctor(refo Structure data) lifetimes ()
 	{
-		ref Data = data; // LT002
+		refo Data = data; // LT002
 	}
 }
 
 int main()
 {
-	ref Structure outer = new Structure(1);
-	ref Holder holder = new Holder(ref outer);
+	refo Structure outer = new Structure(1);
+	refo Holder holder = new Holder(refo outer);
 
 	return 0;
 }

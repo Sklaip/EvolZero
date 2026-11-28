@@ -1,6 +1,6 @@
 namespace Program;
 
-extern infargs int printf(refb byte ptr);
+extern infargs int printf(ref byte ptr);
 
 class Structure
 {
@@ -13,26 +13,26 @@ class Structure
 
 	public dtor()
 	{
-		printf(refb "Structure dtor: ");
-		printf(refb "%d\n", Num);
+		printf(ref "Structure dtor: ");
+		printf(ref "%d\n", Num);
 	}
 }
 
 class Box
 {
-	public refb Structure Data;
+	public ref Structure Data;
 
-	public ctor(refb Structure data) lifetimes (data ~ this)
+	public ctor(ref Structure data) lifetimes (data ~ this)
 	{
-		refb Data = data;
+		ref Data = data;
 	}
 
-	// Без связи 'b ~ this' refb-параметр живёт «бесконечно долго» и назначать
+	// Без связи 'b ~ this' ref-параметр живёт «бесконечно долго» и назначать
 	// его в поле нельзя (LT002). Связь приравнивает лайфтайм параметра к this,
-	// и присваивание в refb-поле проходит.
-	public void Put(refb Structure b) lifetimes (b ~ this)
+	// и присваивание в ref-поле проходит.
+	public void Put(ref Structure b) lifetimes (b ~ this)
 	{
-		refb Data = b;
+		ref Data = b;
 	}
 
 	public int Num()
@@ -45,16 +45,16 @@ int main()
 {
 	// Значение того же внешнего блока, что и receiver: box и source живут
 	// одинаково долго, поэтому вызов с 'b ~ this' допустим.
-	ref Structure sourceBase = new Structure(1);
-	ref Structure source = new Structure(7);
-	ref Box box = new Box(refb sourceBase);
-	box.Put(refb source);
-	printf(refb "%d\n", box.Num());
+	refo Structure sourceBase = new Structure(1);
+	refo Structure source = new Structure(7);
+	refo Box box = new Box(ref sourceBase);
+	box.Put(ref source);
+	printf(ref "%d\n", box.Num());
 
 	// Поле — алиас исходного объекта: запись через него видна снаружи.
-	refb Structure alias = box.Data;
+	ref Structure alias = box.Data;
 	alias.Num = 8;
-	printf(refb "%d\n", source.Num);
+	printf(ref "%d\n", source.Num);
 
 	return 0;
 }

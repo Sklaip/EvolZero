@@ -20,7 +20,7 @@ public sealed class RefsInIfElseTests : IDisposable
 
 		string[] expectedLines =
 		{
-			"2",  // a.Value после ref a = b
+			"2",  // a.Value после refo a = b
 			"3",  // c.Value
 		};
 

@@ -1,6 +1,6 @@
 namespace Program;
 
-extern infargs int printf(refb byte ptr);
+extern infargs int printf(ref byte ptr);
 
 class Structure
 {
@@ -14,21 +14,21 @@ class Structure
 
 // Связь 'source ~ return' разрешает возвращать заимствованную ссылку:
 // лайфтайм источника приравнен к лайфтайму возвращаемого значения (правило 7.5).
-refb Structure ReturnRefb(refb Structure source) lifetimes (source ~ return)
+ref Structure ReturnRefb(ref Structure source) lifetimes (source ~ return)
 {
-	return refb source;
+	return ref source;
 }
 
 int main()
 {
 	// Источник и получатель результата в одном блоке: вызов допустим (нет LT002).
-	ref Structure structureOne = new Structure(5);
-	refb Structure result = ReturnRefb(refb structureOne);
+	refo Structure structureOne = new Structure(5);
+	ref Structure result = ReturnRefb(ref structureOne);
 
 	// result — алиас structureOne: запись через результат видна источнику.
-	printf(refb "%d\n", result.Num);
+	printf(ref "%d\n", result.Num);
 	result.Num = 6;
-	printf(refb "%d\n", structureOne.Num);
+	printf(ref "%d\n", structureOne.Num);
 
 	return 0;
 }

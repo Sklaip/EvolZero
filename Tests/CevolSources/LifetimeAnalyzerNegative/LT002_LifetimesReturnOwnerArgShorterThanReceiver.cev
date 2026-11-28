@@ -11,11 +11,11 @@ class Structure
 }
 
 // Связь 'source ~ return' приравнивает лайфтайм owner-аргумента к лайфтайму того
-// выражения, куда запишется результат (механика та же, что для refb —
+// выражения, куда запишется результат (механика та же, что для ref —
 // DefinePassedArgumentLifetime возвращает лайфтайм получателя результата).
-ref Structure ReturnOwner(ref Structure source) lifetimes (source ~ return)
+refo Structure ReturnOwner(refo Structure source) lifetimes (source ~ return)
 {
-	return ref source;
+	return refo source;
 }
 
 int main()
@@ -23,11 +23,11 @@ int main()
 	// Граница правила: получатель результата объявлен во внешнем блоке и живёт
 	// дольше владельца из внутреннего блока. Результат нельзя сохранять в более
 	// долгоживущую ссылку => LT002 на стороне вызова.
-	ref Structure test;
+	refo Structure test;
 	if (1 == 1)
 	{
-		ref Structure structureOne = new Structure(2);
-		ref test = ReturnOwner(ref structureOne); // LT002
+		refo Structure structureOne = new Structure(2);
+		refo test = ReturnOwner(refo structureOne); // LT002
 	}
 
 	return 0;

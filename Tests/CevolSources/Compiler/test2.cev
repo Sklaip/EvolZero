@@ -2,7 +2,7 @@ namespace Program;
 
 using System;
 
-extern infargs int printf(refb byte ptr);
+extern infargs int printf(ref byte ptr);
 
 class Connect
 {
@@ -22,30 +22,30 @@ class Connect
 
 	public void PrintConnectType()
 	{
-		ref String str = new String();
-		printf(refb str.ToBytes(), ConnType);
+		refo String str = new String();
+		printf(ref str.ToBytes(), ConnType);
 	}
 }
 
 class Provider
 {
-	public refb Connect ServiveConnect;
+	public ref Connect ServiveConnect;
 	public bool Available;
 	public int Count;
 
-	public ctor(refb Connect serviceConnect) lifetimes (serviceConnect ~ this)
+	public ctor(ref Connect serviceConnect) lifetimes (serviceConnect ~ this)
 	{
-		refb ServiveConnect = serviceConnect;
+		ref ServiveConnect = serviceConnect;
 	}
 
-	public refb int SetServiveConnect(int type) lifetimes (return ~ this)
+	public ref int SetServiveConnect(int type) lifetimes (return ~ this)
 	{
 		ServiveConnect.ConnType = type;
 		Count = type + 11;
 		return loc Count;
 	}
 
-	public int WriteConnType(refb int toWrite)
+	public int WriteConnType(ref int toWrite)
 	{
 		toWrite = ServiveConnect.ConnType;
 		toWrite = toWrite - 5;
@@ -55,67 +55,67 @@ class Provider
 
 int Tests()
 {
-	ref String serviceStr = new String();
+	refo String serviceStr = new String();
 
-	ref Connect connect = new Connect(17);
+	refo Connect connect = new Connect(17);
 
 	connect.SetConnectType(10);
 	connect.PrintConnectType();
 
-	ref Connect baseConnect = new Connect(0);
-	ref Provider provider = new Provider(refb baseConnect);
-	refb provider.ServiveConnect = connect;
+	refo Connect baseConnect = new Connect(0);
+	refo Provider provider = new Provider(ref baseConnect);
+	ref provider.ServiveConnect = connect;
 
-	refb int serviceConnet = provider.SetServiveConnect(412);
+	ref int serviceConnet = provider.SetServiveConnect(412);
 	connect.PrintConnectType();
 	provider.ServiveConnect.PrintConnectType();
-	printf(refb serviceStr.ToBytes(), provider.Count);
-	printf(refb serviceStr.ToBytes(), serviceConnet);
+	printf(ref serviceStr.ToBytes(), provider.Count);
+	printf(ref serviceStr.ToBytes(), serviceConnet);
 	serviceConnet = 2341;
-	printf(refb serviceStr.ToBytes(), serviceConnet);
+	printf(ref serviceStr.ToBytes(), serviceConnet);
 
 	int aboba = 5;
 	provider.WriteConnType(loc aboba);
-	printf(refb serviceStr.ToBytes(), aboba);
+	printf(ref serviceStr.ToBytes(), aboba);
 	
 	aboba = -15;
-	printf(refb serviceStr.ToBytes(), aboba + 10);
+	printf(ref serviceStr.ToBytes(), aboba + 10);
 
 	bool valera = 1 == 1;
 
 	if(aboba == -150)
 	{
-		printf(refb serviceStr.ToBytes(), 777);
+		printf(ref serviceStr.ToBytes(), 777);
 	}
 
 	int val1 = 1;
 	int val2 = 2;
-	refb int val3 = loc val1;
+	ref int val3 = loc val1;
 
 	val3 = 4;
-	printf(refb serviceStr.ToBytes(), val1);
-	printf(refb serviceStr.ToBytes(), val2);
+	printf(ref serviceStr.ToBytes(), val1);
+	printf(ref serviceStr.ToBytes(), val2);
 
-	refb val3 = loc val2;
+	ref val3 = loc val2;
 	val3 = 5;
-	printf(refb serviceStr.ToBytes(), val1);
-	printf(refb serviceStr.ToBytes(), val2);
+	printf(ref serviceStr.ToBytes(), val1);
+	printf(ref serviceStr.ToBytes(), val2);
 
 	own Connect connTest = val Connect(500);
 	connTest.ConnType = 500;
 	connTest.SetConnectType(10);
 	connTest.PrintConnectType();
 
-	refb byte[6] globalStrTets = "aboba";
+	ref byte[6] globalStrTets = "aboba";
 
-	printf(refb globalStrTets);
+	printf(ref globalStrTets);
 
-	ref File file = new File(refb "popa.txt", refb "w");
-	file.Write(refb globalStrTets, 4);
+	refo File file = new File(ref "popa.txt", ref "w");
+	file.Write(ref globalStrTets, 4);
 
 	byte test = 1;
 	int test2 = test + 10;
-	printf(refb serviceStr.ToBytes(), test2);
+	printf(ref serviceStr.ToBytes(), test2);
 
 	return 0;
 }

@@ -792,7 +792,7 @@ namespace EvolZero.Core.Analysis
 
 			if (!isLValue)
 			{
-				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "The 'ref' operator can only be applied to a variable or field", CurrentPosition);
+				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "The 'refo' operator can only be applied to a variable or field", CurrentPosition);
 				return new StubForErrorExpression(CurrentPosition);
 			}
 
@@ -1122,21 +1122,21 @@ namespace EvolZero.Core.Analysis
 			if (!targetType.IsRef)
 			{
 				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB",
-					"Квалификатор 'ref'/'refb' можно применять только к ссылкам", expression.Pos);
+					"Квалификатор 'refo'/'ref' можно применять только к ссылкам", expression.Pos);
 				return false;
 			}
 
 			if (targetType.IsBorrowRef && !referenceExpression.IsBorrow)
 			{
 				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB",
-					"Для заимствованной (refb) ссылки требуется квалификатор 'refb'", expression.Pos);
+					"Для заимствованной (ref) ссылки требуется квалификатор 'ref'", expression.Pos);
 				return false;
 			}
 
 			if (targetType.IsOwnerRef && referenceExpression.IsBorrow)
 			{
 				_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB",
-					"Для владеющей (ref) ссылки требуется квалификатор 'ref'", expression.Pos);
+					"Для владеющей (refo) ссылки требуется квалификатор 'refo'", expression.Pos);
 				return false;
 			}
 
@@ -1185,7 +1185,7 @@ namespace EvolZero.Core.Analysis
 			{
 				if (!(varExpr.ResultTypeSpec.Type.IsBaseType && expr.ResultTypeSpec.Type.IsBaseType) && !unsafeMode)
 				{
-					// TODO: эта поебота отъбывает если в поле класса присвоить переменную (поле было refb, перменная ref с типом кастомного класса)
+					// TODO: эта поебота отъбывает если в поле класса присвоить переменную (поле было ref, перменная refo с типом кастомного класса)
 					_errorsBag.AddError(COMPILATION_LAYER, "DOLBAEB", "Reassignment of a reference for composite type without qualifier requires an unsafe context", CurrentPosition);
 					return new StubForErrorExpression(CurrentPosition);
 				}
@@ -1269,7 +1269,7 @@ namespace EvolZero.Core.Analysis
 			if (qualifier is not (OwnerReferenceQualifier or BorrowReferenceQualifier))
 			{
 				_errorsBag.AddError(COMPILATION_LAYER, "REF005",
-					"Уточняющим кваллификатором может быть только 'ref' или 'refb'.", CurrentPosition);
+					"Уточняющим кваллификатором может быть только 'refo' или 'ref'.", CurrentPosition);
 				return new StubForErrorExpression(CurrentPosition);
 			}
 
@@ -1278,7 +1278,7 @@ namespace EvolZero.Core.Analysis
 			if (!expr.ResultTypeSpec.IsRef)
 			{
 				_errorsBag.AddError(COMPILATION_LAYER, "REF005",
-					"Квалификатор 'ref'/'refb' можно применять только к ссылкам", CurrentPosition);
+					"Квалификатор 'refo'/'ref' можно применять только к ссылкам", CurrentPosition);
 				return new StubForErrorExpression(CurrentPosition);
 			}
 

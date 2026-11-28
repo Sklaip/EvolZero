@@ -60,7 +60,7 @@ public sealed class LifetimeAnalyzerNegativeTests : IDisposable
 	[Fact]
 	public void BorrowArgIntoClassField_FailsWithLT002()
 	{
-		// Правило 8: refb-параметр (и this) живут «бесконечно долго», назначать их в поле нельзя.
+		// Правило 8: ref-параметр (и this) живут «бесконечно долго», назначать их в поле нельзя.
 		// FIXME: может быть зелёным не сразу — зависит от текущей зрелости LifeTimesAnalyzer.
 		TestAssertions.AssertCompilationFails(
 			_compiler, "LifetimeAnalyzerNegative", "LT002_BorrowArgIntoClassField.cev", "LT002");
@@ -69,7 +69,7 @@ public sealed class LifetimeAnalyzerNegativeTests : IDisposable
 	[Fact]
 	public void BorrowIntoOwnerReference_FailsWithLT003()
 	{
-		// Правило 2: заимствованную (refb) ссылку нельзя присваивать во владеющую (ref).
+		// Правило 2: заимствованную (ref) ссылку нельзя присваивать во владеющую (refo).
 		TestAssertions.AssertCompilationFails(
 			_compiler, "LifetimeAnalyzerNegative", "LT003_BorrowIntoOwner.cev", "LT003");
 	}
@@ -77,7 +77,7 @@ public sealed class LifetimeAnalyzerNegativeTests : IDisposable
 	[Fact]
 	public void ReturnBorrowRef_FailsWithLT005()
 	{
-		// Правило: функция возвращает только владеющие ссылки; возврат refb запрещён.
+		// Правило: функция возвращает только владеющие ссылки; возврат ref запрещён.
 		TestAssertions.AssertCompilationFails(
 			_compiler, "LifetimeAnalyzerNegative", "LT005_ReturnBorrowRef.cev", "LT005");
 	}
@@ -110,7 +110,7 @@ public sealed class LifetimeAnalyzerNegativeTests : IDisposable
 	[Fact]
 	public void AliasedFieldRefPassedAsOwner_FailsWithLT010()
 	{
-		// Правило 7: владеющую ссылку с алиасом в refb-поле класса нельзя передавать как владение.
+		// Правило 7: владеющую ссылку с алиасом в ref-поле класса нельзя передавать как владение.
 		TestAssertions.AssertCompilationFails(
 			_compiler, "LifetimeAnalyzerNegative", "LT010_AliasedFieldRefPassedAsOwner.cev", "LT010");
 	}
@@ -135,7 +135,7 @@ public sealed class LifetimeAnalyzerNegativeTests : IDisposable
 	[Fact]
 	public void OwnerIntoRefbParamField_FailsWithLT002()
 	{
-		// Правило 8: refb-параметр живёт «бесконечно долго», как и его поля;
+		// Правило 8: ref-параметр живёт «бесконечно долго», как и его поля;
 		// локальный владелец живёт короче и не может туда попасть.
 		TestAssertions.AssertCompilationFails(
 			_compiler, "LifetimeAnalyzerNegative", "LT002_OwnerIntoRefbParamField.cev", "LT002");
@@ -145,7 +145,7 @@ public sealed class LifetimeAnalyzerNegativeTests : IDisposable
 	public void InnerOwnerIntoBorrowField_FailsWithLT002()
 	{
 		// Правило 4: лайфтайм поля = лайфтайм объекта; объект внутреннего блока
-		// не может попасть в refb-поле объекта из внешнего блока.
+		// не может попасть в ref-поле объекта из внешнего блока.
 		TestAssertions.AssertCompilationFails(
 			_compiler, "LifetimeAnalyzerNegative", "LT002_InnerOwnerIntoBorrowField.cev", "LT002");
 	}
@@ -153,7 +153,7 @@ public sealed class LifetimeAnalyzerNegativeTests : IDisposable
 	[Fact]
 	public void RefbParamIntoOwnerParam_FailsWithLT003()
 	{
-		// Правило 2: заимствованную (refb) ссылку нельзя передавать во владеющий (ref) параметр.
+		// Правило 2: заимствованную (ref) ссылку нельзя передавать во владеющий (refo) параметр.
 		TestAssertions.AssertCompilationFails(
 			_compiler, "LifetimeAnalyzerNegative", "LT003_RefbParamIntoOwnerParam.cev", "LT003");
 	}
@@ -161,7 +161,7 @@ public sealed class LifetimeAnalyzerNegativeTests : IDisposable
 	[Fact]
 	public void OwnerFieldIntoOwnerParam_FailsWithLT006()
 	{
-		// Правило: владеющую (ref) ссылку с поля класса можно снять только через '<-',
+		// Правило: владеющую (refo) ссылку с поля класса можно снять только через '<-',
 		// но не передачей поля во владеющий параметр.
 		TestAssertions.AssertCompilationFails(
 			_compiler, "LifetimeAnalyzerNegative", "LT006_OwnerFieldIntoOwnerParam.cev", "LT006");
@@ -179,7 +179,7 @@ public sealed class LifetimeAnalyzerNegativeTests : IDisposable
 	[Fact]
 	public void AnonymousNewIntoBorrow_FailsWithLT009()
 	{
-		// Правило: анонимный 'new' можно присваивать только во владеющую (ref) ссылку.
+		// Правило: анонимный 'new' можно присваивать только во владеющую (refo) ссылку.
 		TestAssertions.AssertCompilationFails(
 			_compiler, "LifetimeAnalyzerNegative", "LT009_AnonymousNewIntoBorrow.cev", "LT009");
 	}
@@ -187,7 +187,7 @@ public sealed class LifetimeAnalyzerNegativeTests : IDisposable
 	[Fact]
 	public void MoveAfterRefbFieldAlias_FailsWithLT010()
 	{
-		// Правило 7: владеющую ссылку с алиасом (задаваемым через refb-поле класса)
+		// Правило 7: владеющую ссылку с алиасом (задаваемым через ref-поле класса)
 		// нельзя передавать как владение.
 		TestAssertions.AssertCompilationFails(
 			_compiler, "LifetimeAnalyzerNegative", "LT010_MoveAfterRefbFieldAlias.cev", "LT010");
@@ -214,7 +214,7 @@ public sealed class LifetimeAnalyzerNegativeTests : IDisposable
 	[Fact]
 	public void LifetimesReturnOwnerArgShorterThanReceiver_FailsWithLT002()
 	{
-		// Та же проверка '~ return', но для owner-ref (ref) аргумента:
+		// Та же проверка '~ return', но для owner-refo (refo) аргумента:
 		// результат нельзя сохранять в более долгоживущую ссылку => LT002.
 		TestAssertions.AssertCompilationFails(
 			_compiler, "LifetimeAnalyzerNegative", "LT002_LifetimesReturnOwnerArgShorterThanReceiver.cev", "LT002");
@@ -241,7 +241,7 @@ public sealed class LifetimeAnalyzerNegativeTests : IDisposable
 	[Fact]
 	public void ReturnFieldBorrowWithoutReturnThis_FailsWithLT005()
 	{
-		// Правило 7.6: возврат refb-поля (лайфтайм this) без связи 'return ~ this'
+		// Правило 7.6: возврат ref-поля (лайфтайм this) без связи 'return ~ this'
 		// дал бы результат, переживающий объект => LT005.
 		TestAssertions.AssertCompilationFails(
 			_compiler, "LifetimeAnalyzerNegative", "LT005_ReturnFieldBorrowWithoutReturnThis.cev", "LT005");
@@ -268,7 +268,7 @@ public sealed class LifetimeAnalyzerNegativeTests : IDisposable
 	[Fact]
 	public void ReturnObjWithUnlinkedBorrowFieldAlias_FailsWithLT013()
 	{
-		// refb-аргумент, записанный в refb-поле возвращаемого объекта, остаётся
+		// ref-аргумент, записанный в ref-поле возвращаемого объекта, остаётся
 		// алиасом obj (цепочка SetAliase поднимается по Parent); лайфтайм параметра
 		// короче return => возвращать obj нельзя (LT013).
 		TestAssertions.AssertCompilationFails(

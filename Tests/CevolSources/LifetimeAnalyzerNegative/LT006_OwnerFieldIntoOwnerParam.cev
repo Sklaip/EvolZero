@@ -1,6 +1,6 @@
 namespace Program;
 
-extern infargs int printf(refb byte ptr);
+extern infargs int printf(ref byte ptr);
 
 class Structure
 {
@@ -15,33 +15,33 @@ class Structure
 class TestObj
 {
 	public int ObjectNum;
-	public ref Structure Data;
+	public refo Structure Data;
 
-	public ctor(ref Structure data, int objectNum)
+	public ctor(refo Structure data, int objectNum)
 	{
-		ref Data = data;
+		refo Data = data;
 		ObjectNum = objectNum;
 	}
 
 	public ctor(int objectNum)
 	{
-		ref Data = new Structure(300);
+		refo Data = new Structure(300);
 		ObjectNum = objectNum;
 	}
 }
 
-void TakeStruct(ref Structure s)
+void TakeStruct(refo Structure s)
 {
-	printf(refb "%d\n", s.Num);
+	printf(ref "%d\n", s.Num);
 }
 
-void Test(ref TestObj obj)
+void Test(refo TestObj obj)
 {
-	// Владеющую (ref) ссылку с поля класса можно снять только через оператор '<-'.
+	// Владеющую (refo) ссылку с поля класса можно снять только через оператор '<-'.
 	// Прямая передача поля во владеющий параметр оставила бы поле без владельца.
-	TakeStruct(ref obj.Data); // LT004
+	TakeStruct(refo obj.Data); // LT004
 
-	printf(refb "%d\n", obj.ObjectNum);
+	printf(ref "%d\n", obj.ObjectNum);
 }
 
 int main()

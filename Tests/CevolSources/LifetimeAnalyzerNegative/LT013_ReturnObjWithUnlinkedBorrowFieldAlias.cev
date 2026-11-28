@@ -13,33 +13,33 @@ class Structure
 class TestObj
 {
 	public int ObjectNum;
-	public refb Structure BorrowData;
+	public ref Structure BorrowData;
 
-	public ctor(int objectNum, refb Structure borrowData) lifetimes (borrowData ~ this)
+	public ctor(int objectNum, ref Structure borrowData) lifetimes (borrowData ~ this)
 	{
-		refb BorrowData = borrowData;
+		ref BorrowData = borrowData;
 		ObjectNum = objectNum;
 	}
 }
 
-ref TestObj ReturnObjWithUnlinkedBorrow(refb Structure structureOne)
+refo TestObj ReturnObjWithUnlinkedBorrow(ref Structure structureOne)
 {
-	// Запись refb-аргумента в refb-поле создаёт алиас-цепочку:
+	// Запись ref-аргумента в ref-поле создаёт алиас-цепочку:
 	// SetAliase поднимается по Parent, поэтому obj тоже считается алиасом
 	// аргумента (obj.IsAliaseTo = [structureOne]).
-	// Лайфтайм refb-параметра (ForRefbArgument) короче лайфтайма return,
+	// Лайфтайм ref-параметра (ForRefbArgument) короче лайфтайма return,
 	// поэтому возвращать obj нельзя — LT013.
-	ref Structure structureToBorrow = new Structure(20);
-	ref TestObj obj = new TestObj(1, refb structureToBorrow);
-	refb obj.BorrowData = structureOne;
+	refo Structure structureToBorrow = new Structure(20);
+	refo TestObj obj = new TestObj(1, ref structureToBorrow);
+	ref obj.BorrowData = structureOne;
 
-	return ref obj; // LT013
+	return refo obj; // LT013
 }
 
 int main()
 {
-	ref Structure source = new Structure(10);
-	ref TestObj obj = ReturnObjWithUnlinkedBorrow(refb source);
+	refo Structure source = new Structure(10);
+	refo TestObj obj = ReturnObjWithUnlinkedBorrow(ref source);
 
 	return 0;
 }

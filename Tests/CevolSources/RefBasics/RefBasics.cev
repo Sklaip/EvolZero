@@ -1,6 +1,6 @@
 namespace Program;
 
-extern infargs int printf(refb byte ptr);
+extern infargs int printf(ref byte ptr);
 
 class Cell
 {
@@ -11,13 +11,13 @@ class Cell
 		Value = value;
 	}
 
-	public refb int GetRef() lifetimes (return ~ this)
+	public ref int GetRef() lifetimes (return ~ this)
 	{
 		return loc Value;
 	}
 }
 
-int Increment(refb int x)
+int Increment(ref int x)
 {
 	x = x + 1;
 	return 0;
@@ -25,48 +25,48 @@ int Increment(refb int x)
 
 int main()
 {
-	// 1. Стек-переменная, чтение через ref.
+	// 1. Стек-переменная, чтение через refo.
 	int a = 42;
-	refb int ra = loc a;
-	printf(refb "%d\n", ra);
+	ref int ra = loc a;
+	printf(ref "%d\n", ra);
 
-	// 2. Запись через ref изменяет исходную переменную.
+	// 2. Запись через refo изменяет исходную переменную.
 	ra = 7;
-	printf(refb "%d\n", a);
-	printf(refb "%d\n", ra);
+	printf(ref "%d\n", a);
+	printf(ref "%d\n", ra);
 
-	// 3. Переуказание ref на другую переменную.
+	// 3. Переуказание refo на другую переменную.
 	int b = 100;
-	refb ra = loc b;
+	ref ra = loc b;
 	ra = 5;
-	printf(refb "%d\n", a);
-	printf(refb "%d\n", b);
+	printf(ref "%d\n", a);
+	printf(ref "%d\n", b);
 
-	// 4. Стек-экземпляр класса, чтение поля через ref-переменную.
+	// 4. Стек-экземпляр класса, чтение поля через refo-переменную.
 	own Cell cell = val Cell(10);
-	refb int rc = loc cell.Value;
-	printf(refb "%d\n", rc);
+	ref int rc = loc cell.Value;
+	printf(ref "%d\n", rc);
 
-	// 5. Изменение поля класса через ref-переменную.
+	// 5. Изменение поля класса через refo-переменную.
 	rc = 50;
-	printf(refb "%d\n", cell.Value);
+	printf(ref "%d\n", cell.Value);
 
-	// 6. Heap-экземпляр, чтение поля через ref.
-	ref Cell heapCell = new Cell(20);
-	refb int rhc = loc heapCell.Value;
-	printf(refb "%d\n", rhc);
+	// 6. Heap-экземпляр, чтение поля через refo.
+	refo Cell heapCell = new Cell(20);
+	ref int rhc = loc heapCell.Value;
+	printf(ref "%d\n", rhc);
 
-	// 7. Метод, возвращающий ref на поле.
-	refb int fromMethod = cell.GetRef();
-	printf(refb "%d\n", cell.Value);
+	// 7. Метод, возвращающий refo на поле.
+	ref int fromMethod = cell.GetRef();
+	printf(ref "%d\n", cell.Value);
 	fromMethod = 77;
-	printf(refb "%d\n", cell.Value);
+	printf(ref "%d\n", cell.Value);
 
-	// 8. Передача ref-параметра функции, мутация вызывающей переменной.
+	// 8. Передача refo-параметра функции, мутация вызывающей переменной.
 	int c = 5;
 	Increment(loc c);
 	Increment(loc c);
-	printf(refb "%d\n", c);
+	printf(ref "%d\n", c);
 
 	return 0;
 }

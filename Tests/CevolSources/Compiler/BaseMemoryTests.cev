@@ -1,6 +1,6 @@
 namespace Program;
 
-extern infargs int printf(refb byte ptr);
+extern infargs int printf(ref byte ptr);
 
 class Connect
 {
@@ -20,30 +20,30 @@ class Connect
 
 	public void PrintConnectType()
 	{
-		printf(refb "%d\n", ConnType);
+		printf(ref "%d\n", ConnType);
 	}
 }
 
 class Provider
 {
-	public refb Connect ServiveConnect;
+	public ref Connect ServiveConnect;
 	public bool Available;
 	public int Count;
 
-	public ctor(refb Connect serviceConnect) lifetimes (serviceConnect ~ this)
+	public ctor(ref Connect serviceConnect) lifetimes (serviceConnect ~ this)
 	{
-		refb ServiveConnect = serviceConnect;
+		ref ServiveConnect = serviceConnect;
 		Count = 0;
 	}
 
-	public refb int SetServiveConnect(int type) lifetimes (return ~ this)
+	public ref int SetServiveConnect(int type) lifetimes (return ~ this)
 	{
 		ServiveConnect.ConnType = type;
 		Count = type + 11;
 		return loc Count;
 	}
 
-	public int WriteConnType(ref int toWrite)
+	public int WriteConnType(refo int toWrite)
 	{
 		toWrite = ServiveConnect.ConnType;
 		toWrite = toWrite - 5;
@@ -53,25 +53,25 @@ class Provider
 
 int main()
 {
-	ref Connect connect = new Connect(17);
+	refo Connect connect = new Connect(17);
 
 	connect.SetConnectType(10);
 	connect.PrintConnectType();
 
-	ref Connect defaultConnect = new Connect(0);
-	ref Provider provider = new Provider(refb defaultConnect);
-	refb provider.ServiveConnect = connect;
+	refo Connect defaultConnect = new Connect(0);
+	refo Provider provider = new Provider(ref defaultConnect);
+	ref provider.ServiveConnect = connect;
 
-	refb int serviceConnet = provider.SetServiveConnect(412);
+	ref int serviceConnet = provider.SetServiveConnect(412);
 	connect.PrintConnectType();
 	provider.ServiveConnect.PrintConnectType();
 
 	connect.PrintConnectType();
 	provider.ServiveConnect.PrintConnectType();
-	printf(refb "%d\n", provider.Count);
-	printf(refb "%d\n", serviceConnet);
+	printf(ref "%d\n", provider.Count);
+	printf(ref "%d\n", serviceConnet);
 	serviceConnet = 2341;
-	printf(refb "%d\n", serviceConnet);
+	printf(ref "%d\n", serviceConnet);
 
 	return 0;
 }

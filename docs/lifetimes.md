@@ -1,4 +1,4 @@
-Существует два вида ссылок - вледющая и заимствованная (ref и refb соответственно).
+Существует два вида ссылок - вледющая и заимствованная (refo и ref соответственно).
 Владеющая ссылка может быть только одна, на нее может приходиться несколько заимствованных ссылок
 
 1) Передача владения:
@@ -27,7 +27,7 @@
 5) Связанные ссылки и алиасы:
 	1. При некоторых условиях ссылки могут стать связанными. Времена жизни связанных ссылок должны быть одинаковыми, 
 		попытка уменьшить или увеличить время жизни одного из объектов приведет к ошибке
-	2. Если мы присваеваем владеющую ссылку в поле объекта с типом заимствованной ссылки (поле с типо refb), то объект становится алиасом владеющей ссылки
+	2. Если мы присваеваем владеющую ссылку в поле объекта с типом заимствованной ссылки (поле с типо ref), то объект становится алиасом владеющей ссылки
 	3. Время жизни аргумента фукнции с типом заимствованной ссылки считает неизвестным, то есть попытка присвоить эту ссылку в поле объекта, созданного внутри функции, приведет к ошибке 
 		несоответсвия времен жизни ссылок
 	4. Присваивание владеющей ссылки в поле объекта с типом заимствованной ссылки означает связывание этих двух ссылок
@@ -39,31 +39,31 @@
 	3. Объект с владеющей ссылки А с временем жизни А1 можно передать в ссылку Б с временем жизни Б1, даже если Б1 < А1, но только в случае если А не имеет алиасов и связанных ссылок
 		(в случае наличия связанных ссылок это допустимо, если меняется время жизни сразу всех ссылок. Например путем передачи этих ссылок 
 		в функцию с явно прописанными lifetimes для эти аргументов, и эти lifetime'ы должны быть одинаковыми)
-	4. Если у объекта есть дочерние владеющие ссылки (поля с типом ref), то время жизни этих объектов всегда должно быть равно времени жизни родителя
+	4. Если у объекта есть дочерние владеющие ссылки (поля с типом refo), то время жизни этих объектов всегда должно быть равно времени жизни родителя
 		эти ссылки можно переприсваивать только в том случае, если время жизни предыдущей ссылки изменено не будет. Это делается путем "обмена": 
 		мы с помощью оператора <- устанавливаем полю новую ссылку, сразу же получаем старую и должны ее присвоить в переменную, которая имеет такое же время жизни как 
 		и у объекта, с которого была снята ссылка. После этого эта перменная и объект считаются связанными ссылками. Их время жизни всегда должно быть одинаковым
 
 7) Ключевое слово lifetimes
 	1. lifetimes это специальный конструкт, в котором могут прописываться ограничения и расширения времен жизни. lifetimes принадлежит сигнатуре функции.
-	2. Эти правила можно прописывать для ref и refb аргументов, для this и для return. Првила пишутеся путем связки времен жизни.
-		Например объявление метода: Method(ref SomeType arg1) lifetimes(arg1 ~ this) означает что теперь время жизни ссылки arg1 должно быть равно времени жизни this.
+	2. Эти правила можно прописывать для refo и ref аргументов, для this и для return. Првила пишутеся путем связки времен жизни.
+		Например объявление метода: Method(refo SomeType arg1) lifetimes(arg1 ~ this) означает что теперь время жизни ссылки arg1 должно быть равно времени жизни this.
 		Мы обязаны присвоить этот аргумент в одно из полей текущго класса
 	3. Если мы пишем return в lifetimes то это означает что мы говорим о возвращаемом объекте.
-	4. Описание refb аргумента внутри lifetimes приводит к тому, что компилятор больше не считает время жизни этой ссылки неизвестным, оно становится равным тому, что мы сами указали
-	5. refb может быть связано с return, ref - нет
-	6. return может быть связан с this только в случае если мы возвращаем refb
+	4. Описание ref аргумента внутри lifetimes приводит к тому, что компилятор больше не считает время жизни этой ссылки неизвестным, оно становится равным тому, что мы сами указали
+	5. ref может быть связано с return, refo - нет
+	6. return может быть связан с this только в случае если мы возвращаем ref
 
 
 Пример кода:
 	ctor - означает конструктор, dtor - деструктор. Все ссылки разыменовываются автоматически. То есть если мы делаем var1 = var2 и при этом var2 является ссылкой, 
-то из-за автоматического разыменования в var1 будет не новая ссылка, а значение, на которое указывает var2. Для того чтобы изменить саму ссылку нужно дополнительно писать ref (или refb).
+то из-за автоматического разыменования в var1 будет не новая ссылка, а значение, на которое указывает var2. Для того чтобы изменить саму ссылку нужно дополнительно писать refo (или ref).
 
 ```csharp
 namespace Program;
 
-extern infargs int printf(refb byte ptr);
-extern infargs int scanf(refb byte ptr);
+extern infargs int printf(ref byte ptr);
+extern infargs int scanf(ref byte ptr);
 
 class Structure 
 {
@@ -76,28 +76,28 @@ class Structure
 
 	public dtor()
 	{
-		printf(refb "Structure destructor. Num: ");
-		printf(refb "%d\n", Num);
+		printf(ref "Structure destructor. Num: ");
+		printf(ref "%d\n", Num);
 	}
 }
 
 class TestObj
 {
 	public int ObjectNum;
-	public ref Structure Data;
-	public refb Structure BorrowData;
+	public refo Structure Data;
+	public ref Structure BorrowData;
 
-	public ctor(ref Structure data, int objectNum) lifetimes (data ~ this)
+	public ctor(refo Structure data, int objectNum) lifetimes (data ~ this)
 	{
-		ref Data = data;
-		refb BorrowData = Data;
+		refo Data = data;
+		ref BorrowData = Data;
 		ObjectNum = objectNum;
 	}
 
 	public ctor(int objectNum)
 	{
-		ref Data = new Structure(300);
-		refb BorrowData = Data;
+		refo Data = new Structure(300);
+		ref BorrowData = Data;
 		ObjectNum = objectNum;
 	}
 
@@ -108,73 +108,73 @@ class TestObj
 
 	public dtor()
 	{
-		printf(refb "\n");
-		printf(refb "TestObj destructor. ObjectNum: ");
-		printf(refb "%d\n", ObjectNum);
-		printf(refb "  Data.Num: ");
-		printf(refb "%d\n", Data.Num);
-		printf(refb "  BorrowData.Num: ");
-		printf(refb "%d\n", BorrowData.Num);
-		printf(refb "\n");
+		printf(ref "\n");
+		printf(ref "TestObj destructor. ObjectNum: ");
+		printf(ref "%d\n", ObjectNum);
+		printf(ref "  Data.Num: ");
+		printf(ref "%d\n", Data.Num);
+		printf(ref "  BorrowData.Num: ");
+		printf(ref "%d\n", BorrowData.Num);
+		printf(ref "\n");
 	}
 }
 
-void PassOwnerRef(ref TestObj ownering)
+void PassOwnerRef(refo TestObj ownering)
 {
 	int sum = ownering.SumStructuresNums();
-	printf(refb "ownering sum: ");
-	printf(refb "%d\n", sum);
+	printf(ref "ownering sum: ");
+	printf(ref "%d\n", sum);
 }
 
-void PassBorrowRef(refb TestObj borrow)
+void PassBorrowRef(ref TestObj borrow)
 {
 	int sum = borrow.SumStructuresNums();
-	printf(refb "borrow sum: ");
-	printf(refb "%d\n", sum);
+	printf(ref "borrow sum: ");
+	printf(ref "%d\n", sum);
 }
 
-void Test(ref TestObj outsideObj)
+void Test(refo TestObj outsideObj)
 {
-	ref Structure structureStub = new Structure(10);
-	refb outsideObj.BorrowData = structureStub;
+	refo Structure structureStub = new Structure(10);
+	ref outsideObj.BorrowData = structureStub;
 
 	int num = 0;
-    scanf(refb "%d", loc num);
+    scanf(ref "%d", loc num);
 
-	ref TestObj obj = new TestObj(new Structure(2), 2);
+	refo TestObj obj = new TestObj(new Structure(2), 2);
 
-	ref Structure structureOne = new Structure(21);
-	ref Structure strcRec = new Structure(57);
+	refo Structure structureOne = new Structure(21);
+	refo Structure strcRec = new Structure(57);
 
 	if (num == 1) 
 	{
-		printf(refb "num is 1\n");
-		refb obj.BorrowData = structureStub;
-		ref strcRec = obj.Data <- structureOne;
+		printf(ref "num is 1\n");
+		ref obj.BorrowData = structureStub;
+		refo strcRec = obj.Data <- structureOne;
 		// тут strcRec должен удалиться, structureOne деинциализируется
-		printf(refb "Test function\n");
+		printf(ref "Test function\n");
 		// тут должен удалиться obj, тк в блоке else if мы его передаем в PassOwnerRef (PassOwnerRef его удалит, тк получил владение)
 		// а значит obj должен быть удален и во всех остальных ветках блока if/else-if/else
 	}
 	else if (num == 2)
 	{
-		printf(refb "num is 2\n");
-		refb obj.BorrowData = structureOne;
-		PassOwnerRef(ref obj);
-		printf(refb "Test function\n");
+		printf(ref "num is 2\n");
+		ref obj.BorrowData = structureOne;
+		PassOwnerRef(refo obj);
+		printf(ref "Test function\n");
 		//тут structureOne должен удалиться, тк в блоке if мы эту переменную деинциализировали через оператор <-
 	} 
 	else
 	{
-		printf(refb "num is 3\n");
-		refb obj.BorrowData = strcRec;
-		PassBorrowRef(refb obj);
-		printf(refb "Test function\n");
+		printf(ref "num is 3\n");
+		ref obj.BorrowData = strcRec;
+		PassBorrowRef(ref obj);
+		printf(ref "Test function\n");
 		//тут structureOne должен удалиться, тк в блоке if мы эту переменную деинциализировали через оператор <-
 		// тут должен удалиться obj
 	}
 
-	printf(refb "End function\n");
+	printf(ref "End function\n");
 }
 
 

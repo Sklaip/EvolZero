@@ -274,10 +274,10 @@ namespace EvolZero.Parsing
         private void PushQualifierToken(QualifierContext? context)
         {
             if (context == null) return;
-            if (context.REF() != null)
+            if (context.REFO() != null)
+                PushToken([context.REFO()], [SemanticTokenType.Keyword]);
+            else if (context.REF() != null)
                 PushToken([context.REF()], [SemanticTokenType.Keyword]);
-            else if (context.REFB() != null)
-                PushToken([context.REFB()], [SemanticTokenType.Keyword]);
 			else if (context.OWN() != null)
 				PushToken([context.OWN()], [SemanticTokenType.Keyword]);
 		}

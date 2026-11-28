@@ -1,6 +1,6 @@
 namespace Program;
 
-extern infargs int printf(refb byte ptr);
+extern infargs int printf(ref byte ptr);
 
 class TestObj
 {
@@ -12,19 +12,19 @@ class TestObj
 	}
 }
 
-ref TestObj CreateTestObj()
+refo TestObj CreateTestObj()
 {
-	ref TestObj a = new TestObj(42);
-	return ref a;
+	refo TestObj a = new TestObj(42);
+	return refo a;
 }
 
 int main()
 {
-	ref TestObj r = CreateTestObj();
-	printf(refb "%d\n", r.X);
+	refo TestObj r = CreateTestObj();
+	printf(ref "%d\n", r.X);
 
 	r.X = r.X + 1;
-	printf(refb "%d\n", r.X);
+	printf(ref "%d\n", r.X);
 
 	return 0;
 }

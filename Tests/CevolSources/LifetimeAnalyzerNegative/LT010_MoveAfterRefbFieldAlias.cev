@@ -1,6 +1,6 @@
 namespace Program;
 
-extern infargs int printf(refb byte ptr);
+extern infargs int printf(ref byte ptr);
 
 class Structure
 {
@@ -15,38 +15,38 @@ class Structure
 class TestObj
 {
 	public int ObjectNum;
-	public ref Structure Data;
-	public refb Structure BorrowData;
+	public refo Structure Data;
+	public ref Structure BorrowData;
 
-	public ctor(int objectNum, refb Structure borrowData) lifetimes (borrowData ~ this)
+	public ctor(int objectNum, ref Structure borrowData) lifetimes (borrowData ~ this)
 	{
-		ref Data = new Structure(300);
-		refb BorrowData = borrowData;
+		refo Data = new Structure(300);
+		ref BorrowData = borrowData;
 		ObjectNum = objectNum;
 	}
 }
 
-void TakeStruct(ref Structure s)
+void TakeStruct(refo Structure s)
 {
-	printf(refb "%d\n", s.Num);
+	printf(ref "%d\n", s.Num);
 }
 
-void Test(ref TestObj outsideObj)
+void Test(refo TestObj outsideObj)
 {
-	// structureStub получила aliас в refb-поле класса.
-	ref Structure structureStub = new Structure(10);
-	refb outsideObj.BorrowData = structureStub;
+	// structureStub получила aliас в ref-поле класса.
+	refo Structure structureStub = new Structure(10);
+	ref outsideObj.BorrowData = structureStub;
 
 	// Владение нельзя переносить, пока жив алиас.
-	TakeStruct(ref structureStub); // LT010
+	TakeStruct(refo structureStub); // LT010
 
-	printf(refb "%d\n", outsideObj.ObjectNum);
+	printf(ref "%d\n", outsideObj.ObjectNum);
 }
 
 int main()
 {
-	ref Structure borrow = new Structure(0);
-	Test(new TestObj(1, refb borrow));
+	refo Structure borrow = new Structure(0);
+	Test(new TestObj(1, ref borrow));
 
 	return 0;
 }

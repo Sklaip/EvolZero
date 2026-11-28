@@ -1,6 +1,6 @@
 namespace Program;
 
-extern infargs int printf(refb byte ptr);
+extern infargs int printf(ref byte ptr);
 
 class Config
 {
@@ -32,7 +32,7 @@ class Point
 
 class Holder
 {
-	public ref Config Cfg = new Config();
+	public refo Config Cfg = new Config();
 
 	public ctor()
 	{
@@ -46,21 +46,21 @@ class Implicit
 
 int main()
 {
-	ref Config c = new Config();
-	printf(refb "%d\n", c.A);
-	printf(refb "%d\n", c.B);
-	printf(refb "%d\n", c.D);
-	printf(refb "%d\n", c.Sum());
+	refo Config c = new Config();
+	printf(ref "%d\n", c.A);
+	printf(ref "%d\n", c.B);
+	printf(ref "%d\n", c.D);
+	printf(ref "%d\n", c.Sum());
 
 	own Point p = val Point(100);
-	printf(refb "%d\n", p.X);
-	printf(refb "%d\n", p.Y);
+	printf(ref "%d\n", p.X);
+	printf(ref "%d\n", p.Y);
 
-	ref Holder h = new Holder();
-	printf(refb "%d\n", h.Cfg.A);
+	refo Holder h = new Holder();
+	printf(ref "%d\n", h.Cfg.A);
 
-	ref Implicit imp = new Implicit();
-	printf(refb "%d\n", imp.V);
+	refo Implicit imp = new Implicit();
+	printf(ref "%d\n", imp.V);
 
 	return 0;
 }

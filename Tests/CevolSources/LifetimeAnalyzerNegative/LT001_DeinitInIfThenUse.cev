@@ -1,6 +1,6 @@
 namespace Program;
 
-extern infargs int printf(refb byte ptr);
+extern infargs int printf(ref byte ptr);
 
 class Box
 {
@@ -12,7 +12,7 @@ class Box
 	}
 }
 
-int Take(ref Box b)
+int Take(refo Box b)
 {
 	return 0;
 }
@@ -21,10 +21,10 @@ int main()
 {
 	// Правило 6: деинициализация в любой ветке if => переменная деинициализирована
 	// и после всего условия. Здесь владение ушло в Take только в then-ветке.
-	ref Box a = new Box(1);
+	refo Box a = new Box(1);
 	if (1 == 1)
 	{
-		Take(ref a);
+		Take(refo a);
 	}
 	a.V = 2; // LT001
 

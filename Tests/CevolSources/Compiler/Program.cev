@@ -2,9 +2,9 @@ namespace Program;
 
 using System;
 
-extern infargs int printf(refb byte ptr);
-extern infargs int scanf(refb byte ptr);
-extern infargs long strlen(refb byte buffer);
+extern infargs int printf(ref byte ptr);
+extern infargs int scanf(ref byte ptr);
+extern infargs long strlen(ref byte buffer);
 
 class Structure 
 {
@@ -12,8 +12,8 @@ class Structure
 
 	public ctor(int num)
 	{
-		refb byte[15] globalStrTets = "LALALALALALA\n";
-		printf(refb globalStrTets);
+		ref byte[15] globalStrTets = "LALALALALALA\n";
+		printf(ref globalStrTets);
 
 		Num = num;
 	}
@@ -21,33 +21,33 @@ class Structure
 
 int main()
 {
-	ref String serviceStr = new String();
+	refo String serviceStr = new String();
 
-	refb byte[11] globalStrTets = "aboba111\n";
+	ref byte[11] globalStrTets = "aboba111\n";
 
-	refb byte tes = globalStrTets;
+	ref byte tes = globalStrTets;
 
-	printf(refb globalStrTets);
+	printf(ref globalStrTets);
 
-    ref byte[99] inputBufer = new byte[99];
-    scanf(refb "%99[^\n]", refb inputBufer);
+    refo byte[99] inputBufer = new byte[99];
+    scanf(ref "%99[^\n]", ref inputBufer);
 
-	ref File file = new File(refb "popa.txt", refb "w");
-	file.Write(refb inputBufer, strlen(refb inputBufer));
+	refo File file = new File(ref "popa.txt", ref "w");
+	file.Write(ref inputBufer, strlen(ref inputBufer));
 
-    printf(refb inputBufer);
+    printf(ref inputBufer);
 
 	own Structure structure = val Structure(10 + 15);
 
-	printf(refb "%d\n", structure.Num);
+	printf(ref "%d\n", structure.Num);
 
 	int myInt = serviceStr.myInt;
 
 	int[10] smallArray;
-	ref int[10][20] bigArray = new int[10][20];
+	refo int[10][20] bigArray = new int[10][20];
 	bigArray[1][3] = 7;
 
-	printf(refb "%d", bigArray[1][3]);
+	printf(ref "%d", bigArray[1][3]);
 
 	return 0;
 }

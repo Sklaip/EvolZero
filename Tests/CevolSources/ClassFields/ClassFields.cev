@@ -1,6 +1,6 @@
 namespace Program;
 
-extern infargs int printf(refb byte ptr);
+extern infargs int printf(ref byte ptr);
 
 class Conn
 {
@@ -21,14 +21,14 @@ class Conn
 
 class Holder
 {
-	public refb Conn First;
-	public refb Conn Second;
+	public ref Conn First;
+	public ref Conn Second;
 	public int Count;
 
-	public ctor(refb Conn first, refb Conn second) lifetimes(first ~ this, second ~ this)
+	public ctor(ref Conn first, ref Conn second) lifetimes(first ~ this, second ~ this)
 	{
-		refb First = first;
-		refb Second = second;
+		ref First = first;
+		ref Second = second;
 		Count = 0;
 	}
 }
@@ -37,55 +37,55 @@ int main()
 {
 	// 1. Чтение публичного поля стек-экземпляра.
 	own Conn a = val Conn(10);
-	printf(refb "%d\n", a.Type);
+	printf(ref "%d\n", a.Type);
 
 	// 2. Запись публичного поля стек-экземпляра.
 	a.Type = 99;
-	printf(refb "%d\n", a.Type);
+	printf(ref "%d\n", a.Type);
 
 	// 3. Чтение публичного поля heap-экземпляра.
-	ref Conn b = new Conn(30);
-	printf(refb "%d\n", b.Type);
+	refo Conn b = new Conn(30);
+	printf(ref "%d\n", b.Type);
 
 	// 4. Запись публичного поля heap-экземпляра.
 	b.Type = 66;
-	printf(refb "%d\n", b.Type);
+	printf(ref "%d\n", b.Type);
 
 	// 5. Несколько полей: независимые чтение/запись.
 	a.Extra = 5;
 	a.AddExtra(4);
-	printf(refb "%d\n", a.Extra);
-	printf(refb "%d\n", a.Type);
+	printf(ref "%d\n", a.Extra);
+	printf(ref "%d\n", a.Type);
 
-	// 6. Запись ref-полей ссылками на heap-объекты.
-	ref Conn baseConn = new Conn(0);
-	ref Holder holder = new Holder(refb baseConn, refb baseConn);
-	refb holder.First = b;
-	ref Conn second = new Conn(15);
-	refb holder.Second = second;
-	printf(refb "%d\n", holder.First.Type);
-	printf(refb "%d\n", holder.Second.Type);
+	// 6. Запись refo-полей ссылками на heap-объекты.
+	refo Conn baseConn = new Conn(0);
+	refo Holder holder = new Holder(ref baseConn, ref baseConn);
+	ref holder.First = b;
+	refo Conn second = new Conn(15);
+	ref holder.Second = second;
+	printf(ref "%d\n", holder.First.Type);
+	printf(ref "%d\n", holder.Second.Type);
 
-	// 7. Мутация объекта через ref-поле.
+	// 7. Мутация объекта через refo-поле.
 	holder.First.Type = 111;
-	printf(refb "%d\n", b.Type);
-	printf(refb "%d\n", holder.First.Type);
+	printf(ref "%d\n", b.Type);
+	printf(ref "%d\n", holder.First.Type);
 
-	// 8. Переуказание ref-поля на другой объект.
-	refb holder.First = second;
-	printf(refb "%d\n", holder.First.Type);
-	printf(refb "%d\n", b.Type);
+	// 8. Переуказание refo-поля на другой объект.
+	ref holder.First = second;
+	printf(ref "%d\n", holder.First.Type);
+	printf(ref "%d\n", b.Type);
 
-	// 9. Поле, изменённое методом через ref-поле, видно извне.
+	// 9. Поле, изменённое методом через refo-поле, видно извне.
 	holder.Second.AddExtra(3);
 	holder.Second.AddExtra(4);
-	printf(refb "%d\n", holder.Second.Extra);
+	printf(ref "%d\n", holder.Second.Extra);
 
 	// 10. loc на поле heap-экземпляра -> мутация через ссылку.
-	refb int rf = loc holder.Second.Type;
+	ref int rf = loc holder.Second.Type;
 	rf = 200;
-	printf(refb "%d\n", holder.Second.Type);
-	printf(refb "%d\n", second.Type);
+	printf(ref "%d\n", holder.Second.Type);
+	printf(ref "%d\n", second.Type);
 
 	return 0;
 }

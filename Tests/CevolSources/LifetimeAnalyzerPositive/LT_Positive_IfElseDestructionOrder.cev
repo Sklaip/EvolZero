@@ -1,7 +1,7 @@
 namespace Program;
 
-extern infargs int printf(refb byte ptr);
-extern infargs int scanf(refb byte ptr);
+extern infargs int printf(ref byte ptr);
+extern infargs int scanf(ref byte ptr);
 
 class Structure 
 {
@@ -14,28 +14,28 @@ class Structure
 
 	public dtor()
 	{
-		printf(refb "Structure destructor. Num: ");
-		printf(refb "%d\n", Num);
+		printf(ref "Structure destructor. Num: ");
+		printf(ref "%d\n", Num);
 	}
 }
 
 class TestObj
 {
 	public int ObjectNum;
-	public ref Structure Data;
-	public refb Structure BorrowData;
+	public refo Structure Data;
+	public ref Structure BorrowData;
 
-	public ctor(ref Structure data, int objectNum) lifetimes (data ~ this)
+	public ctor(refo Structure data, int objectNum) lifetimes (data ~ this)
 	{
-		ref Data = data;
-		refb BorrowData = Data;
+		refo Data = data;
+		ref BorrowData = Data;
 		ObjectNum = objectNum;
 	}
 
 	public ctor(int objectNum)
 	{
-		ref Data = new Structure(300);
-		refb BorrowData = Data;
+		refo Data = new Structure(300);
+		ref BorrowData = Data;
 		ObjectNum = objectNum;
 	}
 
@@ -46,73 +46,73 @@ class TestObj
 
 	public dtor()
 	{
-		printf(refb "\n");
-		printf(refb "TestObj destructor. ObjectNum: ");
-		printf(refb "%d\n", ObjectNum);
-		printf(refb "  Data.Num: ");
-		printf(refb "%d\n", Data.Num);
-		printf(refb "  BorrowData.Num: ");
-		printf(refb "%d\n", BorrowData.Num);
-		printf(refb "\n");
+		printf(ref "\n");
+		printf(ref "TestObj destructor. ObjectNum: ");
+		printf(ref "%d\n", ObjectNum);
+		printf(ref "  Data.Num: ");
+		printf(ref "%d\n", Data.Num);
+		printf(ref "  BorrowData.Num: ");
+		printf(ref "%d\n", BorrowData.Num);
+		printf(ref "\n");
 	}
 }
 
-void PassOwnerRef(ref TestObj ownering)
+void PassOwnerRef(refo TestObj ownering)
 {
 	int sum = ownering.SumStructuresNums();
-	printf(refb "ownering sum: ");
-	printf(refb "%d\n", sum);
+	printf(ref "ownering sum: ");
+	printf(ref "%d\n", sum);
 }
 
-void PassBorrowRef(refb TestObj borrow)
+void PassBorrowRef(ref TestObj borrow)
 {
 	int sum = borrow.SumStructuresNums();
-	printf(refb "borrow sum: ");
-	printf(refb "%d\n", sum);
+	printf(ref "borrow sum: ");
+	printf(ref "%d\n", sum);
 }
 
-void Test(ref TestObj outsideObj)
+void Test(refo TestObj outsideObj)
 {
-	ref Structure structureStub = new Structure(10);
-	refb outsideObj.BorrowData = structureStub;
+	refo Structure structureStub = new Structure(10);
+	ref outsideObj.BorrowData = structureStub;
 
 	int num = 0;
-    scanf(refb "%d", loc num);
+    scanf(ref "%d", loc num);
 
-	ref TestObj obj = new TestObj(new Structure(2), 2);
+	refo TestObj obj = new TestObj(new Structure(2), 2);
 
-	ref Structure structureOne = new Structure(21);
-	ref Structure strcRec = new Structure(57);
+	refo Structure structureOne = new Structure(21);
+	refo Structure strcRec = new Structure(57);
 
 	if (num == 1) 
 	{
-		printf(refb "num is 1\n");
-		refb obj.BorrowData = structureStub;
-		ref strcRec = obj.Data <- structureOne;
+		printf(ref "num is 1\n");
+		ref obj.BorrowData = structureStub;
+		refo strcRec = obj.Data <- structureOne;
 		// тут strcRec должен удалиться, structureOne деинциализируется
-		printf(refb "Test function\n");
+		printf(ref "Test function\n");
 		// тут должен удалиться obj, тк в блоке else if мы его передаем в PassOwnerRef (PassOwnerRef его удалит, тк получил владение)
 		// а значит obj должен быть удален и во всех остальных ветках блока if/else-if/else
 	}
 	else if (num == 2)
 	{
-		printf(refb "num is 2\n");
-		refb obj.BorrowData = structureOne;
-		PassOwnerRef(ref obj);
-		printf(refb "Test function\n");
+		printf(ref "num is 2\n");
+		ref obj.BorrowData = structureOne;
+		PassOwnerRef(refo obj);
+		printf(ref "Test function\n");
 		//тут structureOne должен удалиться, тк в блоке if мы эту переменную деинциализировали через оператор <-
 	} 
 	else
 	{
-		printf(refb "num is 3\n");
-		refb obj.BorrowData = strcRec;
-		PassBorrowRef(refb obj);
-		printf(refb "Test function\n");
+		printf(ref "num is 3\n");
+		ref obj.BorrowData = strcRec;
+		PassBorrowRef(ref obj);
+		printf(ref "Test function\n");
 		//тут structureOne должен удалиться, тк в блоке if мы эту переменную деинциализировали через оператор <-
 		// тут должен удалиться obj
 	}
 
-	printf(refb "End function\n");
+	printf(ref "End function\n");
 }
 
 

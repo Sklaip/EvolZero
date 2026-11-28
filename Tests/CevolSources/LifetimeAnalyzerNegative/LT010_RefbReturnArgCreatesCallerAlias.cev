@@ -1,6 +1,6 @@
 namespace Program;
 
-extern infargs int printf(refb byte ptr);
+extern infargs int printf(ref byte ptr);
 
 class Structure
 {
@@ -13,32 +13,32 @@ class Structure
 
 	public dtor()
 	{
-		printf(refb "Structure dtor: ");
-		printf(refb "%d\n", Num);
+		printf(ref "Structure dtor: ");
+		printf(ref "%d\n", Num);
 	}
 }
 
 // Связь 'source ~ return' разрешает возвращать заимствованную ссылку:
 // результат становится алиасом переданного источника (правило 5.2).
-refb Structure ReturnRefb(refb Structure source) lifetimes (source ~ return)
+ref Structure ReturnRefb(ref Structure source) lifetimes (source ~ return)
 {
-	return refb source;
+	return ref source;
 }
 
-void Take(ref Structure s)
+void Take(refo Structure s)
 {
-	printf(refb "%d\n", s.Num);
+	printf(ref "%d\n", s.Num);
 }
 
 int main()
 {
-	// Правило 5.2/7: владелец, переданный в refb-аргумент, связанный с 'return',
+	// Правило 5.2/7: владелец, переданный в ref-аргумент, связанный с 'return',
 	// делает возвращаемое значение своим алиасом. Пока оно живо, владение
 	// этим владельцем передавать нельзя.
-	ref Structure source = new Structure(1);
-	refb Structure result = ReturnRefb(refb source); // result — алиас source
+	refo Structure source = new Structure(1);
+	ref Structure result = ReturnRefb(ref source); // result — алиас source
 
-	Take(ref source); // LT010
+	Take(refo source); // LT010
 
 	return 0;
 }

@@ -1,6 +1,6 @@
 namespace Program;
 
-extern infargs int printf(refb byte ptr);
+extern infargs int printf(ref byte ptr);
 
 class Structure
 {
@@ -15,30 +15,30 @@ class Structure
 class TestObj
 {
 	public int ObjectNum;
-	public ref Structure Data;
-	public refb Structure BorrowData;
+	public refo Structure Data;
+	public ref Structure BorrowData;
 
-	public ctor(int objectNum, refb Structure borrowData) lifetimes (borrowData ~ this)
+	public ctor(int objectNum, ref Structure borrowData) lifetimes (borrowData ~ this)
 	{
-		ref Data = new Structure(300);
-		refb BorrowData = borrowData;
+		refo Data = new Structure(300);
+		ref BorrowData = borrowData;
 		ObjectNum = objectNum;
 	}
 }
 
-void Test(ref TestObj outsideObj)
+void Test(refo TestObj outsideObj)
 {
 	// 'new' создаёт анонимную (временную) ссылку, живующую вместе с выражением.
-	// Сохранить её можно только во владеющую (ref) ссылку, а не в заимствованную (refb).
-	refb outsideObj.BorrowData = new Structure(5); // LT009
+	// Сохранить её можно только во владеющую (refo) ссылку, а не в заимствованную (ref).
+	ref outsideObj.BorrowData = new Structure(5); // LT009
 
-	printf(refb "%d\n", outsideObj.ObjectNum);
+	printf(ref "%d\n", outsideObj.ObjectNum);
 }
 
 int main()
 {
-	ref Structure borrow = new Structure(0);
-	Test(new TestObj(1, refb borrow));
+	refo Structure borrow = new Structure(0);
+	Test(new TestObj(1, ref borrow));
 
 	return 0;
 }

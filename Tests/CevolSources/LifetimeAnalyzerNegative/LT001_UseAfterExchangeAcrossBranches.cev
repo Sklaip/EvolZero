@@ -1,6 +1,6 @@
 namespace Program;
 
-extern infargs int printf(refb byte ptr);
+extern infargs int printf(ref byte ptr);
 
 class Structure
 {
@@ -15,46 +15,46 @@ class Structure
 class TestObj
 {
 	public int ObjectNum;
-	public ref Structure Data;
-	public refb Structure BorrowData;
+	public refo Structure Data;
+	public ref Structure BorrowData;
 
-	public ctor(ref Structure data, int objectNum, refb Structure borrowData) lifetimes (data ~ this, borrowData ~ this)
+	public ctor(refo Structure data, int objectNum, ref Structure borrowData) lifetimes (data ~ this, borrowData ~ this)
 	{
-		ref Data = data;
-		refb BorrowData = borrowData;
+		refo Data = data;
+		ref BorrowData = borrowData;
 		ObjectNum = objectNum;
 	}
 
-	public ctor(int objectNum, refb Structure borrowData) lifetimes (borrowData ~ this)
+	public ctor(int objectNum, ref Structure borrowData) lifetimes (borrowData ~ this)
 	{
-		ref Data = new Structure(300);
-		refb BorrowData = borrowData;
+		refo Data = new Structure(300);
+		ref BorrowData = borrowData;
 		ObjectNum = objectNum;
 	}
 }
 
-void Test(ref TestObj outsideObj)
+void Test(refo TestObj outsideObj)
 {
 	int num = 0;
 
-	ref Structure structureOne = new Structure(21);
-	ref Structure strcRec;
-	ref Structure strcRecToBorrow = new Structure(57);
+	refo Structure structureOne = new Structure(21);
+	refo Structure strcRec;
+	refo Structure strcRecToBorrow = new Structure(57);
 
-	ref TestObj obj = new TestObj(new Structure(2), 2, refb strcRecToBorrow);
+	refo TestObj obj = new TestObj(new Structure(2), 2, ref strcRecToBorrow);
 
 	if (num == 1)
 	{
 		// '<-' перевёл владение structureOne в obj.Data и деинициализировал источник.
-		ref strcRec = obj.Data <- structureOne;
-		printf(refb "num is 1\n");
+		refo strcRec = obj.Data <- structureOne;
+		printf(ref "num is 1\n");
 	}
 	else
 	{
-		printf(refb "num is not 1\n");
+		printf(ref "num is not 1\n");
 	}
 
-	printf(refb "%d\n", outsideObj.ObjectNum);
+	printf(ref "%d\n", outsideObj.ObjectNum);
 
 	// Деинициализация в if-ветке распространяется на всё условие:
 	// structureOne недоступна и после if/else.
@@ -63,8 +63,8 @@ void Test(ref TestObj outsideObj)
 
 int main()
 {
-	ref Structure seed = new Structure(0);
-	Test(new TestObj(1, refb seed));
+	refo Structure seed = new Structure(0);
+	Test(new TestObj(1, ref seed));
 
 	return 0;
 }

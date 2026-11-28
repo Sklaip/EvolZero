@@ -1,6 +1,6 @@
 namespace Program;
 
-extern infargs int printf(refb byte ptr);
+extern infargs int printf(ref byte ptr);
 
 class Box
 {
@@ -14,13 +14,13 @@ class Box
 
 class Holder
 {
-	public ref Box F;
+	public refo Box F;
 
 	// Поле инициализируется в конструкторе; снаружи его можно менять только через '<-'
 	// (оператор обмена), чтобы старый владелец не пропал бесследно.
 	public ctor(int v)
 	{
-		ref F = new Box(v);
+		refo F = new Box(v);
 	}
 }
 
@@ -28,15 +28,15 @@ int main()
 {
 	// Снятие владеющей ссылки с поля разрешено ТОЛЬКО через '<-' (иначе LT006).
 	// o2 объявлен раньше holder, чтобы обмен не попал под LT002 (значение старше поля).
-	ref Box o2 = new Box(2);
-	ref Holder holder = new Holder(1);
+	refo Box o2 = new Box(2);
+	refo Holder holder = new Holder(1);
 
 	// Старый объект (1) переезжает из поля в r, поле получает o2. Ни один объект не должен
 	// быть удалён раньше времени: printf(r.V) прочитал бы мусор, если бы o1 освободили.
-	ref Box r;
-	ref r = holder.F <- o2;
-	printf(refb "%d\n", r.V);          // 1
-	printf(refb "%d\n", holder.F.V);   // 2
+	refo Box r;
+	refo r = holder.F <- o2;
+	printf(ref "%d\n", r.V);          // 1
+	printf(ref "%d\n", holder.F.V);   // 2
 
 	return 0;
 }

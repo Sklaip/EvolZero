@@ -1,6 +1,6 @@
 namespace Program;
 
-extern infargs int printf(refb byte ptr);
+extern infargs int printf(ref byte ptr);
 
 class Structure
 {
@@ -15,13 +15,13 @@ class Structure
 class TestObj
 {
 	public int ObjectNum;
-	public ref Structure Data;
-	public refb Structure BorrowData;
+	public refo Structure Data;
+	public ref Structure BorrowData;
 
-	public ctor(int objectNum, refb Structure borrowData) lifetimes (borrowData ~ this)
+	public ctor(int objectNum, ref Structure borrowData) lifetimes (borrowData ~ this)
 	{
-		ref Data = new Structure(300);
-		refb BorrowData = borrowData;
+		refo Data = new Structure(300);
+		ref BorrowData = borrowData;
 		ObjectNum = objectNum;
 	}
 
@@ -31,28 +31,28 @@ class TestObj
 	}
 }
 
-// Связь 'structureOne ~ return' приравнивает лайфтайм refb-аргумента к return.
-// Этого достаточно, чтобы положить аргумент в refb-поле возвращаемого объекта:
+// Связь 'structureOne ~ return' приравнивает лайфтайм ref-аргумента к return.
+// Этого достаточно, чтобы положить аргумент в ref-поле возвращаемого объекта:
 // алиас-цепочка поля не короче лайфтайма возвращаемого значения (правило LT013).
-ref TestObj ReturnObjWithBorrowField(refb Structure structureOne) lifetimes (structureOne ~ return)
+refo TestObj ReturnObjWithBorrowField(ref Structure structureOne) lifetimes (structureOne ~ return)
 {
-	ref TestObj obj = new TestObj(2, refb structureOne);
-	return ref obj;
+	refo TestObj obj = new TestObj(2, ref structureOne);
+	return refo obj;
 }
 
 int main()
 {
 	// Источник и получатель результата в одном блоке — вызов допустим.
-	ref Structure structure = new Structure(11);
-	ref TestObj obj = ReturnObjWithBorrowField(refb structure);
+	refo Structure structure = new Structure(11);
+	refo TestObj obj = ReturnObjWithBorrowField(ref structure);
 
 	// Возвращённый объект читает и своё поле, и заимствованный источник.
-	printf(refb "%d\n", obj.Sum());
+	printf(ref "%d\n", obj.Sum());
 
 	// BorrowData — алиас structure: запись через поле видна источнику.
-	refb Structure alias = obj.BorrowData;
+	ref Structure alias = obj.BorrowData;
 	alias.Num = 12;
-	printf(refb "%d\n", structure.Num);
+	printf(ref "%d\n", structure.Num);
 
 	return 0;
 }

@@ -1,6 +1,6 @@
 namespace Program;
 
-extern infargs int printf(refb byte ptr);
+extern infargs int printf(ref byte ptr);
 
 class Box
 {
@@ -14,21 +14,21 @@ class Box
 
 class Holder
 {
-	public ref Box F;
+	public refo Box F;
 
 	public ctor(int v)
 	{
-		ref F = new Box(v);
+		refo F = new Box(v);
 	}
 }
 
 int main()
 {
-	// Правило 2/п.: снять владеющую (ref) ссылку с поля класса можно ТОЛЬКО через '<-'.
-	ref Holder holder = new Holder(1);
+	// Правило 2/п.: снять владеющую (refo) ссылку с поля класса можно ТОЛЬКО через '<-'.
+	refo Holder holder = new Holder(1);
 
-	ref Box r;
-	ref r = holder.F; // LT006: обычное присваивание «снимает» владение с поля
+	refo Box r;
+	refo r = holder.F; // LT006: обычное присваивание «снимает» владение с поля
 
 	return 0;
 }

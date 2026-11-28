@@ -25,9 +25,9 @@ namespace EvolZero.Parsing.Models
 		{
 			switch (Kind)
 			{
-				case "ref": return new OwnerReferenceQualifier();
+				case "refo": return new OwnerReferenceQualifier();
 				case "array": return new ArrayQualifier(ArraySize);
-				case "refb": return new BorrowReferenceQualifier();
+				case "ref": return new BorrowReferenceQualifier();
 				case "own": return new OwnQualifier();
 				default: throw new NotImplementedException();
 			}
@@ -37,9 +37,9 @@ namespace EvolZero.Parsing.Models
 		{
 			switch (workpiece.Kind)
 			{
-				case "ref": return new OwnerReferenceQualifier();
+				case "refo": return new OwnerReferenceQualifier();
 				case "array": return new ArrayQualifier(workpiece.ArraySize);
-				case "refb": return new BorrowReferenceQualifier();
+				case "ref": return new BorrowReferenceQualifier();
 				case "own": return new OwnQualifier();
 				default: throw new NotImplementedException();
 			}

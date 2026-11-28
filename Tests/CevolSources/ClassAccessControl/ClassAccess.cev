@@ -1,6 +1,6 @@
 namespace Program;
 
-extern infargs int printf(refb byte ptr);
+extern infargs int printf(ref byte ptr);
 
 class Item
 {
@@ -28,7 +28,7 @@ class Item
 
 class OtherClass
 {
-	public ref Item PublicItem = new Item(-1);
+	public refo Item PublicItem = new Item(-1);
 
 	public ctor()
 	{
@@ -46,24 +46,24 @@ int main()
 	item.Open = 10;
 
 	// Public-поле доступно извне.
-	printf(refb "%d\n", item.Open);
+	printf(ref "%d\n", item.Open);
 
 	// Private-поле и private-метод доступны внутри через public-метод.
-	printf(refb "%d\n", item.Combine());
+	printf(ref "%d\n", item.Combine());
 
 	// Доступ к public-полю из другого класса.
-	ref Item heapItem = new Item(2);
+	refo Item heapItem = new Item(2);
 	heapItem.Open = 10;
 	own OtherClass other = val OtherClass();
-	ref Item oldPublicItem;
-	ref oldPublicItem = other.PublicItem <- heapItem;
-	printf(refb "%d\n", other.ReadOpen());
+	refo Item oldPublicItem;
+	refo oldPublicItem = other.PublicItem <- heapItem;
+	printf(ref "%d\n", other.ReadOpen());
 
 	// Public-поле другого экземпляра того же класса.
 	own Item item2 = val Item(1);
 	item2.Open = 3;
 	item.Open = item2.Open + item.Open;
-	printf(refb "%d\n", item.Open);
+	printf(ref "%d\n", item.Open);
 
 	return 0;
 }

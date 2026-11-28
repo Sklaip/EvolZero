@@ -10,21 +10,21 @@ class Structure
 	}
 }
 
-void TakeOwner(ref Structure s)
+void TakeOwner(refo Structure s)
 {
 	s.Num = s.Num;
 }
 
-void Use(refb Structure s)
+void Use(ref Structure s)
 {
-	// Заимствованную (refb) ссылку нельзя передавать во владеющий (ref) параметр.
-	TakeOwner(ref s); // LT003
+	// Заимствованную (ref) ссылку нельзя передавать во владеющий (refo) параметр.
+	TakeOwner(refo s); // LT003
 }
 
 int main()
 {
-	ref Structure structure = new Structure(5);
-	Use(refb structure);
+	refo Structure structure = new Structure(5);
+	Use(ref structure);
 
 	return 0;
 }

@@ -13,31 +13,31 @@ class Structure
 class TestObj
 {
 	public int ObjectNum;
-	public ref Structure Data;
+	public refo Structure Data;
 
 	public ctor(int objectNum)
 	{
-		ref Data = new Structure(300);
+		refo Data = new Structure(300);
 		ObjectNum = objectNum;
 	}
 }
 
-ref TestObj Make()
+refo TestObj Make()
 {
 	// Обмен '<-' через поле связывает obj с получателем rec через LinkVars
 	// (AssingHandler: value.VarData.LinkVars(target.VarData)).
 	// Возвращать объект с такими связями нельзя — LT012.
-	ref TestObj obj = new TestObj(1);
-	ref Structure s = new Structure(2);
-	ref Structure rec;
-	ref rec = obj.Data <- s;
+	refo TestObj obj = new TestObj(1);
+	refo Structure s = new Structure(2);
+	refo Structure rec;
+	refo rec = obj.Data <- s;
 
-	return ref obj; // LT012
+	return refo obj; // LT012
 }
 
 int main()
 {
-	ref TestObj obj = Make();
+	refo TestObj obj = Make();
 
 	return 0;
 }

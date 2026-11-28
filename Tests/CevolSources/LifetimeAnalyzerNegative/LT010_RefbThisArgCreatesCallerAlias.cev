@@ -1,6 +1,6 @@
 namespace Program;
 
-extern infargs int printf(refb byte ptr);
+extern infargs int printf(ref byte ptr);
 
 class Structure
 {
@@ -13,41 +13,41 @@ class Structure
 
 	public dtor()
 	{
-		printf(refb "Structure dtor: ");
-		printf(refb "%d\n", Num);
+		printf(ref "Structure dtor: ");
+		printf(ref "%d\n", Num);
 	}
 }
 
 class Box
 {
-	public refb Structure Data;
+	public ref Structure Data;
 
-	public ctor(refb Structure data) lifetimes (data ~ this)
+	public ctor(ref Structure data) lifetimes (data ~ this)
 	{
-		refb Data = data;
+		ref Data = data;
 	}
 
-	public void Put(refb Structure b) lifetimes (b ~ this)
+	public void Put(ref Structure b) lifetimes (b ~ this)
 	{
-		refb Data = b;
+		ref Data = b;
 	}
 }
 
-void Take(ref Structure s)
+void Take(refo Structure s)
 {
-	printf(refb "%d\n", s.Num);
+	printf(ref "%d\n", s.Num);
 }
 
 int main()
 {
-	// Правило 5.2/7: владелец, переданный в refb-аргумент, связанный с 'this',
+	// Правило 5.2/7: владелец, переданный в ref-аргумент, связанный с 'this',
 	// делает получателя своим алиасом (поле класса хранит заимствование).
 	// Пока алиас жив, владение этим владельцем передавать нельзя.
-	ref Structure test = new Structure(1);
-	ref Box box = new Box(refb test); // box — алиас test
-	box.Put(refb test);               // тот же алиас, вторая запись в поле
+	refo Structure test = new Structure(1);
+	refo Box box = new Box(ref test); // box — алиас test
+	box.Put(ref test);               // тот же алиас, вторая запись в поле
 
-	Take(ref test);                  // LT010
+	Take(refo test);                  // LT010
 
 	return 0;
 }

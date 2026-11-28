@@ -1,6 +1,6 @@
 namespace Program;
 
-extern infargs int printf(refb byte ptr);
+extern infargs int printf(ref byte ptr);
 
 class Structure
 {
@@ -14,37 +14,37 @@ class Structure
 
 class Box
 {
-	public refb Structure Pinned;
+	public ref Structure Pinned;
 
-	public ctor(refb Structure pinned) lifetimes (pinned ~ this)
+	public ctor(ref Structure pinned) lifetimes (pinned ~ this)
 	{
-		refb Pinned = pinned;
+		ref Pinned = pinned;
 	}
 
 	// Несколько связей в одной секции: 'b ~ this' разрешает класть b в поле,
-	// 'a ~ return' разрешает возвращать a как refb.
-	public refb Structure Pin(refb Structure b, refb Structure a) lifetimes (b ~ this, a ~ return)
+	// 'a ~ return' разрешает возвращать a как ref.
+	public ref Structure Pin(ref Structure b, ref Structure a) lifetimes (b ~ this, a ~ return)
 	{
-		refb Pinned = b;
-		return refb a;
+		ref Pinned = b;
+		return ref a;
 	}
 }
 
 int main()
 {
 	// Оба источника живут не короче box: вызов с '~ this'/'~ return' допустим.
-	ref Structure zero = new Structure(0);
-	ref Structure one = new Structure(1);
-	ref Structure two = new Structure(2);
+	refo Structure zero = new Structure(0);
+	refo Structure one = new Structure(1);
+	refo Structure two = new Structure(2);
 
-	ref Box box = new Box(refb zero);
+	refo Box box = new Box(ref zero);
 
-	refb Structure returned = box.Pin(refb one, refb two);
+	ref Structure returned = box.Pin(ref one, ref two);
 
 	// b ~ this: поле — алиас one.
-	printf(refb "%d\n", box.Pinned.Num);
+	printf(ref "%d\n", box.Pinned.Num);
 	// a ~ return: результат — алиас two.
-	printf(refb "%d\n", returned.Num);
+	printf(ref "%d\n", returned.Num);
 
 	return 0;
 }

@@ -1,6 +1,6 @@
 namespace Program;
 
-extern infargs int printf(refb byte ptr);
+extern infargs int printf(ref byte ptr);
 
 class Conn
 {
@@ -21,37 +21,37 @@ int main()
 {
 	// 1. Стек-экземпляр: поле + вызов метода.
 	own Conn a = val Conn(10);
-	printf(refb "%d\n", a.Type);
+	printf(ref "%d\n", a.Type);
 	a.AddType(5);
-	printf(refb "%d\n", a.Type);
+	printf(ref "%d\n", a.Type);
 
 	// 2. Heap-экземпляр: поле + вызов метода.
-	ref Conn b = new Conn(20);
-	printf(refb "%d\n", b.Type);
+	refo Conn b = new Conn(20);
+	printf(ref "%d\n", b.Type);
 	b.AddType(5);
-	printf(refb "%d\n", b.Type);
+	printf(ref "%d\n", b.Type);
 
 	// 3. Независимость двух стек-экземпляров.
 	own Conn x = val Conn(1);
 	own Conn y = val Conn(2);
 	x.AddType(10);
-	printf(refb "%d\n", x.Type);
-	printf(refb "%d\n", y.Type);
+	printf(ref "%d\n", x.Type);
+	printf(ref "%d\n", y.Type);
 
 	// 4. Независимость двух heap-экземпляров.
-	ref Conn m = new Conn(100);
-	ref Conn n = new Conn(200);
+	refo Conn m = new Conn(100);
+	refo Conn n = new Conn(200);
 	m.Type = 5;
-	printf(refb "%d\n", m.Type);
-	printf(refb "%d\n", n.Type);
+	printf(ref "%d\n", m.Type);
+	printf(ref "%d\n", n.Type);
 
 	// 5. Стек- и heap-экземпляр не пересекаются.
 	own Conn s = val Conn(7);
-	ref Conn h = new Conn(8);
+	refo Conn h = new Conn(8);
 	s.AddType(1);
 	h.AddType(1);
-	printf(refb "%d\n", s.Type);
-	printf(refb "%d\n", h.Type);
+	printf(ref "%d\n", s.Type);
+	printf(ref "%d\n", h.Type);
 
 	// 6. Стек-экземпляр в цикле (несколько итераций на одной области).
 	int i = 0;
@@ -59,7 +59,7 @@ int main()
 	{
 		own Conn loop = val Conn(100);
 		loop.AddType(i);
-		printf(refb "%d\n", loop.Type);
+		printf(ref "%d\n", loop.Type);
 		i = i + 1;
 	}
 
@@ -67,9 +67,9 @@ int main()
 	int j = 0;
 	while (j < 3)
 	{
-		ref Conn hj = new Conn(0);
+		refo Conn hj = new Conn(0);
 		hj.Type = j;
-		printf(refb "%d\n", hj.Type);
+		printf(ref "%d\n", hj.Type);
 		j = j + 1;
 	}
 

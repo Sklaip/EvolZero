@@ -3,13 +3,13 @@ using Tests.Infrastructure;
 namespace Tests;
 
 /// <summary>
-/// Проверка field-initializer'ов и обязательной инициализации ref/refb-полей
+/// Проверка field-initializer'ов и обязательной инициализации refo/ref-полей
 /// к выходу из конструктора.
 ///
 /// Инициализатор поля компилируется в неявные присваивания в начале каждого
 /// конструктора класса (а для класса без явного конструктора — в синтезированный
 /// конструктор по умолчанию), после чего тело конструктора может переопределить
-/// значение. Любое ref/refb-поле, не инициализированное к выходу из конструктора,
+/// значение. Любое refo/ref-поле, не инициализированное к выходу из конструктора,
 /// отвергается на слое BasicSemanticsValidator с кодом DOLBAEB.
 /// </summary>
 public sealed class ClassFieldInitializerTests : IDisposable
@@ -29,7 +29,7 @@ public sealed class ClassFieldInitializerTests : IDisposable
 			"87",  // Config.Sum() — 10 + 30 + 7 + 40
 			"100", // Point.X — конструктор переопределяет инициализатор X = 1
 			"2",   // Point.Y — инициализатор, не тронутый конструктором
-			"10",  // Holder.Cfg.A — ref-поле, инициализированное new
+			"10",  // Holder.Cfg.A — refo-поле, инициализированное new
 			"42",  // Implicit.V — класс без явного конструктора
 		};
 
@@ -39,7 +39,7 @@ public sealed class ClassFieldInitializerTests : IDisposable
 	[Fact]
 	public void MissingRefField_ScanFailsWithDolbaeb()
 	{
-		// ref-поле (владеющая ссылка) обязано быть инициализировано в конструкторе.
+		// refo-поле (владеющая ссылка) обязано быть инициализировано в конструкторе.
 		TestAssertions.AssertCompilationFails(
 			_compiler, "ClassFieldInitializer", "ClassFieldInit_MissingRefField.cev", "DOLBAEB");
 	}
@@ -47,7 +47,7 @@ public sealed class ClassFieldInitializerTests : IDisposable
 	[Fact]
 	public void MissingRefbField_FailsWithDolbaeb()
 	{
-		// refb-поле (заимствованная ссылка) тоже обязано быть инициализировано.
+		// ref-поле (заимствованная ссылка) тоже обязано быть инициализировано.
 		TestAssertions.AssertCompilationFails(
 			_compiler, "ClassFieldInitializer", "ClassFieldInit_MissingRefbField.cev", "DOLBAEB");
 	}

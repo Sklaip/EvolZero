@@ -1,6 +1,6 @@
 namespace Program;
 
-extern infargs int printf(refb byte ptr);
+extern infargs int printf(ref byte ptr);
 
 class Box
 {
@@ -12,17 +12,17 @@ class Box
 	}
 }
 
-int Take(ref Box b)
+int Take(refo Box b)
 {
-	printf(refb "%d\n", b.V);
+	printf(ref "%d\n", b.V);
 	return 0;
 }
 
 int main()
 {
 	// Правило 5: передав владение в функцию, использовать переменную нельзя.
-	ref Box a = new Box(1);
-	Take(ref a);
+	refo Box a = new Box(1);
+	Take(refo a);
 	a.V = 2; // LT001: a деинициализирована передачей владения
 
 	return 0;

@@ -692,7 +692,7 @@ namespace EvolZero.Core.Analysis.Semantic
             {
                 if (IsOwning(_currentFunc.ReturnType) && !IsOwning(returnedExpr))
                 {
-                    AddLifetimeError("LT005", "Возвращаемая ссылка должна быть владеющей (ref)", returnedExpr.Pos);
+                    AddLifetimeError("LT005", "Возвращаемая ссылка должна быть владеющей (refo)", returnedExpr.Pos);
                     return null;
                 }
 
@@ -706,7 +706,7 @@ namespace EvolZero.Core.Analysis.Semantic
 
                 if (IsOwning(_currentFunc.ReturnType) && (returnedExpr is StructureFieldAccessExpression or ArrayCellAccessExpression))
                 {
-                    AddLifetimeError("LT004", "Нельзя снимать владеющую (ref) ссылку с поля класса", returnedExpr.Pos);
+                    AddLifetimeError("LT004", "Нельзя снимать владеющую (refo) ссылку с поля класса", returnedExpr.Pos);
                     return null;
                 }
             }
@@ -838,7 +838,7 @@ namespace EvolZero.Core.Analysis.Semantic
 
             if (IsBorrow(argument) && value.IsAnonymous || (value.IsStrippedViaExchange && IsOwning(value.Expr)))
             {
-                AddLifetimeError("LT009", "Анонимные ссылки (например, результат 'new') можно присваивать только во владеющие (ref) ссылки", value.Expr.Pos);
+                AddLifetimeError("LT009", "Анонимные ссылки (например, результат 'new') можно присваивать только во владеющие (refo) ссылки", value.Expr.Pos);
                 return;
             }
 
@@ -868,7 +868,7 @@ namespace EvolZero.Core.Analysis.Semantic
         {
             if (value.IsAnonymous || (value.IsStrippedViaExchange && IsOwning(value.Expr)))
             {
-                AddLifetimeError("LT009", "Анонимные ссылки (например, результат 'new') можно присваивать только во владеющие (ref) ссылки", value.Expr.Pos);
+                AddLifetimeError("LT009", "Анонимные ссылки (например, результат 'new') можно присваивать только во владеющие (refo) ссылки", value.Expr.Pos);
                 return;
             }
 
@@ -883,7 +883,7 @@ namespace EvolZero.Core.Analysis.Semantic
         {
             if (!IsOwning(value.Expr))
             {
-                AddLifetimeError("LT003", "Нельзя присвоить заимствованную (refb) ссылку во владеющую (ref) ссылку", value.Expr.Pos);
+                AddLifetimeError("LT003", "Нельзя присвоить заимствованную (ref) ссылку во владеющую (refo) ссылку", value.Expr.Pos);
                 return false;
             }
 

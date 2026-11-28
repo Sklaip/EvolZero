@@ -4,8 +4,8 @@ namespace Tests;
 
 /// <summary>
 /// Тонкая проверка цепочек ссылок и полей: чтение/запись через несколько
-/// уровней ref-полей (Outer.Mid.Child.Num), вызов методов через цепочку,
-/// возврат ref-поля методом и переуказание ссылки в середине цепочки.
+/// уровней refo-полей (Outer.Mid.Child.Num), вызов методов через цепочку,
+/// возврат refo-поля методом и переуказание ссылки в середине цепочки.
 /// </summary>
 public sealed class RefChainsTests : IDisposable
 {
@@ -25,7 +25,7 @@ public sealed class RefChainsTests : IDisposable
 			"33",  // 4a. запись 33: inner.Num
 			"33",  // 4b. mid.Child.Num (тот же объект)
 			"33",  // 4c. outer.Mid.Child.Num (тот же объект)
-			"40",  // 5. метод вернул ref -> запись viaMethod.Num = 40
+			"40",  // 5. метод вернул refo -> запись viaMethod.Num = 40
 			"111", // 6a. после переуказания mid.Child = second
 			"40",  // 6b. inner.Num не изменился
 		};

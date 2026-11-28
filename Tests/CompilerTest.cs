@@ -65,7 +65,7 @@ public sealed class CompilerTest : IDisposable
 		Assert.False(result.TimedOut, "Программа превысила таймаут.");
 		Assert.Equal(0, result.ExitCode);
 
-		// File.Write(ref globalStrTets, 4) записывает первые 4 байта строки "aboba" -> "abob".
+		// File.Write(refo globalStrTets, 4) записывает первые 4 байта строки "aboba" -> "abob".
 		string outputFilePath = Path.Combine(_compiler.WorkDir, "popa.txt");
 		Assert.True(File.Exists(outputFilePath), $"Файл {outputFilePath} не был создан.");
 		Assert.Equal("abob", File.ReadAllText(outputFilePath));

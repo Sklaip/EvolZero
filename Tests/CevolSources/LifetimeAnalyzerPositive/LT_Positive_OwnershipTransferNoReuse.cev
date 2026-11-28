@@ -1,6 +1,6 @@
 namespace Program;
 
-extern infargs int printf(refb byte ptr);
+extern infargs int printf(ref byte ptr);
 
 class Box
 {
@@ -12,9 +12,9 @@ class Box
 	}
 }
 
-int Take(ref Box b)
+int Take(refo Box b)
 {
-	printf(refb "%d\n", b.V);
+	printf(ref "%d\n", b.V);
 	return 0;
 }
 
@@ -24,8 +24,8 @@ int main()
 	// это корректная программа. Объект жив до передачи и освобождается внутри Take.
 	// Внутри функции printf читает объект, которого вне её уже нет (после этой строки
 	// a деинициализирована, обращаться к ней нельзя — см. LT001_UseAfterFunctionMove).
-	ref Box a = new Box(7);
-	Take(ref a);
+	refo Box a = new Box(7);
+	Take(refo a);
 
 	return 0;
 }

@@ -1,15 +1,15 @@
 ﻿namespace Program;
 
-extern infargs int printf(refb byte ptr);
-extern infargs int scanf(refb byte ptr);
+extern infargs int printf(ref byte ptr);
+extern infargs int scanf(ref byte ptr);
 
 int main()
 {
 	int num = 0;
-    scanf(refb "%d", loc num);
+    scanf(ref "%d", loc num);
 
 	num = num + 1;
-	printf(refb "%d\n", num);
+	printf(ref "%d\n", num);
 
 	int[10][5] arr;
 
@@ -25,24 +25,24 @@ int main()
 		i = i + 1;
 	}
 
-	refb int cell = loc arr[5][4];
-	printf(refb "%d\n", cell);
+	ref int cell = loc arr[5][4];
+	printf(ref "%d\n", cell);
 
-	refb int cell2 = loc arr[5];
-	printf(refb "%d\n", cell2);
+	ref int cell2 = loc arr[5];
+	printf(ref "%d\n", cell2);
 
-	refb int[5] innerArrayRef = loc arr[7];
+	ref int[5] innerArrayRef = loc arr[7];
 
 	i = 0;
 	while (i < 5) 
 	{
-		printf(refb "%d\n", innerArrayRef[i]);
+		printf(ref "%d\n", innerArrayRef[i]);
 		i = i + 1;
 	}
 
 	cell = cell + cell;
 
-	printf(refb "%d\n", arr[5][4]);
+	printf(ref "%d\n", arr[5][4]);
 	
 	return 0;
 }

@@ -12,12 +12,12 @@ class Item
 
 class Holder
 {
-	public ref Item F;
+	public refo Item F;
 }
 
 int main()
 {
-	ref Holder h = new Holder();
+	refo Holder h = new Holder();
 
 	return 0;
 }

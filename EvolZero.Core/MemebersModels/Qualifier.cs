@@ -32,7 +32,7 @@ namespace EvolZero.Core.MemebersModels
 
 		public override int GetHashCode() => typeof(OwnerReferenceQualifier).GetHashCode();
 
-		public override string ToString() => "ref";
+		public override string ToString() => "refo";
 	}
 
 	public sealed class BorrowReferenceQualifier : Qualifier
@@ -47,7 +47,7 @@ namespace EvolZero.Core.MemebersModels
 
 		public override int GetHashCode() => typeof(OwnerReferenceQualifier).GetHashCode();
 
-		public override string ToString() => "refb";
+		public override string ToString() => "ref";
 	}
 
     public sealed class ArrayQualifier : Qualifier

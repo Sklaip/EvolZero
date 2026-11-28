@@ -1,6 +1,6 @@
 namespace Program;
 
-extern infargs int printf(refb byte ptr);
+extern infargs int printf(ref byte ptr);
 
 class Cell
 {
@@ -11,9 +11,9 @@ class Cell
 		Value = value;
 	}
 
-	// Без 'return ~ this' возврат refb-поля дал бы LT005 (поле живёт, пока жив this).
+	// Без 'return ~ this' возврат ref-поля дал бы LT005 (поле живёт, пока жив this).
 	// Связь приравнивает лайфтайм возвращаемого значения к this.
-	public refb int GetRef() lifetimes (return ~ this)
+	public ref int GetRef() lifetimes (return ~ this)
 	{
 		return loc Value;
 	}
@@ -23,12 +23,12 @@ int main()
 {
 	own Cell cell = val Cell(10);
 
-	// Возвращённая refb — алиас поля: запись через неё видна объекту.
-	refb int r = cell.GetRef();
-	printf(refb "%d\n", cell.Value);
+	// Возвращённая ref — алиас поля: запись через неё видна объекту.
+	ref int r = cell.GetRef();
+	printf(ref "%d\n", cell.Value);
 
 	r = 42;
-	printf(refb "%d\n", cell.Value);
+	printf(ref "%d\n", cell.Value);
 
 	return 0;
 }

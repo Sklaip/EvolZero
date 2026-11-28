@@ -17,8 +17,8 @@ NEW : 'new';
 VAL : 'val';
 CONSTRUCTOR : 'ctor';
 DESTRUCTOR : 'dtor';
+REFO : 'refo';
 REF : 'ref';
-REFB : 'refb';
 OWN : 'own';
 
 // Операторы и знаки

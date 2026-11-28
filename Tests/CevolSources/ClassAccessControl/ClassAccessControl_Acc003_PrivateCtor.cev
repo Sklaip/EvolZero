@@ -1,6 +1,6 @@
 namespace Program;
 
-extern infargs int printf(refb byte ptr);
+extern infargs int printf(ref byte ptr);
 
 class Hidden
 {
@@ -15,7 +15,7 @@ class Hidden
 int main()
 {
 	Hidden h(5);
-	printf(refb "%d\n", h.Value);
+	printf(ref "%d\n", h.Value);
 
 	return 0;
 }

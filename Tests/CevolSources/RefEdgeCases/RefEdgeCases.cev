@@ -1,6 +1,6 @@
 namespace Program;
 
-extern infargs int printf(refb byte ptr);
+extern infargs int printf(ref byte ptr);
 
 class Conn
 {
@@ -12,7 +12,7 @@ class Conn
 	}
 }
 
-int Swap(refb int x, refb int y)
+int Swap(ref int x, ref int y)
 {
 	int tmp = x;
 	x = y;
@@ -24,54 +24,54 @@ int main()
 {
 	// 1. Псевдонимирование: две ссылки на одну переменную.
 	int a = 10;
-	refb int r1 = loc a;
-	refb int r2 = loc a;
+	ref int r1 = loc a;
+	ref int r2 = loc a;
 	r1 = 5;
-	printf(refb "%d\n", r2);
-	printf(refb "%d\n", a);
+	printf(ref "%d\n", r2);
+	printf(ref "%d\n", a);
 
 	// 2. Значение, переданное по ссылке, читается внутри функции.
 	int b = 100;
 	int c = 200;
 	Swap(loc b, loc c);
-	printf(refb "%d\n", b);
-	printf(refb "%d\n", c);
+	printf(ref "%d\n", b);
+	printf(ref "%d\n", c);
 
 	// 3. Переуказание ссылки между чтениями (два независимых адреса).
 	int p = 1;
 	int q = 2;
-	refb int rp = loc p;
+	ref int rp = loc p;
 	rp = rp + 10;
-	printf(refb "%d\n", p);
-	refb rp = loc q;
+	printf(ref "%d\n", p);
+	ref rp = loc q;
 	rp = rp + 20;
-	printf(refb "%d\n", p);
-	printf(refb "%d\n", q);
+	printf(ref "%d\n", p);
+	printf(ref "%d\n", q);
 
 	// 4. Ссылка на поле объекта, затем переуказание на поле другого объекта.
 	own Conn c1 = val Conn(7);
 	own Conn c2 = val Conn(9);
-	refb int rc = loc c1.Type;
+	ref int rc = loc c1.Type;
 	rc = 70;
-	printf(refb "%d\n", c1.Type);
-	refb rc = loc c2.Type;
+	printf(ref "%d\n", c1.Type);
+	ref rc = loc c2.Type;
 	rc = 90;
-	printf(refb "%d\n", c1.Type);
-	printf(refb "%d\n", c2.Type);
+	printf(ref "%d\n", c1.Type);
+	printf(ref "%d\n", c2.Type);
 
 	// 5. Чтение полей через ссылки с одинаковым базовым адресом.
 	int arr0 = 1;
 	int arr1 = 2;
-	refb int ra0 = loc arr0;
-	refb int ra1 = loc arr1;
+	ref int ra0 = loc arr0;
+	ref int ra1 = loc arr1;
 	ra0 = ra0 + ra1;
-	printf(refb "%d\n", arr0);
+	printf(ref "%d\n", arr0);
 
 	// 6. Ссылка, возвращённая методом/выражением, остаётся валидной.
-	ref Conn obj = new Conn(30);
-	refb int ro = loc obj.Type;
+	refo Conn obj = new Conn(30);
+	ref int ro = loc obj.Type;
 	ro = ro + 5;
-	printf(refb "%d\n", obj.Type);
+	printf(ref "%d\n", obj.Type);
 
 	return 0;
 }

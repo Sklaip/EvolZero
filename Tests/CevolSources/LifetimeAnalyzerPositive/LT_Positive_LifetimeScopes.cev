@@ -1,6 +1,6 @@
 namespace Program;
 
-extern infargs int printf(refb byte ptr);
+extern infargs int printf(ref byte ptr);
 
 class Box
 {
@@ -14,24 +14,24 @@ class Box
 
 int main()
 {
-	// Правило 1 (главная проверка): владеющая ref умирает при выходе из блока, refb — нет.
+	// Правило 1 (главная проверка): владеющая refo умирает при выходе из блока, ref — нет.
 	int x = 10;
 	if (1 == 1) {
-		ref Box tmp = new Box(1);
+		refo Box tmp = new Box(1);
 
-		// refb на долгоживущую переменную переживает блок, эффект виден снаружи.
-		refb int r = loc x;
+		// ref на долгоживущую переменную переживает блок, эффект виден снаружи.
+		ref int r = loc x;
 		r = r + 1;
 	}
-	printf(refb "%d\n", x); // 11 — borrow пережил блок
+	printf(ref "%d\n", x); // 11 — borrow пережил блок
 
 	// tmp освобождена при выходе из блока. Новые аллокации не должны затирать живые
 	// объекты: если бы tmp удалили не вовремя, first/second совпали бы по памяти и
 	// значения были бы мусором. Программа должна отработать и напечатать 100 и 200.
-	ref Box first = new Box(100);
-	ref Box second = new Box(200);
-	printf(refb "%d\n", first.V);   // 100
-	printf(refb "%d\n", second.V);  // 200
+	refo Box first = new Box(100);
+	refo Box second = new Box(200);
+	printf(ref "%d\n", first.V);   // 100
+	printf(ref "%d\n", second.V);  // 200
 
 	return 0;
 }
